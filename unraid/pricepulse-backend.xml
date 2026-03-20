@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>pricepulse-backend</Name>
+  <Repository>ghcr.io/kronborgs/pricepulse-backend:latest</Repository>
+  <Registry>https://github.com/Kronborgs/pricepulse/pkgs/container/pricepulse-backend</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Kronborgs/pricepulse</Support>
+  <Project>https://github.com/Kronborgs/pricepulse</Project>
+  <Overview>Backend til PricePulse — FastAPI + APScheduler pris-scraper til danske webshops. Kræver PostgreSQL og Redis.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8000]/docs</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Kronborgs/pricepulse/main/unraid/pricepulse-backend.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Kronborgs/pricepulse/main/assets/icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>PostgreSQL 16, Redis 7</Requires>
+  <Config Name="API Port" Target="8000" Default="8000" Mode="tcp" Description="Porten som PricePulse API er tilgængeligt på" Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="App Data" Target="/app/data" Default="/mnt/user/appdata/pricepulse" Mode="rw" Description="Persistente data for backend" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/pricepulse</Config>
+  <Config Name="Database URL" Target="DATABASE_URL" Default="postgresql+asyncpg://pricepulse:changeme@pricepulse-db:5432/pricepulse" Mode="" Description="PostgreSQL connection string — skift password til dit eget" Type="Variable" Display="always" Required="true" Mask="false">postgresql+asyncpg://pricepulse:changeme@pricepulse-db:5432/pricepulse</Config>
+  <Config Name="Redis URL" Target="REDIS_URL" Default="redis://pricepulse-redis:6379/0" Mode="" Description="Redis connection string" Type="Variable" Display="always" Required="true" Mask="false">redis://pricepulse-redis:6379/0</Config>
+  <Config Name="Secret Key" Target="SECRET_KEY" Default="" Mode="" Description="Generer med: openssl rand -hex 32" Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="CORS Origins" Target="CORS_ORIGINS" Default="http://192.168.1.50:3000" Mode="" Description="URL til frontend — brug din Unraid servers LAN-IP og port 3000" Type="Variable" Display="always" Required="true" Mask="false">http://192.168.1.50:3000</Config>
+  <Config Name="Environment" Target="ENVIRONMENT" Default="production" Mode="" Description="production eller development" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
+  <Config Name="Log Level" Target="LOG_LEVEL" Default="INFO" Mode="" Description="DEBUG, INFO, WARNING eller ERROR" Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
+  <Config Name="Scraper Domain Delay" Target="SCRAPER_DOMAIN_DELAY" Default="5" Mode="" Description="Sekunder mellem requests til samme domæne (rate limiting)" Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
+  <Config Name="Max Concurrent Scrapers" Target="SCRAPER_MAX_CONCURRENT" Default="4" Mode="" Description="Max antal parallelle scraper-requests" Type="Variable" Display="advanced" Required="false" Mask="false">4</Config>
+  <Config Name="Playwright Enabled" Target="PLAYWRIGHT_ENABLED" Default="false" Mode="" Description="Aktiver headless browser til Cloudflare-beskyttede sider (kræver mere RAM)" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Time Zone" Target="TZ" Default="Europe/Copenhagen" Mode="" Description="Find din tidszone her: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">Europe/Copenhagen</Config>
+</Container>

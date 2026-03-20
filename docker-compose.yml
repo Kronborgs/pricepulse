@@ -1,0 +1,116 @@
+services:
+  # ─── Backend (FastAPI + APScheduler) ─────────────────────────────────────────
+  backend:
+    image: ghcr.io/kronborgs/pricepulse-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pricepulse-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pricepulse}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-pricepulse}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SECRET_KEY: ${SECRET_KEY:-insecure-dev-key-change-me}
+      SCRAPER_DOMAIN_DELAY: ${SCRAPER_DOMAIN_DELAY:-5}
+      SCRAPER_MAX_CONCURRENT: ${SCRAPER_MAX_CONCURRENT:-4}
+      SCRAPER_USER_AGENT: ${SCRAPER_USER_AGENT:-Mozilla/5.0 (compatible; PricePulse/1.0)}
+      PLAYWRIGHT_ENABLED: ${PLAYWRIGHT_ENABLED:-false}
+      TZ: ${TZ:-Europe/Copenhagen}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - pricepulse_backend_data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pricepulse_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ─── Frontend (Next.js) ───────────────────────────────────────────────────────
+  frontend:
+    image: ghcr.io/kronborgs/pricepulse-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: pricepulse-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      TZ: ${TZ:-Europe/Copenhagen}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    networks:
+      - pricepulse_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: pricepulse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pricepulse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-pricepulse}
+      TZ: ${TZ:-Europe/Copenhagen}
+      PGTZ: ${TZ:-Europe/Copenhagen}
+    volumes:
+      - pricepulse_pgdata:/var/lib/postgresql/data
+    networks:
+      - pricepulse_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pricepulse} -d ${POSTGRES_DB:-pricepulse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ─── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pricepulse-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - pricepulse_redis_data:/data
+    networks:
+      - pricepulse_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ─── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  pricepulse_net:
+    name: pricepulse_net
+
+# ─── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  pricepulse_pgdata:
+    name: pricepulse_pgdata
+  pricepulse_redis_data:
+    name: pricepulse_redis_data
+  pricepulse_backend_data:
+    name: pricepulse_backend_data

@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"Copy-Item": true,
+			"Get-Command": true,
+			"New-Item": true,
+			"Out-Null": true,
+			"Test-Path": true,
+			"md": true,
+			"git init": true,
+			"git remote": true,
+			"git add": true
+		}
+	}
+}
