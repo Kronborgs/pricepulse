@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useQueryState } from "nuqs";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { WatchTable } from "@/components/watches/watch-table";
@@ -19,12 +18,11 @@ const STATUS_OPTIONS = [
 ];
 
 export default function WatchesPage() {
-  const [search, setSearch] = useQueryState("search", { defaultValue: "" });
-  const [status, setStatus] = useQueryState("status", { defaultValue: "" });
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["watches", { search, status, page }],
     queryFn: () =>
       api.watches.list({
@@ -49,13 +47,7 @@ export default function WatchesPage() {
             {total} overvågede priser
           </p>
         </div>
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          Tilføj watch
-        </button>
+        <AddWatchDialog />
       </div>
 
       {/* Filters */}
@@ -67,7 +59,7 @@ export default function WatchesPage() {
             placeholder="Søg på URL eller navn…"
             value={search}
             onChange={(e) => {
-              setSearch(e.target.value || null);
+              setSearch(e.target.value);
               setPage(1);
             }}
             className="h-9 w-64 rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -79,7 +71,7 @@ export default function WatchesPage() {
             <button
               key={opt.value}
               onClick={() => {
-                setStatus(opt.value || null);
+                setStatus(opt.value);
                 setPage(1);
               }}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -97,7 +89,6 @@ export default function WatchesPage() {
       <WatchTable
         watches={watches}
         isLoading={isLoading}
-        onRefresh={refetch}
       />
 
       {/* Pagination */}
@@ -122,12 +113,6 @@ export default function WatchesPage() {
           </button>
         </div>
       )}
-
-      <AddWatchDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={refetch}
-      />
     </div>
   );
 }

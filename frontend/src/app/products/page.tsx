@@ -3,14 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Package2, Search } from "lucide-react";
 import Link from "next/link";
-import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
 
 export default function ProductsPage() {
-  const [search, setSearch] = useQueryState("search", { defaultValue: "" });
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -46,7 +45,7 @@ export default function ProductsPage() {
           placeholder="Søg på navn eller brand…"
           value={search}
           onChange={(e) => {
-            setSearch(e.target.value || null);
+            setSearch(e.target.value);
             setPage(1);
           }}
           className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"

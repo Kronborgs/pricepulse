@@ -1,6 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { DashboardStats } from "@/types";
+import { api } from "@/lib/api";
 import {
   AlertTriangle,
   ArrowDown,
@@ -9,11 +11,6 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-
-interface Props {
-  stats: DashboardStats | undefined;
-  isLoading: boolean;
-}
 
 const statCards = (stats: DashboardStats | undefined) => [
   {
@@ -50,7 +47,13 @@ const statCards = (stats: DashboardStats | undefined) => [
   },
 ];
 
-export function StatsRow({ stats, isLoading }: Props) {
+export function StatsRow() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: api.dashboard.stats,
+    refetchInterval: 30_000,
+  });
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {statCards(stats).map((card) => (

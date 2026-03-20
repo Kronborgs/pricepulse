@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const { data: watches } = useQuery({
     queryKey: ["watches-errors"],
     queryFn: () =>
-      api.watches.list({ status: "error", page: 1, page_size: 10 }),
+      api.watches.list({ status: "error", skip: 0, limit: 10 }),
     refetchInterval: 60_000,
   });
 
