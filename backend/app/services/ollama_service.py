@@ -89,6 +89,30 @@ def _truncate_html(html: str, max_bytes: int = 12_000) -> str:
     return encoded.decode("utf-8", errors="ignore")
 
 
+def _slim_html_for_prompt(html: str, max_bytes: int = 3_500) -> str:
+    """
+    Reducér HTML til kun synligt DOM-indhold til Ollama-prompts.
+
+    Fjerner <script>, <style>, <noscript>, <svg> og <footer>/<nav>/<header>
+    som er irrelevante for CSS-selektor-genkendelse men fylder mange tokens.
+    Derefter trunkeres til max_bytes.
+
+    En 12KB side typisk → 4000-5000 tokens inkl. scripts.
+    Efter stripping → 1000-2000 tokens, hvilket passer til 4096 context.
+    """
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "lxml")
+        for tag in soup(["script", "style", "noscript", "svg", "footer", "nav", "header", "iframe"]):
+            tag.decompose()
+        slimmed = str(soup)
+    except Exception:
+        slimmed = html
+
+    encoded = slimmed.encode("utf-8")[:max_bytes]
+    return encoded.decode("utf-8", errors="ignore")
+
+
 # ── OllamaService ─────────────────────────────────────────────────────────────
 
 class OllamaService:
@@ -311,7 +335,7 @@ class OllamaService:
             f"HTTP status: {status_code}\n"
             f"HTML title: {html_title}\n"
             f"Fejlede extractors: {', '.join(failed_extractors) or 'ingen'}\n\n"
-            f"HTML (find CSS-selektorer til pris og lager i denne HTML):\n---\n{_truncate_html(html_snippet)}\n---\n\n"
+            f"HTML (find CSS-selektorer til pris og lager i denne HTML):\n---\n{_slim_html_for_prompt(html_snippet)}\n---\n\n"
             f"Returner JSON nu:"
         )
 

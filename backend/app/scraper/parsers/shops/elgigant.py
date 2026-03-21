@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
+
 import structlog
+from bs4 import BeautifulSoup
 
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
+from app.scraper.parsers.inline_json_parser import _clean_price, _deep_find, _normalize_stock
 from app.scraper.providers.base import ParseResult, PriceParser
 
 logger = structlog.get_logger()
@@ -68,6 +72,12 @@ class ElgigantParser(PriceParser):
     )
 
     def parse(self, content: str, url: str) -> ParseResult:
+        # Strategi 0: __NEXT_DATA__ (Elgiganten bruger Next.js — pris i server-state)
+        soup = BeautifulSoup(content, "lxml")
+        result = self._try_next_data(soup)
+        if result and result.success:
+            return result
+
         for strategy in (self._strategy_buybox, self._strategy_any, self._strategy_microdata):
             result = strategy.parse(content, url)
             if result.success:
@@ -81,5 +91,49 @@ class ElgigantParser(PriceParser):
 
         return ParseResult(
             error="elgigant: ingen pris fundet via data-primary-price eller microdata",
+            parser_used=self.parser_name,
+        )
+
+    def _try_next_data(self, soup: BeautifulSoup) -> ParseResult | None:
+        """Elgiganten (Elkjøp) bruger Next.js — produktdata i __NEXT_DATA__."""
+        tag = soup.find("script", id="__NEXT_DATA__")
+        if not tag:
+            return None
+        try:
+            data = json.loads(tag.get_text())
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+        price_keys = frozenset({
+            "price", "currentprice", "saleprice", "sellingprice",
+            "finalprice", "grossprice", "inclvat", "incvat", "listprice",
+        })
+        prices = _deep_find(data, price_keys, max_depth=12)
+        clean = [p for p in (_clean_price(v) for v in prices) if p and p > 1]
+        if not clean:
+            return None
+
+        price = min(clean)
+
+        stock_keys = frozenset({"availability", "instock", "isinstock", "isavailable", "stockstatus"})
+        stock_status = None
+        for v in _deep_find(data, stock_keys, max_depth=12):
+            s = _normalize_stock(v)
+            if s:
+                stock_status = s
+                break
+
+        title_keys = frozenset({"name", "title", "productname"})
+        title = next(
+            (str(t) for t in _deep_find(data, title_keys, max_depth=6)
+             if isinstance(t, str) and 3 < len(t) < 200),
+            None,
+        )
+
+        return ParseResult(
+            price=price,
+            currency="DKK",
+            stock_status=stock_status,
+            title=title,
             parser_used=self.parser_name,
         )

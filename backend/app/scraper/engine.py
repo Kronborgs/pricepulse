@@ -18,8 +18,10 @@ from app.scraper.parsers.shops.computersalg import (
     HappiiParser,
     KomplettParser,
 )
+from app.scraper.parsers.shops.biltema import BiltemaParser
 from app.scraper.parsers.shops.elgigant import ElgigantParser
 from app.scraper.parsers.shops.proshop import ProshopParser
+from app.scraper.parsers.shops.woocommerce import WooCommerceParser
 from app.scraper.providers.base import (
     ErrorType,
     FetchOptions,
@@ -35,6 +37,8 @@ logger = structlog.get_logger()
 
 # Registry: domain → parser
 SHOP_PARSERS: dict[str, PriceParser] = {
+    "biltema.dk": BiltemaParser(),
+    "www.biltema.dk": BiltemaParser(),
     "compumail.dk": CompumailParser(),
     "www.compumail.dk": CompumailParser(),
     "computersalg.dk": ComputersalgParser(),
@@ -45,6 +49,10 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "www.elsalg.dk": ELsalgParser(),
     "happii.dk": HappiiParser(),
     "www.happii.dk": HappiiParser(),
+    "hmwtrading.dk": WooCommerceParser(),
+    "www.hmwtrading.dk": WooCommerceParser(),
+    "kaffelars.dk": WooCommerceParser(),
+    "www.kaffelars.dk": WooCommerceParser(),
     "komplett.dk": KomplettParser(),
     "www.komplett.dk": KomplettParser(),
     "proshop.dk": ProshopParser(),
