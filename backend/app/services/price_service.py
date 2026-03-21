@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timezone
 
 import structlog
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.price_event import PriceEvent
@@ -72,15 +74,11 @@ class PriceService:
                 f"{watch.id}:{event_type}:{old_price}:{new_price}:{old_stock}:{new_stock}"
             )
 
-            # Deduplication check
-            existing = (
-                await self.db.execute(
-                    select(PriceEvent).where(PriceEvent.dedup_key == dedup_key)
-                )
-            ).scalar_one_or_none()
-
-            if not existing:
-                event = PriceEvent(
+            # Atomisk INSERT ... ON CONFLICT DO NOTHING — sikker mod parallel scraping
+            await self.db.execute(
+                pg_insert(PriceEvent)
+                .values(
+                    id=uuid.uuid4(),
                     watch_id=watch.id,
                     event_type=event_type,
                     old_price=old_price,
@@ -93,18 +91,19 @@ class PriceService:
                     dedup_key=dedup_key,
                     extra_data={"parser": parse_result.parser_used},
                 )
-                self.db.add(event)
+                .on_conflict_do_nothing(index_elements=["dedup_key"])
+            )
 
-                if price_changed:
-                    logger.info(
-                        "Prisændring detekteret",
-                        watch_id=str(watch.id),
-                        title=watch.title,
-                        old_price=old_price,
-                        new_price=new_price,
-                        delta=delta,
-                        delta_pct=delta_pct,
-                    )
+            if price_changed:
+                logger.info(
+                    "Prisændring detekteret",
+                    watch_id=str(watch.id),
+                    title=watch.title,
+                    old_price=old_price,
+                    new_price=new_price,
+                    delta=delta,
+                    delta_pct=delta_pct,
+                )
 
         # Opdatér watch
         watch.current_price = new_price
@@ -178,20 +177,17 @@ class PriceService:
 
         # Gem fejl-event
         dedup_key = f"{watch.id}:error:{now.strftime('%Y-%m-%d-%H')}"
-        existing = (
-            await self.db.execute(
-                select(PriceEvent).where(PriceEvent.dedup_key == dedup_key)
-            )
-        ).scalar_one_or_none()
-
-        if not existing:
-            event = PriceEvent(
+        await self.db.execute(
+            pg_insert(PriceEvent)
+            .values(
+                id=uuid.uuid4(),
                 watch_id=watch.id,
                 event_type="error",
                 occurred_at=now,
                 dedup_key=dedup_key,
                 extra_data={"error": error, "status_code": status_code},
             )
-            self.db.add(event)
+            .on_conflict_do_nothing(index_elements=["dedup_key"])
+        )
 
         await self.db.commit()

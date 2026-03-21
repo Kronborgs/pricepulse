@@ -212,6 +212,8 @@ class OllamaService:
         source_id: str | None = None,
         watch_id: str | None = None,
     ) -> None:
+        from sqlalchemy.exc import IntegrityError
+
         row = LlmAnalysisResult(
             source_id=source_id,
             watch_id=watch_id,
@@ -226,7 +228,15 @@ class OllamaService:
             response_tokens=response_tokens,
         )
         db.add(row)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            logger.warning(
+                "llm_result_not_saved",
+                reason="watch_deleted_or_conflict",
+                watch_id=watch_id,
+            )
 
     # ── Parser Advice ─────────────────────────────────────────────────────────
 

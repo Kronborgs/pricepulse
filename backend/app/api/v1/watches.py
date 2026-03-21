@@ -90,6 +90,10 @@ async def create_watch(
     # Kør første scrape i baggrunden
     background_tasks.add_task(service.trigger_scrape, watch.id)
 
+    # Genindlæs med shop eager-loaded for at undgå MissingGreenlet i response
+    stmt = select(Watch).where(Watch.id == watch.id).options(selectinload(Watch.shop))
+    watch = (await db.execute(stmt)).scalar_one()
+
     logger.info("Watch oprettet", watch_id=str(watch.id), url=watch.url)
     return watch
 
@@ -100,7 +104,11 @@ async def update_watch(
     body: WatchUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Watch:
-    stmt = select(Watch).where(Watch.id == watch_id)
+    stmt = (
+        select(Watch)
+        .where(Watch.id == watch_id)
+        .options(selectinload(Watch.shop))
+    )
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")
