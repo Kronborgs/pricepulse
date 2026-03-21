@@ -107,6 +107,9 @@ class WatchService:
             return False
 
         ollama = OllamaService()
+        prev_status = watch.status
+        watch.status = "analysing"
+        await self.db.commit()
         try:
             # Trin 1: CSS-selektor-forslag
             advice = await ollama.analyze_parser(
@@ -157,6 +160,10 @@ class WatchService:
                  if k not in ("price_selector", "stock_selector")} or None
             )
         finally:
+            # Nulstil status fra 'analysing' hvis det ikke allerede er opdateret af process_scraped_data
+            if watch.status == "analysing":
+                watch.status = prev_status
+                await self.db.commit()
             await ollama.close()
         return False
 
