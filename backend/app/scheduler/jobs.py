@@ -36,9 +36,59 @@ async def stop_scheduler() -> None:
 
 async def run_due_watches() -> None:
     """
-    Køres hvert minut. Finder alle watches der er klar til check
-    og kører dem asynkront (begrænset af scraper_max_concurrent).
+    Køres hvert minut.
+    1. Kør v2 WatchSource checks (next_check_at-baseret)
+    2. Kør v1 Watch checks som fallback (backwards compat)
     """
+    await _run_v2_sources()
+    await _run_v1_watches_legacy()
+
+
+async def _run_v2_sources() -> None:
+    """v2-scheduler: find WatchSources der er klar (next_check_at <= now)."""
+    from app.database import AsyncSessionLocal
+    from app.models.product_watch import ProductWatch
+    from app.models.watch_source import WatchSource
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        now = datetime.now(timezone.utc)
+        stmt = (
+            select(WatchSource)
+            .join(ProductWatch, WatchSource.watch_id == ProductWatch.id)
+            .where(
+                WatchSource.status.in_(["active", "pending"]),
+                ProductWatch.status.not_in(["paused", "archived"]),
+                WatchSource.next_check_at <= now,
+            )
+            .order_by(WatchSource.next_check_at.asc())
+            .limit(settings.scraper_max_concurrent)
+        )
+        sources = list((await db.execute(stmt)).scalars().all())
+        due_ids = [s.id for s in sources]
+
+    if not due_ids:
+        return
+
+    logger.info("Kører v2 sources", count=len(due_ids))
+    tasks = [asyncio.create_task(_run_source_check(sid)) for sid in due_ids]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    errors = [r for r in results if isinstance(r, Exception)]
+    if errors:
+        logger.error("v2 scrape-fejl", count=len(errors), first_error=str(errors[0]))
+
+
+async def _run_source_check(source_id: object) -> None:
+    from app.database import AsyncSessionLocal
+    from app.services.source_service import SourceService
+
+    async with AsyncSessionLocal() as db:
+        svc = SourceService(db)
+        await svc.run_check(source_id)
+
+
+async def _run_v1_watches_legacy() -> None:
+    """v1-scheduler: legacy watches der stadig ikke er migreret."""
     from app.database import AsyncSessionLocal
     from app.models.watch import Watch
     from sqlalchemy import select, or_
@@ -50,39 +100,29 @@ async def run_due_watches() -> None:
             Watch.status.in_(["active", "pending"]),
             or_(
                 Watch.last_checked_at == None,
-                # last_checked_at + interval <= now
-                Watch.last_checked_at
-                <= now.replace(second=0, microsecond=0),
+                Watch.last_checked_at <= now.replace(second=0, microsecond=0),
             ),
         )
         watches = list((await db.execute(stmt)).scalars().all())
 
-    if not watches:
-        return
-
-    # Filtrér til kun dem der faktisk er due
     due = []
     for w in watches:
         if w.last_checked_at is None:
             due.append(w.id)
         else:
-            elapsed_minutes = (
-                datetime.now(timezone.utc) - w.last_checked_at
-            ).total_seconds() / 60
-            if elapsed_minutes >= w.check_interval:
+            elapsed = (datetime.now(timezone.utc) - w.last_checked_at).total_seconds() / 60
+            if elapsed >= w.check_interval:
                 due.append(w.id)
 
     if not due:
         return
 
-    logger.info("Kører watches", count=len(due))
-
+    logger.info("Kører v1 legacy watches", count=len(due))
     tasks = [asyncio.create_task(_scrape_watch(watch_id)) for watch_id in due]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-
     errors = [r for r in results if isinstance(r, Exception)]
     if errors:
-        logger.error("Scrape-fejl", count=len(errors), first_error=str(errors[0]))
+        logger.error("v1 scrape-fejl", count=len(errors), first_error=str(errors[0]))
 
 
 async def _scrape_watch(watch_id: object) -> None:

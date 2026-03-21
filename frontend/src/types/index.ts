@@ -162,3 +162,160 @@ export interface DashboardStats {
   checks_today: number;
   total_products: number;
 }
+
+// ─── v2: WatchSource ──────────────────────────────────────────────────────────
+export type SourceStatus = "pending" | "active" | "paused" | "error" | "blocked" | "archived";
+
+export interface WatchSource {
+  id: string;
+  watch_id: string;
+  shop: string;
+  url: string;
+  previous_url: string | null;
+  status: SourceStatus;
+  interval_override_min: number | null;
+  last_check_at: string | null;
+  next_check_at: string | null;
+  last_price: number | null;
+  last_currency: string;
+  last_stock_status: string | null;
+  last_error_type: ScrapeErrorType | null;
+  last_error_message: string | null;
+  last_diagnostic: WatchDiagnostic | null;
+  consecutive_errors: number;
+  bot_suspected_at: string | null;
+  provider: string;
+  scraper_config: Record<string, string> | null;
+  paused_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── v2: ProductWatch ────────────────────────────────────────────────────────
+export type ProductWatchStatus = "pending" | "active" | "partial" | "paused" | "error" | "archived";
+
+export interface ProductWatch {
+  id: string;
+  product_id: string;
+  name: string | null;
+  default_interval_min: number;
+  status: ProductWatchStatus;
+  last_best_price: number | null;
+  last_best_source_id: string | null;
+  last_checked_at: string | null;
+  paused_at: string | null;
+  archived_at: string | null;
+  sources: WatchSource[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductWatchList {
+  items: ProductWatch[];
+  total: number;
+}
+
+export interface ProductWatchCreate {
+  url: string;
+  name?: string | null;
+  product_id?: string | null;
+  default_interval_min?: number;
+  provider?: string;
+  scraper_config?: Record<string, string> | null;
+}
+
+// ─── v2: SourceCheck ─────────────────────────────────────────────────────────
+export interface SourceCheck {
+  id: number;
+  source_id: string;
+  checked_at: string;
+  price: number | null;
+  currency: string;
+  stock_status: string | null;
+  success: boolean;
+  status_code: number | null;
+  response_time_ms: number | null;
+  html_length: number | null;
+  error_type: ScrapeErrorType | null;
+  error_message: string | null;
+  extractor_used: string | null;
+  bot_suspected: boolean;
+  is_price_change: boolean;
+  is_stock_change: boolean;
+  raw_diagnostic: WatchDiagnostic | null;
+}
+
+export interface SourceCheckList {
+  items: SourceCheck[];
+  total: number;
+}
+
+// ─── v2: SourcePriceEvent ────────────────────────────────────────────────────
+export type ChangeType = "initial" | "increase" | "decrease" | "unavailable" | "back_in_stock";
+
+export interface SourcePriceEvent {
+  id: number;
+  source_id: string;
+  old_price: number | null;
+  new_price: number | null;
+  old_stock: string | null;
+  new_stock: string | null;
+  change_type: ChangeType;
+  created_at: string;
+}
+
+// ─── v2: Timeline ────────────────────────────────────────────────────────────
+export interface TimelineEvent {
+  id: number;
+  watch_id: string;
+  source_id: string | null;
+  event_type: string;
+  event_data: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// ─── v2: Grafer ──────────────────────────────────────────────────────────────
+export interface GraphPoint {
+  ts: string;
+  value: number | null;
+}
+
+export interface SourceGraph {
+  prices: GraphPoint[];
+  stock_statuses: Array<{ ts: string; stock_status: string | null }>;
+}
+
+export interface ProductGraph {
+  best_price: GraphPoint[];
+  avg_price: GraphPoint[];
+  min_price: GraphPoint[];
+}
+
+// ─── v2: Ollama ──────────────────────────────────────────────────────────────
+export interface OllamaStatus {
+  available: boolean;
+  models: string[];
+  host: string;
+}
+
+export interface LlmParserAdvice {
+  page_type: "product" | "listing" | "blocked" | "captcha" | "unknown";
+  price_selector: string | null;
+  stock_selector: string | null;
+  requires_js: boolean;
+  likely_bot_protection: boolean;
+  reasoning: string;
+  recommended_action: string;
+  confidence: number;
+}
+
+export interface NormalizedProduct {
+  brand: string | null;
+  model: string | null;
+  variant: string | null;
+  mpn: string | null;
+  normalized_key: string | null;
+  confidence: number;
+  reasoning: string;
+}

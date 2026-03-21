@@ -1,23 +1,25 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ARRAY, Boolean, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
+from sqlalchemy import Boolean, DateTime, Float, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.base import TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.product_watch import ProductWatch
     from app.models.watch import Watch
 
 
 class Product(Base, TimestampMixin):
     """
-    Valgfrit overordnet produkt der kan gruppere flere watches (fra forskellige butikker).
-    Watches kan eksistere uden et tilknyttet Product.
+    Produkt-entiteten. Kan normaliseres via Ollama.
+    Grupperer ProductWatch-instanser (v2) og legacy Watch-instanser (v1).
     """
 
     __tablename__ = "products"
@@ -25,13 +27,27 @@ class Product(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     brand: Mapped[str | None] = mapped_column(String(200))
+    model: Mapped[str | None] = mapped_column(String(300))
+    variant: Mapped[str | None] = mapped_column(String(200))
+    mpn: Mapped[str | None] = mapped_column(String(100), index=True)           # manufacturer part number
+    ean: Mapped[str | None] = mapped_column(String(50), index=True)            # EAN/barcode
     description: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
-    ean: Mapped[str | None] = mapped_column(String(50), index=True)    # EAN/barcode til auto-matching
-
+    # active | paused | archived
+    status: Mapped[str] = mapped_column(String(50), default="active", nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    # Relations
+    # Ollama normalisering
+    ollama_normalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    normalization_confidence: Mapped[float | None] = mapped_column(Float)
+    normalization_data: Mapped[dict | None] = mapped_column(JSONB)
+
+    # Relations — v2
+    product_watches: Mapped[list["ProductWatch"]] = relationship(
+        back_populates="product",
+        lazy="select",
+    )
+    # Relations — v1 legacy
     watches: Mapped[list["Watch"]] = relationship(
         back_populates="product",
         lazy="select",
