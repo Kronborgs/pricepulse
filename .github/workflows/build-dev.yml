@@ -21,6 +21,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Beregn version
+        id: version
+        run: |
+          TODAY=$(date -u +%Y%m%d)
+          LAST=$(git tag --list "v${TODAY}v*" | grep -oP 'v\d+$' | grep -oP '\d+' | sort -n | tail -1)
+          NEXT=$(( ${LAST:-0} + 1 ))
+          echo "tag=v${TODAY}v${NEXT}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,6 +66,6 @@ jobs:
             ${{ env.FRONTEND_IMAGE }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=
-            NEXT_PUBLIC_BUILD_VERSION=dev-${{ github.sha }}
+            NEXT_PUBLIC_BUILD_VERSION=${{ steps.version.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
