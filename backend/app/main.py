@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -14,6 +15,9 @@ from app.database import engine, Base
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 
 logger = structlog.get_logger()
+
+# Indsættes som build-arg PRICEPULSE_VERSION i Dockerfile
+_VERSION = os.getenv("PRICEPULSE_VERSION", "dev")
 
 
 @asynccontextmanager
@@ -41,7 +45,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="PricePulse API",
         description="Self-hosted prisovervågning til danske webshops",
-        version="1.0.0",
+        version=_VERSION,
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
         docs_url="/docs" if settings.environment != "production" else None,
@@ -62,7 +66,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
-        return {"status": "ok", "version": "1.0.0"}
+        return {"status": "ok", "version": _VERSION}
 
     return app
 

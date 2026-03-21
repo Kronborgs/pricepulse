@@ -1,4 +1,4 @@
-name: Build (dev)
+name: Build & Release
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    name: Build Docker images
+    name: Build & Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -28,17 +28,15 @@ jobs:
         id: version
         run: |
           TODAY=$(date -u +%Y%m%d)
+          # find højeste eksisterende v-nummer for i dag
           LAST=$(git tag --list "v${TODAY}v*" | grep -oP 'v\d+$' | grep -oP '\d+' | sort -n | tail -1)
-          NEXT=$(( ${LAST:-0} + 1 ))
-          echo "tag=v${TODAY}v${NEXT}" >> $GITHUB_OUTPUT
-
-      - name: Opret og push version tag
-        if: github.event_name != 'pull_request'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          LAST=${LAST:-0}
+          # Gulv på 29 — sø første build producerer v30
+          if [ "$LAST" -lt 29 ]; then LAST=29; fi
+          NEXT=$(( LAST + 1 ))
+          TAG="v${TODAY}v${NEXT}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Computed version: $TAG"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -58,8 +56,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64
           tags: |
-            ${{ env.BACKEND_IMAGE }}:main
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.BACKEND_IMAGE }}:latest
+          build-args: |
+            PRICEPULSE_VERSION=${{ steps.version.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -70,10 +70,23 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64
           tags: |
-            ${{ env.FRONTEND_IMAGE }}:main
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.FRONTEND_IMAGE }}:latest
           build-args: |
             NEXT_PUBLIC_API_URL=
             NEXT_PUBLIC_BUILD_VERSION=${{ steps.version.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Tag og opret GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+          gh release create ${{ steps.version.outputs.tag }} \
+            --title "Release ${{ steps.version.outputs.tag }}" \
+            --generate-notes

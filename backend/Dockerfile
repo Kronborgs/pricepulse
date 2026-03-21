@@ -45,6 +45,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Kopiér app-kode
 COPY . .
 
+# App-version injiceret ved build (fx v20260321v30)
+ARG PRICEPULSE_VERSION=dev
+ENV PRICEPULSE_VERSION=$PRICEPULSE_VERSION
+
 # Data-mapper
 RUN mkdir -p /app/data /var/lib/postgresql/data /var/run/postgresql \
     && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
