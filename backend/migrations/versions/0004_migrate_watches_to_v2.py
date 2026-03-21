@@ -179,7 +179,7 @@ def upgrade() -> None:
                 END
                 ELSE 'initial'
             END,
-            pe.created_at
+            pe.occurred_at
         FROM price_events pe
         JOIN _v2_source_map m ON m.watch_id = pe.watch_id
     """))
