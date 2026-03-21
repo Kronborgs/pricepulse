@@ -20,11 +20,16 @@ def _clean_price(v: Any) -> float | None:
         return float(v) if v > 1 else None
     if isinstance(v, str):
         v = v.replace("\xa0", "").replace(" ", "").replace("kr", "").replace("DKK", "").strip()
-        if "," in v and "." in v:
+        # Dansk ,-  suffix = ingen decimaler (f.eks. "949,-" → "949")
+        if v.endswith(",-"):
+            v = v[:-2]
+        elif "," in v and "." in v:
             v = v.replace(".", "").replace(",", ".")
         elif "," in v:
             after = v.rsplit(",", 1)[-1]
-            if len(after) <= 2:
+            if after == "-" or not after:
+                v = v.rsplit(",", 1)[0]
+            elif len(after) <= 2:
                 v = v.replace(",", ".")
             else:
                 v = v.replace(",", "")
@@ -149,6 +154,18 @@ class InlineJsonParser(PriceParser):
 
         page_props = (data.get("props") or {}).get("pageProps") or {}
         price = self._price_from_props(page_props)
+
+        # Fallback: scan hele __NEXT_DATA__ med større dybde
+        # (fanger shops der gemmer pris udenfor pageProps, f.eks. Matas)
+        if price is None:
+            all_prices = [
+                _clean_price(p)
+                for p in _deep_find(data, _PRICE_KEYS, max_depth=12)
+            ]
+            valid = [p for p in all_prices if p and p > 5]
+            if valid:
+                price = min(valid)
+
         if price is None:
             return None
 

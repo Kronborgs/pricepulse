@@ -20,6 +20,7 @@ from app.scraper.parsers.shops.computersalg import (
 )
 from app.scraper.parsers.shops.biltema import BiltemaParser
 from app.scraper.parsers.shops.elgigant import ElgigantParser
+from app.scraper.parsers.shops.jemogfix import JemogfixParser
 from app.scraper.parsers.shops.proshop import ProshopParser
 from app.scraper.parsers.shops.woocommerce import WooCommerceParser
 from app.scraper.providers.base import (
@@ -54,6 +55,8 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "kaffelars.dk": WooCommerceParser(),
     "www.kaffelars.dk": WooCommerceParser(),
     "tingoggoejl.kronborgs.dk": WooCommerceParser(),
+    "jemogfix.dk": JemogfixParser(),
+    "www.jemogfix.dk": JemogfixParser(),
     "komplett.dk": KomplettParser(),
     "www.komplett.dk": KomplettParser(),
     "proshop.dk": ProshopParser(),
