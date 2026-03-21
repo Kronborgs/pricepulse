@@ -45,14 +45,41 @@ class ElgigantParser(PriceParser):
         )
     )
 
+    # Strategi 3: microdata / schema.org content-attribut
+    _strategy_microdata = CssSelectorParser(
+        SelectorConfig(
+            price_selector="[itemprop='price']",
+            price_attr="content",
+            title_selector="h1",
+            # Stock: leveringsinformation-sektionen på elkjøp/elgiganten
+            stock_selector=(
+                "[data-testid='stock-status'], "
+                "[class*='stock-status'], "
+                "[class*='StockStatus'], "
+                "[class*='delivery-status'], "
+                ".elg-availability, "
+                ".availability-status, "
+                "[data-testid='add-to-cart-section'] [class*='stock'], "
+                "[class*='pdp'] [class*='stock']"
+            ),
+            stock_in_text="på lager",
+            stock_out_text="ikke på lager",
+        )
+    )
+
     def parse(self, content: str, url: str) -> ParseResult:
-        for strategy in (self._strategy_buybox, self._strategy_any):
+        for strategy in (self._strategy_buybox, self._strategy_any, self._strategy_microdata):
             result = strategy.parse(content, url)
             if result.success:
                 result.parser_used = self.parser_name
+                # Forsøg at berige med stock-status fra strategi 3 hvis mangler
+                if result.stock_status is None:
+                    stock_result = self._strategy_microdata.parse(content, url)
+                    if stock_result.stock_status:
+                        result.stock_status = stock_result.stock_status
                 return result
 
         return ParseResult(
-            error="elgigant: ingen pris fundet via data-primary-price",
+            error="elgigant: ingen pris fundet via data-primary-price eller microdata",
             parser_used=self.parser_name,
         )

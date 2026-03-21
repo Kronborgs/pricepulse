@@ -9,6 +9,7 @@ import structlog
 from app.config import settings
 from app.models.watch import Watch
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
+from app.scraper.parsers.inline_json_parser import InlineJsonParser
 from app.scraper.parsers.json_ld_parser import JsonLdParser
 from app.scraper.parsers.shops.compumail import CompumailParser
 from app.scraper.parsers.shops.computersalg import (
@@ -355,15 +356,19 @@ class ScraperEngine:
     ) -> ParseResult:
         parsers: list[PriceParser] = []
 
-        # 1. JSON-LD (mest pålidelig)
+        # 1. JSON-LD (mest pålidelig — schema.org Product)
         parsers.append(JsonLdParser())
 
-        # 2. Shop-specifik parser
+        # 2. Shop-specifik parser (domain-specifik HTML-viden)
         shop_parser = SHOP_PARSERS.get(domain)
         if shop_parser:
             parsers.append(shop_parser)
 
-        # 3. User-konfigurerede CSS selectors
+        # 3. Inline JSON fallback (__NEXT_DATA__, x-magento-init, dataLayer)
+        #    Dækker Next.js-shops og Magento 2 som shop-parseren måske mister
+        parsers.append(InlineJsonParser())
+
+        # 4. User-konfigurerede CSS selectors
         cfg = getattr(watch, "scraper_config", None) or {}
         if cfg.get("price_selector"):
             parsers.append(

@@ -85,6 +85,12 @@ class JsonLdParser(PriceParser):
         availability = offers.get("availability", "")
 
         price = self._parse_price(price_raw)
+
+        # Fallback: priceSpecification (f.eks. Elgiganten/Elkjøp bruger dette
+        # frem for et direkte price-felt på offers-objektet)
+        if price is None:
+            price, currency = self._extract_price_from_spec(offers, currency)
+
         if price is None:
             return None
 
@@ -109,6 +115,41 @@ class JsonLdParser(PriceParser):
             parser_used=self.parser_name,
             raw_data={"type": type_, "offer": offers},
         )
+
+    def _extract_price_from_spec(
+        self, offers: dict, default_currency: str
+    ) -> tuple[float | None, str]:
+        """Udtræk pris fra offers.priceSpecification.
+        Prioritering: VAT-inklusiv > SalePrice-type > første tilgængelige.
+        """
+        spec = offers.get("priceSpecification")
+        if not spec:
+            return None, default_currency
+        if not isinstance(spec, list):
+            spec = [spec]
+
+        # 1. Foretrræk moms-inklusiv pris
+        for s in spec:
+            if isinstance(s, dict) and s.get("valueAddedTaxIncluded") is True:
+                p = self._parse_price(s.get("price"))
+                if p:
+                    return p, s.get("priceCurrency") or default_currency
+
+        # 2. SalePrice-type
+        for s in spec:
+            if isinstance(s, dict) and "SalePrice" in (s.get("priceType") or ""):
+                p = self._parse_price(s.get("price"))
+                if p:
+                    return p, s.get("priceCurrency") or default_currency
+
+        # 3. Første tilgængelige pris
+        for s in spec:
+            if isinstance(s, dict):
+                p = self._parse_price(s.get("price"))
+                if p:
+                    return p, s.get("priceCurrency") or default_currency
+
+        return None, default_currency
 
     def _parse_price(self, raw: object) -> float | None:
         if raw is None:
