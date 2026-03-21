@@ -133,7 +133,11 @@ async def trigger_check(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Watch:
     """Manuelt trigger et check for én watch."""
-    stmt = select(Watch).where(Watch.id == watch_id)
+    stmt = (
+        select(Watch)
+        .where(Watch.id == watch_id)
+        .options(selectinload(Watch.shop))
+    )
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")

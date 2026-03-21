@@ -306,6 +306,99 @@ class OllamaService:
         )
         return advice
 
+    # ── Direkte pris-udtræk fra HTML-tekst ───────────────────────────────────
+
+    async def extract_price_from_text(
+        self,
+        *,
+        db: AsyncSession,
+        url: str,
+        html: str,
+        watch_id: str | None = None,
+        source_id: str | None = None,
+    ) -> "ParseResult | None":
+        """
+        Brug LLM som tekstbaseret browser til direkte at udtrække
+        pris og lager fra rå HTML-tekst — ingen CSS-selektorer.
+        Returnerer None hvis Ollama ikke er tilgængelig eller ingen pris findes.
+        """
+        from app.scraper.providers.base import ParseResult
+
+        if not settings.ollama_enabled:
+            return None
+
+        # Udtræk synlig tekst fra HTML (fjern tags, behold indhold)
+        import re
+        text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s{2,}", " ", text).strip()
+        text = text[:8_000]  # max 8KB tekst
+
+        key = _cache_key([url, text[:2000], "text_extract"])
+        cached = await self._get_cached(db, key)
+        if cached:
+            raw = cached.output_data or {}
+            price_val = raw.get("price")
+            if price_val is None:
+                return None
+            return ParseResult(
+                price=float(price_val),
+                currency=raw.get("currency", "DKK"),
+                stock_status=raw.get("stock_status"),
+                title=raw.get("title"),
+                parser_used="ollama_text",
+            )
+
+        system = (
+            "Du er en prisudtrækker. Læs sidetekst fra en produktside og returner JSON:\n"
+            "price (number|null): produktprisen som tal uden valuta (fx 3290.0)\n"
+            "currency (string): valutakode (fx 'DKK', 'EUR', 'USD') — standard 'DKK'\n"
+            "stock_status (string|null): 'in_stock', 'out_of_stock' eller null\n"
+            "title (string|null): produktnavn/titel\n"
+            "confidence (float 0.0-1.0): sikkerhed på at det er den rigtige pris\n"
+            "Regler: Find KUN den primære produktpris — IKKE tilbehørspriser eller relaterede produkter. "
+            "Er siden ikke en produktside, sæt price til null. Svar KUN med JSON."
+        )
+
+        user = f"URL: {url}\n\nSidetekst:\n{text}"
+
+        response = await self._chat(settings.ollama_parser_model, system, user)
+        if not response:
+            return None
+
+        raw: dict = response["result"]
+        price_raw = raw.get("price")
+        confidence = float(raw.get("confidence", 0.0))
+
+        await self._save_result(
+            db,
+            analysis_type="text_extract",
+            model_used=settings.ollama_parser_model,
+            cache_key=key,
+            input_data={"url": url, "text_length": len(text)},
+            output_data=raw,
+            confidence=confidence,
+            prompt_tokens=response.get("prompt_tokens"),
+            response_tokens=response.get("response_tokens"),
+            watch_id=watch_id,
+            source_id=source_id,
+        )
+
+        if price_raw is None or confidence < 0.4:
+            return None
+
+        try:
+            return ParseResult(
+                price=float(price_raw),
+                currency=raw.get("currency", "DKK"),
+                stock_status=raw.get("stock_status"),
+                title=raw.get("title"),
+                parser_used="ollama_text",
+            )
+        except (TypeError, ValueError):
+            return None
+
     # ── Produktnormalisering ──────────────────────────────────────────────────
 
     async def normalize_product(

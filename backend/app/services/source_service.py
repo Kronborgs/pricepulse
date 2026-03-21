@@ -375,7 +375,10 @@ class SourceService:
         scrape_result,
         parse_result,
     ):
-        """Kald Ollama for CSS-selektor-forslag og prøv scrape igen."""
+        """Ollama fallback i to trin:
+        1. CSS-selektor-forslag → retry scrape
+        2. Direkte tekst-udtræk fra HTML via LLM
+        """
         from app.config import settings
         from app.services.ollama_service import OllamaService
 
@@ -384,6 +387,7 @@ class SourceService:
 
         ollama = OllamaService()
         try:
+            # Trin 1: CSS-selektor-forslag
             advice = await ollama.analyze_parser(
                 db=self.db,
                 url=fake_watch.url,
@@ -393,34 +397,51 @@ class SourceService:
                 failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
                 source_id=str(source.id),
             )
-            if not advice or not advice.price_selector or advice.confidence < 0.5:
-                return scrape_result, parse_result
+            if advice and advice.price_selector and advice.confidence >= 0.5:
+                logger.info("ollama_css_forslag", source_id=str(source.id),
+                            selector=advice.price_selector, confidence=advice.confidence)
+                new_config = {
+                    **(fake_watch.scraper_config or {}),
+                    "price_selector": advice.price_selector,
+                    **({"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
+                }
+                fake_watch.scraper_config = new_config
+                source.scraper_config = new_config
+                retry_result, retry_parse = await scraper_engine.scrape(fake_watch)
+                if retry_result.success and retry_parse:
+                    return retry_result, retry_parse
+                # CSS fejlede også — nulstil
+                source.scraper_config = (
+                    {k: v for k, v in (source.scraper_config or {}).items()
+                     if k not in ("price_selector", "stock_selector")} or None
+                )
 
-            logger.info(
-                "ollama_selektor_forslag",
+            # Trin 2: Direkte tekst-udtræk
+            text_result = await ollama.extract_price_from_text(
+                db=self.db,
+                url=fake_watch.url,
+                html=scrape_result.html_snippet,
                 source_id=str(source.id),
-                selector=advice.price_selector,
-                confidence=advice.confidence,
             )
-            # Gem selektor i source og fake_watch for retrofit
-            new_config = {
-                **(fake_watch.scraper_config or {}),
-                "price_selector": advice.price_selector,
-                **( {"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
-            }
-            fake_watch.scraper_config = new_config
-            source.scraper_config = new_config
+            if text_result and text_result.success:
+                logger.info("ollama_tekst_udtræk", source_id=str(source.id), price=text_result.price)
+                # Indpak i ScrapeResult-lignende objekt
+                from types import SimpleNamespace
+                ok_result = SimpleNamespace(
+                    success=True,
+                    fetch_ok=True,
+                    status_code=scrape_result.status_code,
+                    diagnostic=scrape_result.diagnostic,
+                    html_snippet=None,
+                    error=None,
+                )
+                return ok_result, text_result
 
-            retry_result, retry_parse = await scraper_engine.scrape(fake_watch)
-            if retry_result.success and retry_parse:
-                return retry_result, retry_parse
         except Exception as exc:
             logger.warning("ollama_retry_fejl", source_id=str(source.id), error=str(exc))
-            # Nulstil ny scraper_config ved fejl
             source.scraper_config = (
                 {k: v for k, v in (source.scraper_config or {}).items()
-                 if k not in ("price_selector", "stock_selector")}
-                or None
+                 if k not in ("price_selector", "stock_selector")} or None
             )
         finally:
             await ollama.close()

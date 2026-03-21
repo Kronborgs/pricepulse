@@ -95,7 +95,11 @@ class WatchService:
         scrape_result,
         parse_result,
     ) -> bool:
-        """Kald Ollama for CSS-selektor-forslag og prøv scrape igen. Returnerer True ved succes."""
+        """Ollama fallback i to trin:
+        1. CSS-selektor-forslag → retry scrape
+        2. Direkte tekst-udtræk fra HTML via LLM
+        Returnerer True ved succes.
+        """
         from app.config import settings
         from app.services.ollama_service import OllamaService
 
@@ -104,6 +108,7 @@ class WatchService:
 
         ollama = OllamaService()
         try:
+            # Trin 1: CSS-selektor-forslag
             advice = await ollama.analyze_parser(
                 db=self.db,
                 url=watch.url,
@@ -113,33 +118,43 @@ class WatchService:
                 failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
                 watch_id=str(watch.id),
             )
-            if not advice or not advice.price_selector or advice.confidence < 0.5:
-                return False
+            if advice and advice.price_selector and advice.confidence >= 0.5:
+                logger.info("ollama_css_forslag", watch_id=str(watch.id),
+                            selector=advice.price_selector, confidence=advice.confidence)
+                watch.scraper_config = {
+                    **(watch.scraper_config or {}),
+                    "price_selector": advice.price_selector,
+                    **({"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
+                }
+                retry_result, retry_parse = await scraper_engine.scrape(watch)
+                if retry_result.success and retry_parse:
+                    await self.price_service.process_scraped_data(watch, retry_parse, retry_result.diagnostic)
+                    await self.db.commit()
+                    return True
+                # CSS fejlede også — nulstil config
+                watch.scraper_config = (
+                    {k: v for k, v in (watch.scraper_config or {}).items()
+                     if k not in ("price_selector", "stock_selector")} or None
+                )
 
-            logger.info(
-                "ollama_selektor_forslag",
+            # Trin 2: Direkte tekst-udtræk fra HTML
+            text_result = await ollama.extract_price_from_text(
+                db=self.db,
+                url=watch.url,
+                html=scrape_result.html_snippet,
                 watch_id=str(watch.id),
-                selector=advice.price_selector,
-                confidence=advice.confidence,
             )
-            # Gem foreslået selektor og prøv igen
-            watch.scraper_config = {
-                **(watch.scraper_config or {}),
-                "price_selector": advice.price_selector,
-                **({"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
-            }
-            retry_result, retry_parse = await scraper_engine.scrape(watch)
-            if retry_result.success and retry_parse:
-                await self.price_service.process_scraped_data(watch, retry_parse, retry_result.diagnostic)
+            if text_result and text_result.success:
+                logger.info("ollama_tekst_udtræk", watch_id=str(watch.id), price=text_result.price)
+                await self.price_service.process_scraped_data(watch, text_result, scrape_result.diagnostic)
                 await self.db.commit()
                 return True
+
         except Exception as exc:
             logger.warning("ollama_retry_fejl", error=str(exc), watch_id=str(watch.id))
-            # Nulstil scraper_config-ændringen ved fejl
             watch.scraper_config = (
                 {k: v for k, v in (watch.scraper_config or {}).items()
-                 if k not in ("price_selector", "stock_selector")}
-                or None
+                 if k not in ("price_selector", "stock_selector")} or None
             )
         finally:
             await ollama.close()
