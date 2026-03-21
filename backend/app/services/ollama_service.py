@@ -31,6 +31,16 @@ from app.models.llm_analysis_result import LlmAnalysisResult
 
 logger = structlog.get_logger(__name__)
 
+# ── Ollama concurrency guard ──────────────────────────────────────────────────
+# Kun ét Ollama-kald ad gangen — forhindrer timeout-kaskade når mange watches
+# fejler samtidig og alle forsøger Ollama på én gang.
+_ollama_busy: bool = False
+
+
+def is_ollama_busy() -> bool:
+    """Returner True hvis en Ollama-forespørgsel allerede kører."""
+    return _ollama_busy
+
 
 # ── Dataklasser for analyse-resultater ────────────────────────────────────────
 
@@ -139,9 +149,15 @@ class OllamaService:
         """
         Kald Ollama /api/chat.
         Returnerer parsed JSON dict (hvis json_mode=True) eller None ved fejl.
+        Returnerer None straks hvis Ollama allerede er optaget (forhindrer timeout-kaskade).
         """
+        global _ollama_busy
         if not settings.ollama_enabled:
             return None
+        if _ollama_busy:
+            logger.info("ollama_busy_skip", model=model)
+            return None
+        _ollama_busy = True
         try:
             client = self._get_client()
             payload: dict[str, Any] = {
@@ -184,6 +200,8 @@ class OllamaService:
         except Exception as exc:
             logger.warning("ollama_chat_failed", model=model, error=str(exc))
             return None
+        finally:
+            _ollama_busy = False
 
     # ── Cache-hjælper ─────────────────────────────────────────────────────────
 
@@ -263,7 +281,16 @@ class OllamaService:
         cached = await self._get_cached(db, key)
         if cached:
             data = cached.output_data or {}
-            return ParserAdvice(**{k: v for k, v in data.items() if k in ParserAdvice.__dataclass_fields__})
+            return ParserAdvice(
+                page_type=data.get("page_type", "unknown"),
+                price_selector=data.get("price_selector"),
+                stock_selector=data.get("stock_selector"),
+                requires_js=bool(data.get("requires_js", False)),
+                likely_bot_protection=bool(data.get("likely_bot_protection", False)),
+                reasoning=data.get("reasoning", ""),
+                recommended_action=data.get("recommended_action", ""),
+                confidence=float(data.get("confidence", 0.0)),
+            )
 
         system = (
             "Du er et JSON-udtræksværktøj til web-scraping. Returner KUN et JSON-objekt — ingen forklaringer, ingen kode.\n"

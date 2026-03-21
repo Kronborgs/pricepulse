@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import structlog
@@ -73,13 +74,29 @@ class WatchService:
 
         scrape_result, parse_result = await scraper_engine.scrape(watch)
 
+        if not scrape_result.success:
+            diag = scrape_result.diagnostic or {}
+            logger.warning(
+                "scrape_parse_fejl",
+                watch_id=str(watch.id),
+                url=watch.url,
+                extractors=diag.get("parse", {}).get("extractors_tried", []),
+                error_type=diag.get("error_type"),
+                fetch_ok=scrape_result.fetch_ok,
+            )
+
         if scrape_result.success and parse_result:
             await self.price_service.process_scraped_data(watch, parse_result, scrape_result.diagnostic)
         else:
             # Ollama fallback: analysér HTML og prøv igen med ny CSS-selektor
             if scrape_result.fetch_ok and scrape_result.html_snippet:
                 ollama_retry = await self._try_ollama_retry(watch, scrape_result, parse_result)
-                if ollama_retry:
+                if ollama_retry is True:
+                    return
+                if ollama_retry is None:
+                    # Ollama var optaget — tæl ikke som fejl, prøv igen næste runde
+                    watch.last_checked_at = datetime.now(timezone.utc)
+                    await self.db.commit()
                     return
 
             await self.price_service.handle_scrape_error(
@@ -94,17 +111,22 @@ class WatchService:
         watch: Watch,
         scrape_result,
         parse_result,
-    ) -> bool:
+    ) -> bool | None:
         """Ollama fallback i to trin:
         1. CSS-selektor-forslag → retry scrape
         2. Direkte tekst-udtræk fra HTML via LLM
-        Returnerer True ved succes.
+        Returnerer True ved succes, False ved fejl, None hvis Ollama var optaget (skip).
         """
         from app.config import settings
-        from app.services.ollama_service import OllamaService
+        from app.services.ollama_service import OllamaService, is_ollama_busy
 
         if not settings.ollama_enabled:
             return False
+
+        # Hvis Ollama allerede kører et kald, spring over — undgår timeout-kaskade
+        if is_ollama_busy():
+            logger.info("ollama_skip_busy", watch_id=str(watch.id))
+            return None
 
         ollama = OllamaService()
         prev_status = watch.status
