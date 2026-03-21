@@ -3,7 +3,7 @@
   <Name>pricepulse-backend</Name>
   <Repository>ghcr.io/kronborgs/pricepulse-backend:latest</Repository>
   <Registry>https://github.com/Kronborgs/pricepulse/pkgs/container/pricepulse-backend</Registry>
-  <Network>bridge</Network>
+  <Network>dockernet</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
@@ -26,7 +26,7 @@
   <Config Name="Database URL" Target="DATABASE_URL" Default="postgresql+asyncpg://pricepulse:changeme@pricepulse-db:5432/pricepulse" Mode="" Description="PostgreSQL connection string — skift password til dit eget" Type="Variable" Display="always" Required="true" Mask="false">postgresql+asyncpg://pricepulse:changeme@pricepulse-db:5432/pricepulse</Config>
   <Config Name="Redis URL" Target="REDIS_URL" Default="redis://pricepulse-redis:6379/0" Mode="" Description="Redis connection string" Type="Variable" Display="always" Required="true" Mask="false">redis://pricepulse-redis:6379/0</Config>
   <Config Name="Secret Key" Target="SECRET_KEY" Default="" Mode="" Description="Generer med: openssl rand -hex 32" Type="Variable" Display="always" Required="true" Mask="true"></Config>
-  <Config Name="CORS Origins" Target="CORS_ORIGINS" Default="http://192.168.1.50:3000" Mode="" Description="URL til frontend — brug din Unraid servers LAN-IP og port 3000" Type="Variable" Display="always" Required="true" Mask="false">http://192.168.1.50:3000</Config>
+  <Config Name="CORS Origins" Target="CORS_ORIGINS" Default="http://192.168.1.50:3000" Mode="" Description="URL til frontend — brug din Unraid servers LAN-IP og port 3000. Eks: http://192.168.1.50:3000" Type="Variable" Display="always" Required="true" Mask="false">http://192.168.1.50:3000</Config>
   <Config Name="Environment" Target="ENVIRONMENT" Default="production" Mode="" Description="production eller development" Type="Variable" Display="advanced" Required="false" Mask="false">production</Config>
   <Config Name="Log Level" Target="LOG_LEVEL" Default="INFO" Mode="" Description="DEBUG, INFO, WARNING eller ERROR" Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
   <Config Name="Scraper Domain Delay" Target="SCRAPER_DOMAIN_DELAY" Default="5" Mode="" Description="Sekunder mellem requests til samme domæne (rate limiting)" Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>

@@ -3,7 +3,7 @@
   <Name>pricepulse</Name>
   <Repository>ghcr.io/kronborgs/pricepulse-frontend:latest</Repository>
   <Registry>https://github.com/Kronborgs/pricepulse/pkgs/container/pricepulse-frontend</Registry>
-  <Network>bridge</Network>
+  <Network>cloudflared</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
