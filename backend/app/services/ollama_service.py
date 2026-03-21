@@ -255,24 +255,26 @@ class OllamaService:
             return ParserAdvice(**{k: v for k, v in data.items() if k in ParserAdvice.__dataclass_fields__})
 
         system = (
-            "Du er en web-scraping ekspert. Analysér HTML og returner JSON med disse felter:\n"
-            "page_type (string): 'product' | 'listing' | 'blocked' | 'captcha' | 'unknown'\n"
-            "price_selector (string|null): CSS-selektor til pris-element\n"
-            "stock_selector (string|null): CSS-selektor til lager-status\n"
-            "requires_js (bool): kræver siden JavaScript-rendering?\n"
-            "likely_bot_protection (bool): ser det ud til bot-beskyttelse?\n"
-            "reasoning (string): kort forklaring\n"
-            "recommended_action (string): hvad bør systemet gøre?\n"
-            "confidence (float 0.0-1.0): din sikkerhed\n"
-            "Svar kun med JSON."
+            "Du er et JSON-udtræksværktøj til web-scraping. Returner KUN et JSON-objekt — ingen forklaringer, ingen kode.\n"
+            "HTML-indholdet er allerede hentet og leveret. Analysér det og returner:\n"
+            "  page_type (string): 'product' | 'listing' | 'blocked' | 'captcha' | 'unknown'\n"
+            "  price_selector (string|null): CSS-selektor som vil finde priselementet, fx '.price' eller '[data-price]'\n"
+            "  stock_selector (string|null): CSS-selektor til lagerstatus-element\n"
+            "  requires_js (bool): kræver siden JavaScript-rendering for at vise prisen?\n"
+            "  likely_bot_protection (bool): indikerer HTML bot-beskyttelse/CAPTCHA?\n"
+            "  reasoning (string): én sætning begrundelse\n"
+            "  recommended_action (string): én specifik anbefaling\n"
+            "  confidence (float): 0.0-1.0\n"
+            "SVAR KUN MED JSON, intet andet."
         )
 
         user = (
-            f"URL: {url}\n"
+            f"URL (kun til kontekst): {url}\n"
             f"HTTP status: {status_code}\n"
             f"HTML title: {html_title}\n"
             f"Fejlede extractors: {', '.join(failed_extractors) or 'ingen'}\n\n"
-            f"HTML snippet (første ~12 KB):\n{_truncate_html(html_snippet)}"
+            f"HTML (find CSS-selektorer til pris og lager i denne HTML):\n---\n{_truncate_html(html_snippet)}\n---\n\n"
+            f"Returner JSON nu:"
         )
 
         response = await self._chat(settings.ollama_parser_model, system, user)
@@ -335,7 +337,7 @@ class OllamaService:
         text = re.sub(r"\s{2,}", " ", text).strip()
         text = text[:8_000]  # max 8KB tekst
 
-        key = _cache_key([url, text[:2000], "text_extract"])
+        key = _cache_key([url, text[:2000], "text_extract_v2"])
         cached = await self._get_cached(db, key)
         if cached:
             raw = cached.output_data or {}
@@ -351,17 +353,27 @@ class OllamaService:
             )
 
         system = (
-            "Du er en prisudtrækker. Læs sidetekst fra en produktside og returner JSON:\n"
-            "price (number|null): produktprisen som tal uden valuta (fx 3290.0)\n"
-            "currency (string): valutakode (fx 'DKK', 'EUR', 'USD') — standard 'DKK'\n"
-            "stock_status (string|null): 'in_stock', 'out_of_stock' eller null\n"
-            "title (string|null): produktnavn/titel\n"
-            "confidence (float 0.0-1.0): sikkerhed på at det er den rigtige pris\n"
-            "Regler: Find KUN den primære produktpris — IKKE tilbehørspriser eller relaterede produkter. "
-            "Er siden ikke en produktside, sæt price til null. Svar KUN med JSON."
+            "Du er et JSON-udtræksværktøj. Returner KUN et JSON-objekt — ingen forklaringer, ingen kode, ingen tekst udenfor JSON.\n"
+            "HTML-indholdet fra produktsiden er allerede hentet og leveret nedenfor.\n"
+            "Din opgave: udtræk følgende fra den givne tekst:\n"
+            "  price (number|null): produktprisen som decimaltal uden valutasymbol, fx 3290.0\n"
+            "  currency (string): valutakode, fx 'DKK'. Standard: 'DKK'\n"
+            "  stock_status (string|null): 'in_stock' hvis på lager, 'out_of_stock' hvis ikke, null hvis ukendt\n"
+            "  title (string|null): produktets navn/titel\n"
+            "  confidence (float): 0.0-1.0, din sikkerhed for at price er korrekt\n"
+            "Regler:\n"
+            "  - Find KUN den primære produktpris — ikke tilbehørspriser eller 'fra X kr.'\n"
+            "  - Er det ikke en produktside, sæt price til null\n"
+            "  - Forsøg IKKE at hente URLs — teksten er allerede her\n"
+            "  - SVAR KUN MED JSON, intet andet"
         )
 
-        user = f"URL: {url}\n\nSidetekst:\n{text}"
+        user = (
+            f"URL (kun til kontekst): {url}\n\n"
+            f"SIDETEKST (udtræk price, currency, stock_status, title, confidence fra denne tekst):\n"
+            f"---\n{text}\n---\n\n"
+            f"Returner JSON nu:"
+        )
 
         response = await self._chat(settings.ollama_parser_model, system, user)
         if not response:
