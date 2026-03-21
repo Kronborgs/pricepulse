@@ -84,7 +84,7 @@ async def update_product(
     return product
 
 
-@router.delete("/{product_id}", status_code=204)
+@router.delete("/{product_id}", status_code=204, response_model=None)
 async def delete_product(
     product_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],

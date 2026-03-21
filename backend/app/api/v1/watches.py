@@ -113,7 +113,7 @@ async def update_watch(
     return watch
 
 
-@router.delete("/{watch_id}", status_code=204)
+@router.delete("/{watch_id}", status_code=204, response_model=None)
 async def delete_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
