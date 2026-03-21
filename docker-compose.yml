@@ -8,8 +8,8 @@ services:
     container_name: pricepulse-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pricepulse}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-pricepulse}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pricepulse}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-pricepulse-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-pricepulse}
+      REDIS_URL: ${REDIS_URL:-redis://pricepulse-redis:6379/0}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -29,7 +29,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - pricepulse_net
+      - backend_net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -55,7 +55,7 @@ services:
     depends_on:
       - backend
     networks:
-      - pricepulse_net
+      - frontend_net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 30s
@@ -77,7 +77,7 @@ services:
     volumes:
       - pricepulse_pgdata:/var/lib/postgresql/data
     networks:
-      - pricepulse_net
+      - backend_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pricepulse} -d ${POSTGRES_DB:-pricepulse}"]
       interval: 10s
@@ -94,7 +94,7 @@ services:
     volumes:
       - pricepulse_redis_data:/data
     networks:
-      - pricepulse_net
+      - backend_net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -102,9 +102,15 @@ services:
       retries: 5
 
 # ─── Networks ─────────────────────────────────────────────────────────────────
+# BACKEND_NETWORK / FRONTEND_NETWORK er sat i .env
+# Begge skal eksistere på Unraid-serveren (oprettes automatisk af Unraid)
 networks:
-  pricepulse_net:
-    name: pricepulse_net
+  backend_net:
+    name: ${BACKEND_NETWORK:-dockernet}
+    external: true
+  frontend_net:
+    name: ${FRONTEND_NETWORK:-cloudflared}
+    external: true
 
 # ─── Volumes ──────────────────────────────────────────────────────────────────
 volumes:
