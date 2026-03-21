@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getBackendUrl } from "@/lib/backend-url";
 
-export async function GET() {
-  // API_URL is a server-only env var — always read at runtime, never inlined by webpack
-  const apiUrl = process.env.API_URL || "http://localhost:8000";
+export async function GET(req: NextRequest) {
+  const apiUrl = getBackendUrl(req);
   try {
     const res = await fetch(`${apiUrl}/health`, {
       cache: "no-store",
@@ -12,6 +12,9 @@ export async function GET() {
     return NextResponse.json(data, { status: res.status });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: message, backend: apiUrl },
+      { status: 502 }
+    );
   }
 }
