@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.schemas.v2 import OllamaAnalyzeRequest, OllamaNormalizeRequest, OllamaStatusResponse
+from app.schemas.v2 import OllamaAnalyzeRequest, OllamaConfigPatch, OllamaNormalizeRequest, OllamaStatusResponse
 from app.services.ollama_service import ollama_service
 
 logger = structlog.get_logger(__name__)
@@ -22,12 +22,44 @@ router = APIRouter()
 @router.get("/status", response_model=OllamaStatusResponse)
 async def ollama_status() -> OllamaStatusResponse:
     """Ping Ollama og returner tilgængelighed og tilgængelige modeller."""
-    available = await ollama_service.is_available()
+    available = settings.ollama_enabled and await ollama_service.is_available()
     models = await ollama_service.list_models() if available else []
     return OllamaStatusResponse(
         available=available,
+        enabled=settings.ollama_enabled,
         models=models,
         host=settings.ollama_host,
+        parser_model=settings.ollama_parser_model,
+        normalize_model=settings.ollama_normalize_model,
+        embed_model=settings.ollama_embed_model,
+    )
+
+
+@router.patch("/config")
+async def update_ollama_config(body: OllamaConfigPatch) -> OllamaStatusResponse:
+    """Opdatér Ollama-config i runtime (gemmes ikke til disk — sæt env-vars for persistens)."""
+    if body.enabled is not None:
+        settings.ollama_enabled = body.enabled
+    if body.host is not None:
+        settings.ollama_host = body.host
+        await ollama_service.close()   # tving ny klient med opdateret host
+    if body.parser_model is not None:
+        settings.ollama_parser_model = body.parser_model
+    if body.normalize_model is not None:
+        settings.ollama_normalize_model = body.normalize_model
+    if body.embed_model is not None:
+        settings.ollama_embed_model = body.embed_model
+    # Return updated status
+    available = settings.ollama_enabled and await ollama_service.is_available()
+    models = await ollama_service.list_models() if available else []
+    return OllamaStatusResponse(
+        available=available,
+        enabled=settings.ollama_enabled,
+        models=models,
+        host=settings.ollama_host,
+        parser_model=settings.ollama_parser_model,
+        normalize_model=settings.ollama_normalize_model,
+        embed_model=settings.ollama_embed_model,
     )
 
 

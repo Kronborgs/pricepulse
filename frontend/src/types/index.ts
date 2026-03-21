@@ -295,8 +295,12 @@ export interface ProductGraph {
 // ─── v2: Ollama ──────────────────────────────────────────────────────────────
 export interface OllamaStatus {
   available: boolean;
+  enabled: boolean;
   models: string[];
   host: string;
+  parser_model: string;
+  normalize_model: string;
+  embed_model: string;
 }
 
 export interface LlmParserAdvice {

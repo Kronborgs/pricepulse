@@ -189,6 +189,17 @@ export const api = {
   // ─── Ollama (v2) ─────────────────────────────────────────────────────────────
   ollama: {
     status: () => apiFetch<OllamaStatus>("/ollama/status"),
+    updateConfig: (data: {
+      enabled?: boolean;
+      host?: string;
+      parser_model?: string;
+      normalize_model?: string;
+      embed_model?: string;
+    }) =>
+      apiFetch<OllamaStatus>("/ollama/config", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
     analyzeParser: (data: { html: string; url: string; existing_config?: Record<string, string> | null }) =>
       apiFetch<LlmParserAdvice>("/ollama/analyze-parser", {
         method: "POST",

@@ -194,8 +194,20 @@ class ProductGraph(BaseModel):
 
 class OllamaStatusResponse(BaseModel):
     available: bool
+    enabled: bool
     models: list[str] = []
     host: str
+    parser_model: str
+    normalize_model: str
+    embed_model: str
+
+
+class OllamaConfigPatch(BaseModel):
+    enabled: bool | None = None
+    host: str | None = None
+    parser_model: str | None = None
+    normalize_model: str | None = None
+    embed_model: str | None = None
 
 
 class OllamaAnalyzeRequest(BaseModel):
