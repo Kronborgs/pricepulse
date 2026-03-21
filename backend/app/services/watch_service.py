@@ -88,16 +88,25 @@ class WatchService:
         if scrape_result.success and parse_result:
             await self.price_service.process_scraped_data(watch, parse_result, scrape_result.diagnostic)
         else:
-            # Ollama fallback: analysér HTML og prøv igen med ny CSS-selektor
-            if scrape_result.fetch_ok and scrape_result.html_snippet:
-                ollama_retry = await self._try_ollama_retry(watch, scrape_result, parse_result)
-                if ollama_retry is True:
-                    return
-                if ollama_retry is None:
-                    # Ollama var optaget — tæl ikke som fejl, prøv igen næste runde
-                    watch.last_checked_at = datetime.now(timezone.utc)
-                    await self.db.commit()
-                    return
+            # parser_mismatch med HTML → kø til sekventiel Ollama-analyse
+            diag = scrape_result.diagnostic or {}
+            error_type = diag.get("error_type")
+            if scrape_result.fetch_ok and scrape_result.html_snippet and error_type == "parser_mismatch":
+                from app.services.ollama_queue import OllamaJob, enqueue as ollama_enqueue
+                ollama_enqueue(OllamaJob(
+                    entity_type="watch",
+                    entity_id=watch.id,
+                    url=watch.url,
+                    html_snippet=scrape_result.html_snippet,
+                    extractors_tried=(parse_result.extractors_tried or []) if parse_result else [],
+                    status_code=scrape_result.status_code,
+                    scraper_config=watch.scraper_config,
+                    diagnostic=scrape_result.diagnostic,
+                    previous_status=watch.status,
+                ))
+                watch.last_checked_at = datetime.now(timezone.utc)
+                await self.db.commit()
+                return
 
             await self.price_service.handle_scrape_error(
                 watch,

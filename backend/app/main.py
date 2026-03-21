@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -13,6 +14,7 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.database import engine, Base
 from app.scheduler.jobs import start_scheduler, stop_scheduler
+from app.services.ollama_queue import process_queue_forever
 
 logger = structlog.get_logger()
 
@@ -32,11 +34,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Start APScheduler
     await start_scheduler()
 
+    # Start sekventiel Ollama-kø-worker
+    _ollama_worker = asyncio.create_task(process_queue_forever())
+
     logger.info("PricePulse ready")
     yield
 
     # Shutdown
     logger.info("PricePulse shutting down")
+    _ollama_worker.cancel()
     await stop_scheduler()
     await engine.dispose()
 

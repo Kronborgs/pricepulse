@@ -221,21 +221,39 @@ class SourceService:
         now = datetime.now(timezone.utc)
         source.last_check_at = now
 
-        # Ollama fallback: analysér HTML og prøv igen med ny CSS-selektor
-        if not scrape_result.success and scrape_result.fetch_ok and scrape_result.html_snippet:
-            scrape_result, parse_result = await self._try_ollama_retry(
-                source, fake_watch, scrape_result, parse_result
-            )
+        # Afgør fejltype — parser_mismatch sendes til sekventiel Ollama-kø
+        error_type = (scrape_result.diagnostic or {}).get("error_type") if not scrape_result.success else None
+        ollama_queued = False
 
-        if scrape_result.success and parse_result:
-            await self._process_success(source, parse_result, scrape_result.diagnostic, now)
-        else:
-            await self._process_failure(source, scrape_result, now)
+        if not scrape_result.success and scrape_result.fetch_ok and scrape_result.html_snippet and error_type == "parser_mismatch":
+            from app.services.ollama_queue import OllamaJob, enqueue as ollama_enqueue
+            ollama_enqueue(OllamaJob(
+                entity_type="source",
+                entity_id=source.id,
+                url=source.url,
+                html_snippet=scrape_result.html_snippet,
+                extractors_tried=(parse_result.extractors_tried or []) if parse_result else [],
+                status_code=scrape_result.status_code,
+                scraper_config=source.scraper_config,
+                diagnostic=scrape_result.diagnostic,
+                previous_status=source.status,
+            ))
+            # Sæt midlertidig status og næste check (undgår gentagelse mens kø behandler)
+            source.status = "ai_analyzing"
+            interval = source.interval_override_min or watch.default_interval_min
+            source.next_check_at = now + timedelta(minutes=max(interval, 30))
+            ollama_queued = True
 
-        # Sæt næste check-tid
-        interval = source.interval_override_min or watch.default_interval_min
-        source.next_check_at = now + timedelta(minutes=interval)
-        source.status = "active" if scrape_result.success else source.status
+        if not ollama_queued:
+            if scrape_result.success and parse_result:
+                await self._process_success(source, parse_result, scrape_result.diagnostic, now)
+            else:
+                await self._process_failure(source, scrape_result, now)
+
+            # Sæt næste check-tid
+            interval = source.interval_override_min or watch.default_interval_min
+            source.next_check_at = now + timedelta(minutes=interval)
+            source.status = "active" if scrape_result.success else source.status
 
         await self.db.commit()
 
@@ -453,7 +471,7 @@ class SourceService:
         """Find laveste pris på tværs af aktive sources og gem på watch."""
         stmt = select(WatchSource).where(
             WatchSource.watch_id == watch_id,
-            WatchSource.status.in_(["active", "pending"]),
+            WatchSource.status.in_(["active", "pending", "ai_active"]),
             WatchSource.last_price.isnot(None),
         )
         sources = (await self.db.execute(stmt)).scalars().all()
@@ -484,7 +502,7 @@ class SourceService:
             return
 
         statuses = {s.status for s in sources}
-        if statuses == {"active"}:
+        if statuses <= {"active", "ai_active"}:
             watch.status = "active"
         elif statuses == {"paused"}:
             watch.status = "paused"

@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<AnyStatus, { label: string; class: string; pulse?: b
   partial:   { label: "Delvist",         class: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" },
   archived:  { label: "Arkiveret",       class: "bg-zinc-100 text-zinc-500 dark:bg-zinc-900/20 dark:text-zinc-500" },
   ai_analyzing: { label: "AI analyserer",   class: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400", pulse: true },
+  ai_active:    { label: "AI analyse",       class: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400" },
 };
 
 export function StatusBadge({ status }: { status: AnyStatus }) {

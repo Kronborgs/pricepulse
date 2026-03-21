@@ -32,7 +32,7 @@ export interface ProductList {
 }
 
 // ─── Watches ──────────────────────────────────────────────────────────────────
-export type WatchStatus = "pending" | "active" | "paused" | "error" | "blocked" | "ai_analyzing";
+export type WatchStatus = "pending" | "active" | "paused" | "error" | "blocked" | "ai_analyzing" | "ai_active";
 
 export type ScrapeErrorType =
   | "parser_mismatch"
@@ -174,7 +174,7 @@ export interface DashboardStats {
 }
 
 // ─── v2: WatchSource ──────────────────────────────────────────────────────────
-export type SourceStatus = "pending" | "active" | "paused" | "error" | "blocked" | "archived";
+export type SourceStatus = "pending" | "active" | "paused" | "error" | "blocked" | "archived" | "ai_analyzing" | "ai_active";
 
 export interface WatchSource {
   id: string;
