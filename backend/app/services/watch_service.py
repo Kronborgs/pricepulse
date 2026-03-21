@@ -154,7 +154,9 @@ class WatchService:
             if text_result and text_result.success:
                 logger.info("ollama_tekst_udtræk", watch_id=str(watch.id), price=text_result.price)
                 await self.price_service.process_scraped_data(watch, text_result, scrape_result.diagnostic)
-                await self.db.commit()                _status_is_analysing = False                return True
+                await self.db.commit()
+                _status_is_analysing = False
+                return True
 
         except Exception as exc:
             logger.warning("ollama_retry_fejl", error=str(exc), watch_id=str(watch.id))
