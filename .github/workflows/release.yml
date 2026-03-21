@@ -1,5 +1,7 @@
-name: Release
+name: Release (manuelt tag)
 
+# Kører KUN hvis tagget er oprettet manuelt (ikke af github-actions bot)
+# Automatiske tags håndteres af build-dev.yml direkte
 on:
   push:
     tags:
@@ -13,6 +15,8 @@ env:
 jobs:
   build-and-push:
     name: Build & Push Docker images
+    # Spring over hvis tagget er oprettet automatisk af build-dev.yml
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
