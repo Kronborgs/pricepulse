@@ -16,6 +16,7 @@
 			"git remote": true,
 			"git add": true,
 			"git commit": true
-		}
+		},
+		"chat.agent.maxRequests": 150
 	}
 }

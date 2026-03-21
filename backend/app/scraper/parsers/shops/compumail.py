@@ -12,11 +12,9 @@ class CompumailParser(PriceParser):
 
     parser_name = "compumail"
 
-    # compumail.dk bruger sin egen platform (ikke Magento).
-    # Pris:  <span class="price" data-price="2422">2\xa0422,00</span>
-    # Titel: <h1 itemprop="name">...</h1>
-    # Lager: JS-loaded — ikke tilgængeligt i server-side HTML
-    _css_parser = CssSelectorParser(
+    # Strategi 1: Primær CSS — data-price attribut på span.price (inc-moms)
+    # Struktur: <span class="price-novat"><span class="price" data-price="2422">
+    _css_primary = CssSelectorParser(
         SelectorConfig(
             price_selector="span.price[data-price]",
             title_selector="h1[itemprop='name']",
@@ -28,8 +26,32 @@ class CompumailParser(PriceParser):
         )
     )
 
+    # Strategi 2: Bredere selector — enhver span med data-price
+    _css_any_data_price = CssSelectorParser(
+        SelectorConfig(
+            price_selector="[data-price]",
+            price_attr="data-price",
+            title_selector="h1[itemprop='name'], h1",
+        )
+    )
+
+    # Strategi 3: Microdata fallback
+    _css_microdata = CssSelectorParser(
+        SelectorConfig(
+            price_selector="[itemprop='price']",
+            price_attr="content",
+            title_selector="h1[itemprop='name'], h1",
+        )
+    )
+
     def parse(self, content: str, url: str) -> ParseResult:
-        result = self._css_parser.parse(content, url)
-        if result.success:
-            result.parser_used = self.parser_name
-        return result
+        for strategy in (self._css_primary, self._css_any_data_price, self._css_microdata):
+            result = strategy.parse(content, url)
+            if result.success:
+                result.parser_used = self.parser_name
+                return result
+        return ParseResult(
+            error="compumail: ingen pris fundet",
+            parser_used=self.parser_name,
+        )
+

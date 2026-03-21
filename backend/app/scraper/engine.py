@@ -50,8 +50,11 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "www.proshop.dk": ProshopParser(),
 }
 
-# Shops der altid kræver Playwright
-PLAYWRIGHT_REQUIRED_DOMAINS = {"proshop.dk", "www.proshop.dk"}
+# Shops der kræver Playwright (aktiv bot-beskyttelse / JS-renderet pris)
+PLAYWRIGHT_REQUIRED_DOMAINS = {
+    "proshop.dk", "www.proshop.dk",
+    "komplett.dk", "www.komplett.dk",
+}
 
 # Prissammenligningssider — returnér fejl med det samme, ingen HTTP-hentning
 COMPARISON_SITES: set[str] = {

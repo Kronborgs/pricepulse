@@ -71,8 +71,33 @@ class ELsalgParser(PriceParser):
         )
     )
 
+    # Strategy 4: Bredere Magento-selector — kun data-price-amount attribut,
+    # uanset data-price-type. Fanger tilfælde med anderledes type-navne.
+    _strategy_any_amount = CssSelectorParser(
+        SelectorConfig(
+            price_selector="[data-price-amount][data-price-type]",
+            price_attr="data-price-amount",
+            title_selector="h1.page-title .base, h1.page-title, h1[itemprop='name'], h1",
+        )
+    )
+
+    # Strategy 5: Magento produkt-pris via id-præfix (#product-price-NNNN)
+    _strategy_product_price_id = CssSelectorParser(
+        SelectorConfig(
+            price_selector="[id^='product-price-']",
+            price_attr="data-price-amount",
+            title_selector="h1.page-title .base, h1.page-title, h1",
+        )
+    )
+
     def parse(self, content: str, url: str) -> ParseResult:
-        for parser in (self._strategy_amount, self._strategy_text, self._strategy_microdata):
+        for parser in (
+            self._strategy_amount,
+            self._strategy_text,
+            self._strategy_microdata,
+            self._strategy_any_amount,
+            self._strategy_product_price_id,
+        ):
             result = parser.parse(content, url)
             if result.success:
                 result.parser_used = self.parser_name
@@ -104,20 +129,37 @@ class HappiiParser(PriceParser):
 
 
 class KomplettParser(PriceParser):
+    """
+    Parser til komplett.dk.
+    Komplett anvender aktiv bot-beskyttelse (HTTP/2 stream reset + challenge-sider).
+    Kræver Playwright for pålidelig scraping — se PLAYWRIGHT_REQUIRED_DOMAINS.
+    CSS selectors forsøges som fallback, hvis HTTP-siden alligevel leveres.
+    """
+
     parser_name = "komplett"
 
-    _css_parser = CssSelectorParser(
+    _css_primary = CssSelectorParser(
         SelectorConfig(
-            price_selector=".product-price-now, .price-now span",
-            title_selector="h1.product-main-name",
-            stock_selector=".stock-status-container",
+            # Komplett viste klasserne .product-price-now/.price-now i ældre design.
+            # Nyere design bruger data-testid og andre klasse-mønstre.
+            price_selector=(
+                ".product-price-now, "
+                ".price-now span, "
+                "[data-testid='price'], "
+                "[data-testid='product-price'], "
+                "span[class*='product-price'], "
+                "span[class*='ProductPrice']"
+            ),
+            title_selector="h1.product-main-name, h1[class*='product'], h1",
+            stock_selector=".stock-status-container, [data-testid='stock-status']",
             stock_in_text="på lager",
             stock_out_text="ikke på lager",
         )
     )
 
     def parse(self, content: str, url: str) -> ParseResult:
-        result = self._css_parser.parse(content, url)
+        result = self._css_primary.parse(content, url)
         if result.success:
             result.parser_used = self.parser_name
         return result
+
