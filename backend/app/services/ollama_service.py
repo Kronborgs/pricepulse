@@ -240,6 +240,7 @@ class OllamaService:
         status_code: int,
         failed_extractors: list[str],
         source_id: str | None = None,
+        watch_id: str | None = None,
     ) -> ParserAdvice | None:
         """
         Analysér en fejlet scrape og foreslå selectors.
@@ -248,7 +249,7 @@ class OllamaService:
         if not settings.ollama_enabled:
             return None
 
-        key = _cache_key([url, _truncate_html(html_snippet, 4096), "parser_advice"])
+        key = _cache_key([url, _truncate_html(html_snippet, 4096), "parser_advice_v2"])
         cached = await self._get_cached(db, key)
         if cached:
             data = cached.output_data or {}
