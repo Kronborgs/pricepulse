@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "PricePulse",
   description: "Self-hosted prisovervågning til danske webshops",
   icons: {
