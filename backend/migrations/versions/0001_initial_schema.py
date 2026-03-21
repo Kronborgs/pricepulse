@@ -117,7 +117,7 @@ def upgrade() -> None:
         sa.Column("new_stock", sa.String(100), nullable=True),
         sa.Column("occurred_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("dedup_key", sa.String(300), nullable=True),
-        sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("extra_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.ForeignKeyConstraint(["watch_id"], ["watches.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("dedup_key"),

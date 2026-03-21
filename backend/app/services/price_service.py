@@ -91,7 +91,7 @@ class PriceService:
                     new_stock=new_stock,
                     occurred_at=now,
                     dedup_key=dedup_key,
-                    metadata={"parser": parse_result.parser_used},
+                    extra_data={"parser": parse_result.parser_used},
                 )
                 self.db.add(event)
 
@@ -168,7 +168,7 @@ class PriceService:
                 event_type="error",
                 occurred_at=now,
                 dedup_key=dedup_key,
-                metadata={"error": error, "status_code": status_code},
+                extra_data={"error": error, "status_code": status_code},
             )
             self.db.add(event)
 

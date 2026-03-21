@@ -110,7 +110,7 @@ export interface PriceEvent {
   old_stock: string | null;
   new_stock: string | null;
   occurred_at: string;
-  metadata: Record<string, unknown> | null;
+  extra_data: Record<string, unknown> | null;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────

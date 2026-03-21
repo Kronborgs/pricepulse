@@ -51,7 +51,7 @@ class PriceEvent(Base):
     dedup_key: Mapped[str | None] = mapped_column(String(300), unique=True, index=True)
 
     # Fri metadata (fejlbesked, raw title, etc.)
-    metadata: Mapped[dict | None] = mapped_column(JSONB)
+    extra_data: Mapped[dict | None] = mapped_column(JSONB)
 
     # Relations
     watch: Mapped["Watch"] = relationship(back_populates="price_events")

@@ -49,7 +49,7 @@ class PriceEventRead(BaseModel):
     old_stock: str | None = None
     new_stock: str | None = None
     occurred_at: datetime
-    metadata: dict[str, Any] | None = None
+    extra_data: dict[str, Any] | None = None
 
     model_config = {"from_attributes": True}
 
