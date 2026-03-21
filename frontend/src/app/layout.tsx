@@ -31,13 +31,17 @@ export default function RootLayout({
     <html lang="da" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <div className="flex h-screen overflow-hidden bg-background">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
-              <div className="container mx-auto p-6 max-w-7xl">
-                {children}
-              </div>
-            </main>
+          <div className="flex flex-col h-screen overflow-hidden bg-background">
+            {/* Brand gradient accent bar */}
+            <div className="h-0.5 flex-shrink-0 bg-gradient-to-r from-[#29ABE2] via-[#8DC63F] to-[#F7941D]" />
+            <div className="flex flex-1 overflow-hidden">
+              <Sidebar />
+              <main className="flex-1 overflow-y-auto">
+                <div className="container mx-auto p-6 max-w-7xl">
+                  {children}
+                </div>
+              </main>
+            </div>
           </div>
         </Providers>
       </body>
