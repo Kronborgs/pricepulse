@@ -7,9 +7,10 @@
  *     (works on Unraid where frontend :3000 and backend :8000 are on the same host)
  */
 export function getBackendUrl(req: Request): string {
-  if (process.env.API_URL) return process.env.API_URL;
+  // Accept either variable name — NEXT_PUBLIC_API_URL is what older Unraid templates inject
+  const configured = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (configured) return configured;
 
-  // Default: reach the backend via Docker container name on the same network.
-  // Works when frontend and backend are both on dockernet.
+  // Default: reach backend by container name on dockernet
   return "http://pricepulse-backend:8000";
 }
