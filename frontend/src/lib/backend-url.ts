@@ -9,8 +9,7 @@
 export function getBackendUrl(req: Request): string {
   if (process.env.API_URL) return process.env.API_URL;
 
-  // Extract hostname from the Host header — e.g. "10.10.70.22:3000" → "10.10.70.22"
-  const host = req.headers.get("host") ?? "localhost";
-  const hostname = host.split(":")[0];
-  return `http://${hostname}:8000`;
+  // Default: reach the backend via Docker container name on the same network.
+  // Works when frontend and backend are both on dockernet.
+  return "http://pricepulse-backend:8000";
 }
