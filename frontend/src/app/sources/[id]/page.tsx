@@ -362,6 +362,7 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
 function DiagnosticPanel({ diagnostic }: { diagnostic: import("@/types").WatchDiagnostic }) {
   const errType = diagnostic.error_type;
   const errorLabel = errType && errType in ERROR_TYPE_LABELS ? ERROR_TYPE_LABELS[errType].short : null;
+  const ollama = diagnostic.ollama_advice;
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between">
@@ -376,6 +377,46 @@ function DiagnosticPanel({ diagnostic }: { diagnostic: import("@/types").WatchDi
             <p className="text-sm font-medium text-destructive">{errorLabel}</p>
             {diagnostic.recommended_action && (
               <p className="text-xs text-muted-foreground mt-0.5">{diagnostic.recommended_action}</p>
+            )}
+          </div>
+        )}
+        {/* Ollama AI-rådgivning */}
+        {ollama && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">AI-analyse</span>
+              {ollama.confidence > 0 && (
+                <span className="text-xs text-blue-500">{Math.round(ollama.confidence * 100)}% sikkerhed</span>
+              )}
+              {ollama.page_type && ollama.page_type !== "unknown" && (
+                <span className="ml-auto text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded px-1.5 py-0.5">{ollama.page_type}</span>
+              )}
+            </div>
+            {ollama.reasoning && <p className="text-xs text-blue-800 dark:text-blue-300">{ollama.reasoning}</p>}
+            {ollama.recommended_action && (
+              <p className="text-xs font-medium text-blue-900 dark:text-blue-200">▶ {ollama.recommended_action}</p>
+            )}
+            {(ollama.price_selector || ollama.stock_selector) && (
+              <div className="pt-1 space-y-1">
+                {ollama.price_selector && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-blue-500 w-20 shrink-0">Pris:</span>
+                    <code className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded px-1.5 py-0.5 break-all">{ollama.price_selector}</code>
+                  </div>
+                )}
+                {ollama.stock_selector && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-blue-500 w-20 shrink-0">Lager:</span>
+                    <code className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded px-1.5 py-0.5 break-all">{ollama.stock_selector}</code>
+                  </div>
+                )}
+              </div>
+            )}
+            {(ollama.requires_js || ollama.likely_bot_protection) && (
+              <div className="flex gap-2 pt-0.5">
+                {ollama.requires_js && <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded px-1.5 py-0.5">Kræver JavaScript</span>}
+                {ollama.likely_bot_protection && <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded px-1.5 py-0.5">Bot-beskyttelse</span>}
+              </div>
             )}
           </div>
         )}

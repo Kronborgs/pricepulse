@@ -69,6 +69,16 @@ export interface WatchDiagnostic {
   };
   error_type: ScrapeErrorType | null;
   recommended_action: string | null;
+  ollama_advice?: {
+    reasoning: string;
+    recommended_action: string;
+    price_selector: string | null;
+    stock_selector: string | null;
+    requires_js: boolean;
+    likely_bot_protection: boolean;
+    confidence: number;
+    page_type: string;
+  } | null;
 }
 
 export interface WatchShopSummary {

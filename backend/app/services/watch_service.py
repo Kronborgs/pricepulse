@@ -146,6 +146,33 @@ class WatchService:
                 failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
                 watch_id=str(watch.id),
             )
+
+            if advice:
+                # Gem Ollama-rådgivningen i diagnostik uanset om CSS-retry lykkes —
+                # så UI'en kan vise dynamisk begrundelse + anbefaling frem for
+                # den statiske "Konfigurér CSS-selectors manuelt"-besked.
+                ollama_advice_dict = {
+                    "reasoning": advice.reasoning,
+                    "recommended_action": advice.recommended_action,
+                    "price_selector": advice.price_selector,
+                    "stock_selector": advice.stock_selector,
+                    "requires_js": advice.requires_js,
+                    "likely_bot_protection": advice.likely_bot_protection,
+                    "confidence": advice.confidence,
+                    "page_type": advice.page_type,
+                }
+                if scrape_result.diagnostic:
+                    scrape_result.diagnostic["ollama_advice"] = ollama_advice_dict
+                    # Overskriv den statiske recommended_action med Ollamas dynamiske
+                    if advice.recommended_action:
+                        scrape_result.diagnostic["recommended_action"] = advice.recommended_action
+                    # Skub requires_js-fejltype op hvis Ollama kan se det
+                    if advice.requires_js and scrape_result.diagnostic.get("error_type") == "parser_mismatch":
+                        scrape_result.diagnostic["error_type"] = "js_render_required"
+                        scrape_result.diagnostic["recommended_action"] = (
+                            "Aktivér Playwright-provider i watch-indstillinger (Ollama: siden kræver JS-rendering)"
+                        )
+
             if advice and advice.price_selector and advice.confidence >= 0.5:
                 logger.info("ollama_css_forslag", watch_id=str(watch.id),
                             selector=advice.price_selector, confidence=advice.confidence)
