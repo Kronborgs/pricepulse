@@ -321,13 +321,9 @@ class ScraperEngine:
         if not fetch_result.ok:
             return ParseResult(error=fetch_result.error or f"HTTP {fetch_result.status_code}")
 
-        # Byg en midlertidig watch-lignende objekt til parser-lookup
-        class _FakeWatch:
-            scraper_config = None
-            shop = None
-            url = url  # type: ignore[assignment]
-
-        return self._parse_with_fallback(fetch_result.content, _FakeWatch(), domain)
+        from types import SimpleNamespace
+        fake_watch = SimpleNamespace(scraper_config=None, shop=None, url=url)
+        return self._parse_with_fallback(fetch_result.content, fake_watch, domain)
 
     def _resolve_provider(self, watch: Watch, domain: str) -> FetchProvider:
         explicit = watch.provider or "http"
