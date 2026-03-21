@@ -31,7 +31,7 @@ class LlmAnalysisResult(Base):
         ForeignKey("watch_sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
     watch_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("product_watches.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("watches.id", ondelete="SET NULL"), nullable=True, index=True
     )
     analysis_type: Mapped[str] = mapped_column(String(100), nullable=False)
     model_used: Mapped[str] = mapped_column(String(200), nullable=False)
