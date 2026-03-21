@@ -50,6 +50,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64
           tags: ${{ env.FRONTEND_IMAGE }}:main
-          build-args: NEXT_PUBLIC_API_URL=/api
+          build-args: NEXT_PUBLIC_API_URL=
           cache-from: type=gha
           cache-to: type=gha,mode=max
