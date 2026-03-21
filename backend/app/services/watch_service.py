@@ -108,8 +108,11 @@ class WatchService:
 
         ollama = OllamaService()
         prev_status = watch.status
-        watch.status = "analysing"
+        watch.status = "ai_analyzing"
         await self.db.commit()
+        # Gem status i lokal variabel — ORM-objektet er expired efter commit
+        # og lazy-load virker ikke i background-task kontekst
+        _status_is_analysing = True
         try:
             # Trin 1: CSS-selektor-forslag
             advice = await ollama.analyze_parser(
@@ -133,6 +136,7 @@ class WatchService:
                 if retry_result.success and retry_parse:
                     await self.price_service.process_scraped_data(watch, retry_parse, retry_result.diagnostic)
                     await self.db.commit()
+                    _status_is_analysing = False
                     return True
                 # CSS fejlede også — nulstil config
                 watch.scraper_config = (
@@ -150,8 +154,7 @@ class WatchService:
             if text_result and text_result.success:
                 logger.info("ollama_tekst_udtræk", watch_id=str(watch.id), price=text_result.price)
                 await self.price_service.process_scraped_data(watch, text_result, scrape_result.diagnostic)
-                await self.db.commit()
-                return True
+                await self.db.commit()                _status_is_analysing = False                return True
 
         except Exception as exc:
             logger.warning("ollama_retry_fejl", error=str(exc), watch_id=str(watch.id))
@@ -160,8 +163,8 @@ class WatchService:
                  if k not in ("price_selector", "stock_selector")} or None
             )
         finally:
-            # Nulstil status fra 'analysing' hvis det ikke allerede er opdateret af process_scraped_data
-            if watch.status == "analysing":
+            # Nulstil status fra 'ai_analyzing' via lokal variabel (ORM-objekt måske expired)
+            if _status_is_analysing:
                 watch.status = prev_status
                 await self.db.commit()
             await ollama.close()

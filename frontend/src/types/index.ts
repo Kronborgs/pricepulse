@@ -32,7 +32,7 @@ export interface ProductList {
 }
 
 // ─── Watches ──────────────────────────────────────────────────────────────────
-export type WatchStatus = "pending" | "active" | "paused" | "error" | "blocked" | "analysing";
+export type WatchStatus = "pending" | "active" | "paused" | "error" | "blocked" | "ai_analyzing";
 
 export type ScrapeErrorType =
   | "parser_mismatch"

@@ -12,7 +12,7 @@ const STATUS_OPTIONS = [
   { value: "", label: "Alle" },
   { value: "active", label: "Aktive" },
   { value: "pending", label: "Afventer" },
-  { value: "analysing", label: "AI analyserer" },
+  { value: "ai_analyzing", label: "AI analyserer" },
   { value: "paused", label: "Pausede" },
   { value: "error", label: "Fejl" },
   { value: "blocked", label: "Blokeret" },
