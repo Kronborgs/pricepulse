@@ -68,7 +68,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-slate-800 p-4">
-        <p className="text-xs text-slate-600">PricePulse v1.0</p>
+        <p className="text-xs text-slate-600">PricePulse {process.env.NEXT_PUBLIC_BUILD_VERSION ?? "dev"}</p>
       </div>
     </aside>
   );
