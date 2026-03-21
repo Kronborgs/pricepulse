@@ -24,7 +24,7 @@ class PriceService:
         self.db = db
 
     async def process_scraped_data(
-        self, watch: Watch, parse_result: ParseResult
+        self, watch: Watch, parse_result: ParseResult, diagnostic: dict | None = None
     ) -> bool:
         """
         Behandl scrapede data:
@@ -113,6 +113,8 @@ class PriceService:
         watch.last_error = None
         watch.error_count = 0
         watch.status = "active"
+        if diagnostic is not None:
+            watch.last_diagnostic = diagnostic
 
         if price_changed or stock_changed:
             watch.last_changed_at = now
@@ -127,13 +129,15 @@ class PriceService:
         return price_changed or stock_changed
 
     async def handle_scrape_error(
-        self, watch: Watch, error: str, status_code: int = 0
+        self, watch: Watch, error: str, status_code: int = 0, diagnostic: dict | None = None
     ) -> None:
         """Registrér fejl og opdatér watch-status."""
         now = datetime.now(timezone.utc)
         watch.last_checked_at = now
         watch.last_error = error
         watch.error_count = (watch.error_count or 0) + 1
+        if diagnostic is not None:
+            watch.last_diagnostic = diagnostic
 
         # Blocked: HTTP 403/429 over tærskel
         if status_code in (403, 429) and watch.error_count >= BLOCK_THRESHOLD:

@@ -61,6 +61,9 @@ class Watch(Base, TimestampMixin):
     # JSONB: {price_selector, title_selector, stock_selector, wait_for_selector, ...}
     scraper_config: Mapped[dict | None] = mapped_column(JSONB)
 
+    # JSONB: diagnostik fra seneste scrape-kørsel (status_code, ekstraktorer, fejltype, m.m.)
+    last_diagnostic: Mapped[dict | None] = mapped_column(JSONB)
+
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relations

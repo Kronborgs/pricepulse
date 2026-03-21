@@ -15,7 +15,7 @@ import { api } from "@/lib/api";
 import { PriceChart } from "@/components/watches/price-chart";
 import { StatusBadge } from "@/components/watches/status-badge";
 import { formatPrice, formatRelative } from "@/lib/utils";
-import { PriceEvent } from "@/types";
+import { PriceEvent, ERROR_TYPE_LABELS, WatchDiagnostic } from "@/types";
 
 export default function WatchDetailPage({
   params,
@@ -168,6 +168,11 @@ export default function WatchDetailPage({
         <PriceChart watchId={id} />
       </div>
 
+      {/* Diagnostic panel — vis kun ved fejl eller hvis der er diagnostik */}
+      {watch.last_diagnostic && (
+        <DiagnosticPanel diagnostic={watch.last_diagnostic} />
+      )}
+
       {/* Events timeline */}
       {events && events.length > 0 && (
         <div className="rounded-lg border border-border bg-card">
@@ -219,6 +224,91 @@ function StatCard({
     <div className="rounded-lg border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       <p className="text-lg font-semibold">{children}</p>
+    </div>
+  );
+}
+
+function DiagnosticPanel({ diagnostic }: { diagnostic: WatchDiagnostic }) {
+  const errType = diagnostic.error_type;
+  const errorLabel = errType && errType in ERROR_TYPE_LABELS
+    ? ERROR_TYPE_LABELS[errType].short
+    : null;
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <h2 className="text-base font-semibold">Seneste diagnostik</h2>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {new Date(diagnostic.checked_at).toLocaleString("da-DK")}
+        </span>
+      </div>
+      <div className="p-5 space-y-3">
+        {/* Error type banner */}
+        {errorLabel && (
+          <div className="rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3">
+            <p className="text-sm font-medium text-destructive">{errorLabel}</p>
+            {diagnostic.recommended_action && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {diagnostic.recommended_action}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Fetch metadata */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">HTTP-status</p>
+            <p className="font-medium tabular-nums">
+              {diagnostic.fetch.status_code || "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Svartid</p>
+            <p className="font-medium tabular-nums">
+              {diagnostic.fetch.response_time_ms > 0
+                ? `${Math.round(diagnostic.fetch.response_time_ms)} ms`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">HTML-størrelse</p>
+            <p className="font-medium tabular-nums">
+              {diagnostic.fetch.html_length > 0
+                ? `${(diagnostic.fetch.html_length / 1024).toFixed(1)} KB`
+                : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Provider</p>
+            <p className="font-medium">{diagnostic.fetch.provider}</p>
+          </div>
+        </div>
+
+        {/* Parsers tried */}
+        {diagnostic.parse.extractors_tried.length > 0 && (
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Ekstraktorer forsøgt</p>
+            <div className="flex flex-wrap gap-1">
+              {diagnostic.parse.extractors_tried.map((name) => (
+                <span
+                  key={name}
+                  className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-mono ${
+                    diagnostic.parse.parser_used === name
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {name}
+                  {diagnostic.parse.parser_used === name && (
+                    <span className="ml-1">✓</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

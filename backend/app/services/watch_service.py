@@ -68,12 +68,13 @@ class WatchService:
         scrape_result, parse_result = await scraper_engine.scrape(watch)
 
         if scrape_result.success and parse_result:
-            await self.price_service.process_scraped_data(watch, parse_result)
+            await self.price_service.process_scraped_data(watch, parse_result, scrape_result.diagnostic)
         else:
             await self.price_service.handle_scrape_error(
                 watch,
                 error=scrape_result.error or "Ukendt fejl",
                 status_code=scrape_result.status_code,
+                diagnostic=scrape_result.diagnostic,
             )
 
     async def detect_from_url(self, url: str) -> WatchDetectResult:

@@ -1,7 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
+
+
+class ErrorType(str, Enum):
+    """Structured classification of scrape failures."""
+    parser_mismatch = "parser_mismatch"         # Fetched OK, but no parser could extract a price
+    js_render_required = "js_render_required"   # Page requires client-side JS to render content
+    bot_protection = "bot_protection"           # CAPTCHA / Cloudflare challenge page detected
+    transport_error = "transport_error"         # TCP/TLS/HTTP stream error
+    timeout = "timeout"                         # Request timed out
+    comparison_site = "comparison_site"         # Not a product page — price comparison aggregator
+    http_error = "http_error"                   # HTTP 4xx/5xx (excl. 403/429)
 
 
 @dataclass
@@ -19,6 +31,9 @@ class FetchResult:
     final_url: str = ""
     provider: str = ""
     error: str | None = None
+    response_time_ms: float = 0.0
+    html_length: int = 0
+    error_type: ErrorType | None = None
 
     @property
     def ok(self) -> bool:
@@ -36,6 +51,9 @@ class ParseResult:
     raw_data: dict[str, Any] = field(default_factory=dict)
     parser_used: str = ""
     error: str | None = None
+    extractors_tried: list[str] = field(default_factory=list)
+    error_type: ErrorType | None = None
+    recommended_action: str | None = None
 
     @property
     def success(self) -> bool:

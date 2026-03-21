@@ -6,6 +6,7 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Watch } from "@/types";
 import { StatusBadge } from "./status-badge";
+import { ERROR_TYPE_LABELS } from "@/types";
 import { formatPrice, formatRelative, getDomain } from "@/lib/utils";
 import { api } from "@/lib/api";
 
@@ -98,10 +99,24 @@ export function WatchCard({ watch }: Props) {
       </div>
 
       {/* Error */}
-      {watch.last_error && watch.status !== "active" && (
-        <p className="text-xs text-destructive line-clamp-2 bg-destructive/10 rounded px-2 py-1">
-          {watch.last_error}
-        </p>
+      {watch.status !== "active" && (watch.last_error || watch.last_diagnostic?.error_type) && (
+        <div className="text-xs bg-destructive/10 rounded px-2 py-1 space-y-0.5">
+          {(() => {
+            const errType = watch.last_diagnostic?.error_type;
+            if (errType && errType in ERROR_TYPE_LABELS) {
+              const { short, action } = ERROR_TYPE_LABELS[errType];
+              return (
+                <>
+                  <p className="font-medium text-destructive">{short}</p>
+                  <p className="text-muted-foreground">{action}</p>
+                </>
+              );
+            }
+            return (
+              <p className="text-destructive line-clamp-2">{watch.last_error}</p>
+            );
+          })()}
+        </div>
       )}
     </div>
   );

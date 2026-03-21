@@ -7,10 +7,9 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import settings
-from app.scraper.providers.base import FetchOptions, FetchProvider, FetchResult
+from app.scraper.providers.base import ErrorType, FetchOptions, FetchProvider, FetchResult
 
 logger = structlog.get_logger()
 
@@ -18,36 +17,49 @@ logger = structlog.get_logger()
 _domain_last_request: dict[str, float] = defaultdict(float)
 _domain_lock: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
+_SHARED_HEADERS = {
+    "User-Agent": settings.scraper_user_agent,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "da-DK,da;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Upgrade-Insecure-Requests": "1",
+}
+
 
 class HttpProvider(FetchProvider):
     """
     Async HTTP provider baseret på httpx.
-    Understøtter HTTP/2, connection pooling, og per-domain rate limiting.
+    Understøtter HTTP/2 med automatisk HTTP/1.1-fallback ved stream reset,
+    connection pooling, og per-domain rate limiting.
     """
 
     provider_name = "http"
 
     def __init__(self) -> None:
-        self._client: httpx.AsyncClient | None = None
+        self._http2_client: httpx.AsyncClient | None = None
+        self._http1_client: httpx.AsyncClient | None = None
+
+    def _make_client(self, http2: bool) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            http2=http2,
+            follow_redirects=True,
+            timeout=30.0,
+            headers=_SHARED_HEADERS,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
 
     @property
-    def client(self) -> httpx.AsyncClient:
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                http2=True,
-                follow_redirects=True,
-                timeout=30.0,
-                headers={
-                    "User-Agent": settings.scraper_user_agent,
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "da-DK,da;q=0.9,en;q=0.8",
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "DNT": "1",
-                    "Upgrade-Insecure-Requests": "1",
-                },
-                limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
-            )
-        return self._client
+    def http2_client(self) -> httpx.AsyncClient:
+        if self._http2_client is None or self._http2_client.is_closed:
+            self._http2_client = self._make_client(http2=True)
+        return self._http2_client
+
+    @property
+    def http1_client(self) -> httpx.AsyncClient:
+        if self._http1_client is None or self._http1_client.is_closed:
+            self._http1_client = self._make_client(http2=False)
+        return self._http1_client
 
     async def fetch(self, url: str, options: FetchOptions | None = None) -> FetchResult:
         opts = options or FetchOptions()
@@ -60,56 +72,111 @@ class HttpProvider(FetchProvider):
                 await asyncio.sleep(settings.scraper_domain_delay - elapsed)
             _domain_last_request[domain] = time.monotonic()
 
-        return await self._fetch_with_retry(url, opts)
+        return await self._fetch_with_fallback(url, opts, use_http2=True)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=15),
-        retry=retry_if_exception_type((httpx.TransportError, httpx.TimeoutException)),
-        reraise=True,
-    )
-    async def _fetch_with_retry(self, url: str, opts: FetchOptions) -> FetchResult:
-        try:
-            headers = {**opts.extra_headers}
-            resp = await self.client.get(url, headers=headers, timeout=opts.timeout)
+    async def _fetch_with_fallback(
+        self, url: str, opts: FetchOptions, use_http2: bool
+    ) -> FetchResult:
+        """
+        Forsøger at hente URL — ved HTTP/2 stream reset skiftes automatisk til HTTP/1.1.
+        Derefter op til 2 genforsøg ved kortvarige netværksfejl.
+        """
+        client = self.http2_client if use_http2 else self.http1_client
+        start = time.monotonic()
 
-            if resp.status_code == 403:
-                return FetchResult(
-                    status_code=403,
-                    provider=self.provider_name,
-                    error="HTTP 403 Forbidden — siden blokerer scraping (muligt bot-filter)",
+        for attempt in range(3):
+            try:
+                resp = await client.get(
+                    url,
+                    headers=opts.extra_headers or {},
+                    timeout=opts.timeout,
                 )
-            if resp.status_code == 429:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                content = resp.text
+                html_length = len(content)
+
+                if resp.status_code == 403:
+                    return FetchResult(
+                        status_code=403,
+                        provider=self.provider_name,
+                        response_time_ms=elapsed_ms,
+                        error="HTTP 403 Forbidden — siden blokerer scraping (muligt bot-filter)",
+                        error_type=ErrorType.bot_protection,
+                    )
+                if resp.status_code == 429:
+                    return FetchResult(
+                        status_code=429,
+                        provider=self.provider_name,
+                        response_time_ms=elapsed_ms,
+                        error="HTTP 429 Too Many Requests — rate limited",
+                        error_type=ErrorType.bot_protection,
+                    )
+                if resp.status_code >= 400:
+                    return FetchResult(
+                        status_code=resp.status_code,
+                        provider=self.provider_name,
+                        response_time_ms=elapsed_ms,
+                        error=f"HTTP {resp.status_code}",
+                        error_type=ErrorType.http_error,
+                    )
+
                 return FetchResult(
-                    status_code=429,
-                    provider=self.provider_name,
-                    error="HTTP 429 Too Many Requests — rate limited",
-                )
-            if resp.status_code >= 400:
-                return FetchResult(
+                    content=content,
                     status_code=resp.status_code,
+                    final_url=str(resp.url),
                     provider=self.provider_name,
-                    error=f"HTTP {resp.status_code}",
+                    response_time_ms=elapsed_ms,
+                    html_length=html_length,
                 )
 
-            return FetchResult(
-                content=resp.text,
-                status_code=resp.status_code,
-                final_url=str(resp.url),
-                provider=self.provider_name,
-            )
+            except httpx.RemoteProtocolError as exc:
+                # HTTP/2 stream resets (PROTOCOL_ERROR / CANCEL) → retry with HTTP/1.1
+                if use_http2:
+                    logger.info(
+                        "HTTP/2 stream reset — prøver med HTTP/1.1",
+                        url=url,
+                        error=str(exc),
+                    )
+                    return await self._fetch_with_fallback(url, opts, use_http2=False)
+                # On HTTP/1.1 a RemoteProtocolError is a real failure
+                return FetchResult(
+                    provider=self.provider_name,
+                    response_time_ms=(time.monotonic() - start) * 1000,
+                    error=f"Protokolfejl: {exc}",
+                    error_type=ErrorType.transport_error,
+                )
 
-        except httpx.TimeoutException:
-            return FetchResult(
-                provider=self.provider_name,
-                error="Request timeout",
-            )
-        except httpx.RequestError as e:
-            return FetchResult(
-                provider=self.provider_name,
-                error=f"Network error: {e}",
-            )
+            except httpx.TimeoutException:
+                elapsed_ms = (time.monotonic() - start) * 1000
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                return FetchResult(
+                    provider=self.provider_name,
+                    response_time_ms=elapsed_ms,
+                    error="Request timeout",
+                    error_type=ErrorType.timeout,
+                )
+
+            except httpx.TransportError as exc:
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                return FetchResult(
+                    provider=self.provider_name,
+                    response_time_ms=(time.monotonic() - start) * 1000,
+                    error=f"Netværksfejl: {exc}",
+                    error_type=ErrorType.transport_error,
+                )
+
+        # Fallback — should not be reached
+        return FetchResult(
+            provider=self.provider_name,
+            error="Ukendt fejl",
+            error_type=ErrorType.transport_error,
+        )
 
     async def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
+        for client in (self._http2_client, self._http1_client):
+            if client and not client.is_closed:
+                await client.aclose()

@@ -68,6 +68,7 @@ class WatchRead(BaseModel):
     check_interval: int
     provider: str
     scraper_config: dict[str, Any] | None = None
+    last_diagnostic: dict[str, Any] | None = None
     is_active: bool
     shop: WatchShopSummary | None = None
     product_id: uuid.UUID | None = None
