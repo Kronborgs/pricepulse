@@ -28,11 +28,16 @@ class JsonLdParser(PriceParser):
         scripts = soup.find_all("script", type="application/ld+json")
 
         for script in scripts:
-            if not script.string:
+            # Use get_text() instead of .string — .string returns None when
+            # BeautifulSoup splits a long text node into multiple NavigableStrings,
+            # which silently skips large JSON-LD blocks.
+            raw = script.get_text(strip=False)
+            if not raw.strip():
                 continue
             try:
-                data = json.loads(script.string)
-            except json.JSONDecodeError:
+                data = json.loads(raw)
+            except (json.JSONDecodeError, ValueError) as exc:
+                logger.debug("JSON-LD: parse fejl", error=str(exc))
                 continue
 
             # Håndter både enkelt objekt og @graph array

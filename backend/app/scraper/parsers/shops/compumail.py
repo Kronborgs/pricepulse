@@ -12,15 +12,19 @@ class CompumailParser(PriceParser):
 
     parser_name = "compumail"
 
+    # compumail.dk bruger sin egen platform (ikke Magento).
+    # Pris:  <span class="price" data-price="2422">2\xa0422,00</span>
+    # Titel: <h1 itemprop="name">...</h1>
+    # Lager: JS-loaded — ikke tilgængeligt i server-side HTML
     _css_parser = CssSelectorParser(
         SelectorConfig(
-            price_selector=".price-box .price, .product-price .price, [data-price-amount]",
-            title_selector="h1.page-title, .product-info-main h1",
-            stock_selector=".stock.available, .availability",
-            image_selector=".gallery-image.loaded, .product-img-box img",
-            price_attr="data-price-amount",
-            stock_in_text="på lager",
-            stock_out_text="ikke på lager",
+            price_selector="span.price[data-price]",
+            title_selector="h1[itemprop='name']",
+            stock_selector=None,
+            image_selector=".product-lightbox-item.active img, .product-lightbox-item img",
+            price_attr="data-price",
+            stock_in_text="in stock",
+            stock_out_text="out of stock",
         )
     )
 
