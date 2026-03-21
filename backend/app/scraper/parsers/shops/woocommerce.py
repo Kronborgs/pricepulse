@@ -27,15 +27,21 @@ class WooCommerceParser(PriceParser):
 
     parser_name = "woocommerce"
 
-    # Strategi 2: Standard WooCommerce pris-markup
-    # WC bruger <bdi> indeni .woocommerce-Price-amount.amount
+    # Strategi 2: Standard WooCommerce pris-markup + bredere platfomselectors
+    # WC bruger <bdi> indeni .woocommerce-Price-amount.amount;
+    # Dandomain bruger .productPrice, .product-price, [itemprop='price']
     _css_primary = CssSelectorParser(
         SelectorConfig(
             price_selector=(
                 ".woocommerce-Price-amount.amount bdi, "
                 ".woocommerce-Price-amount.amount, "
                 "p.price ins .woocommerce-Price-amount, "
-                "p.price > .woocommerce-Price-amount"
+                "p.price > .woocommerce-Price-amount, "
+                "[itemprop='price'], "
+                ".productPrice .price, "
+                ".productPrice, "
+                ".product-price .price, "
+                ".product-price"
             ),
             title_selector=(
                 ".product_title.entry-title, "
@@ -61,7 +67,11 @@ class WooCommerceParser(PriceParser):
             price_selector=(
                 "[class*='woocommerce'] [class*='price'], "
                 ".product-page [class*='price'], "
-                ".entry-summary [class*='price']"
+                ".entry-summary [class*='price'], "
+                "[class*='productprice'], "
+                "[class*='product-price'], "
+                "[class*='buybox'] [class*='price'], "
+                "[class*='pris']"
             ),
             title_selector="h1",
         )

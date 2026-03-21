@@ -53,6 +53,7 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "www.hmwtrading.dk": WooCommerceParser(),
     "kaffelars.dk": WooCommerceParser(),
     "www.kaffelars.dk": WooCommerceParser(),
+    "tingoggoejl.kronborgs.dk": WooCommerceParser(),
     "komplett.dk": KomplettParser(),
     "www.komplett.dk": KomplettParser(),
     "proshop.dk": ProshopParser(),

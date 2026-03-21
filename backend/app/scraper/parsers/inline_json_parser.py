@@ -129,6 +129,11 @@ class InlineJsonParser(PriceParser):
         if result and result.success:
             return result
 
+        # Strategi 4: OG-meta og microdata — universelt fallback til næsten alle butikssystemer
+        result = self._try_og_and_microdata(soup)
+        if result and result.success:
+            return result
+
         return ParseResult(error="inline_json: ingen data fundet", parser_used=self.parser_name)
 
     # ── Next.js __NEXT_DATA__ ─────────────────────────────────────────────────
@@ -300,4 +305,54 @@ class InlineJsonParser(PriceParser):
                             currency="DKK",
                             parser_used=f"{self.parser_name}:datalayer",
                         )
+        return None
+
+    # ── OG-meta + microdata ───────────────────────────────────────────────────
+
+    def _try_og_and_microdata(self, soup: BeautifulSoup) -> ParseResult | None:
+        """
+        Universelt fallback der virker på næsten alle butikssystemer:
+        1. <meta property="og:price:amount">  (OpenGraph — WC, Shopify, Dandomain, …)
+        2. [itemprop="price"]                 (schema.org microdata — mange CMS)
+        3. [data-price] attribut              (custom shops)
+        """
+        # 1. OpenGraph-pris
+        meta = soup.find("meta", property="og:price:amount")
+        if meta and meta.get("content"):
+            price = _clean_price(meta["content"])
+            if price:
+                title_meta = soup.find("meta", property="og:title")
+                title = title_meta.get("content") if title_meta else None
+                return ParseResult(
+                    price=price,
+                    currency="DKK",
+                    title=title,
+                    parser_used=f"{self.parser_name}:og_meta",
+                )
+
+        # 2. Schema.org microdata [itemprop="price"]
+        tag = soup.find(attrs={"itemprop": "price"})
+        if tag:
+            price = _clean_price(tag.get("content") or tag.get_text())
+            if price:
+                title_tag = soup.find(attrs={"itemprop": "name"})
+                title = title_tag.get_text(strip=True) if title_tag else None
+                return ParseResult(
+                    price=price,
+                    currency="DKK",
+                    title=title,
+                    parser_used=f"{self.parser_name}:microdata",
+                )
+
+        # 3. [data-price] attribut
+        tag = soup.find(attrs={"data-price": True})
+        if tag:
+            price = _clean_price(tag["data-price"])
+            if price:
+                return ParseResult(
+                    price=price,
+                    currency="DKK",
+                    parser_used=f"{self.parser_name}:data_price",
+                )
+
         return None

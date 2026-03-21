@@ -79,7 +79,9 @@ class BiltemaParser(PriceParser):
         price_keys = frozenset({
             "price", "currentprice", "sellingprice", "saleprice",
             "finalprice", "grossprice", "priceamount", "pricevalue",
-            "incvat", "inclvat", "retailprice",
+            "incvat", "inclvat", "retailprice", "listprice",
+            "salespriceincvat", "displayprice", "priceincvat",
+            "currentpriceincvat", "priceexvat", "netprice",
         })
         stock_keys = frozenset({"availability", "instock", "isinstock", "isavailable", "stock"})
 

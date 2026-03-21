@@ -80,7 +80,13 @@ class JsonLdParser(PriceParser):
                 offers[0],
             )
 
-        price_raw = offers.get("price") or offers.get("Price")
+        # AggregateOffer (bauhaus, matas, jemogfix m.fl.) bruger lowPrice i stedet for price
+        price_raw = (
+            offers.get("price")
+            or offers.get("Price")
+            or offers.get("lowPrice")
+            or offers.get("minPrice")
+        )
         currency = offers.get("priceCurrency") or offers.get("PriceCurrency") or "DKK"
         availability = offers.get("availability", "")
 
