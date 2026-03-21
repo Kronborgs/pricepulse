@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  // API_URL is a server-only env var — always read at runtime, never inlined by webpack
+  const apiUrl = process.env.API_URL || "http://localhost:8000";
   try {
     const res = await fetch(`${apiUrl}/health`, {
       cache: "no-store",

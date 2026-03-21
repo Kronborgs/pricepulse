@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API_URL is a server-only env var — always read at runtime, never inlined by webpack
+const getBackend = () => process.env.API_URL || "http://localhost:8000";
 
 async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
-  const upstream = `${BACKEND}/api/v1/${path.join("/")}${req.nextUrl.search}`;
+  const upstream = `${getBackend()}/api/v1/${path.join("/")}${req.nextUrl.search}`;
 
   const headers = new Headers(req.headers);
   // Strip Next.js/browser-only headers that confuse the upstream
