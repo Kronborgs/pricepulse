@@ -397,7 +397,7 @@ class OllamaService:
         text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s{2,}", " ", text).strip()
-        text = text[:8_000]  # max 8KB tekst
+        text = text[:3_000]  # max 3KB tekst — pris/titel er altid tidligt i synlig tekst
 
         key = _cache_key([url, text[:2000], "text_extract_v2"])
         cached = await self._get_cached(db, key)
