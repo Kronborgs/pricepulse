@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.price_event import PriceEvent
@@ -125,8 +125,26 @@ class PriceService:
         if parse_result.image_url and not watch.image_url:
             watch.image_url = parse_result.image_url
 
+        # Auto-link til Product baseret på titel (selvhelende)
+        if watch.title and not watch.product_id:
+            await self._auto_link_product(watch)
+
         await self.db.commit()
         return price_changed or stock_changed
+
+    async def _auto_link_product(self, watch: Watch) -> None:
+        """Find eller opret et Product baseret på watch-titlen og link det."""
+        from app.models.product import Product
+
+        stmt = select(Product).where(
+            func.lower(Product.name) == watch.title.lower()
+        )
+        product = (await self.db.execute(stmt)).scalar_one_or_none()
+        if not product:
+            product = Product(name=watch.title, image_url=watch.image_url)
+            self.db.add(product)
+            await self.db.flush()
+        watch.product_id = product.id
 
     async def handle_scrape_error(
         self, watch: Watch, error: str, status_code: int = 0, diagnostic: dict | None = None

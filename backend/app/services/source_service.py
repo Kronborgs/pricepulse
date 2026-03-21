@@ -19,7 +19,6 @@ from app.models.watch_source import WatchSource
 from app.models.watch_timeline_event import WatchTimelineEvent
 from app.scraper.engine import PLAYWRIGHT_REQUIRED_DOMAINS, scraper_engine
 from app.schemas.v2 import WatchSourceCreate, WatchSourceUpdate
-
 logger = structlog.get_logger(__name__)
 
 # Backoff-tabel: (consecutive_errors_min, multiplier, max_minutes)
@@ -222,6 +221,12 @@ class SourceService:
         now = datetime.now(timezone.utc)
         source.last_check_at = now
 
+        # Ollama fallback: analysér HTML og prøv igen med ny CSS-selektor
+        if not scrape_result.success and scrape_result.fetch_ok and scrape_result.html_snippet:
+            scrape_result, parse_result = await self._try_ollama_retry(
+                source, fake_watch, scrape_result, parse_result
+            )
+
         if scrape_result.success and parse_result:
             await self._process_success(source, parse_result, scrape_result.diagnostic, now)
         else:
@@ -360,6 +365,66 @@ class SourceService:
             raw_diagnostic=diagnostic,
         )
         self.db.add(check)
+
+    # ── Aggregering ───────────────────────────────────────────────────────────
+
+    async def _try_ollama_retry(
+        self,
+        source: WatchSource,
+        fake_watch,
+        scrape_result,
+        parse_result,
+    ):
+        """Kald Ollama for CSS-selektor-forslag og prøv scrape igen."""
+        from app.config import settings
+        from app.services.ollama_service import OllamaService
+
+        if not settings.ollama_enabled:
+            return scrape_result, parse_result
+
+        ollama = OllamaService()
+        try:
+            advice = await ollama.analyze_parser(
+                db=self.db,
+                url=fake_watch.url,
+                html_snippet=scrape_result.html_snippet,
+                html_title=(parse_result.title or "") if parse_result else "",
+                status_code=scrape_result.status_code,
+                failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
+                source_id=str(source.id),
+            )
+            if not advice or not advice.price_selector or advice.confidence < 0.5:
+                return scrape_result, parse_result
+
+            logger.info(
+                "ollama_selektor_forslag",
+                source_id=str(source.id),
+                selector=advice.price_selector,
+                confidence=advice.confidence,
+            )
+            # Gem selektor i source og fake_watch for retrofit
+            new_config = {
+                **(fake_watch.scraper_config or {}),
+                "price_selector": advice.price_selector,
+                **( {"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
+            }
+            fake_watch.scraper_config = new_config
+            source.scraper_config = new_config
+
+            retry_result, retry_parse = await scraper_engine.scrape(fake_watch)
+            if retry_result.success and retry_parse:
+                return retry_result, retry_parse
+        except Exception as exc:
+            logger.warning("ollama_retry_fejl", source_id=str(source.id), error=str(exc))
+            # Nulstil ny scraper_config ved fejl
+            source.scraper_config = (
+                {k: v for k, v in (source.scraper_config or {}).items()
+                 if k not in ("price_selector", "stock_selector")}
+                or None
+            )
+        finally:
+            await ollama.close()
+        return scrape_result, parse_result
 
     # ── Aggregering ───────────────────────────────────────────────────────────
 

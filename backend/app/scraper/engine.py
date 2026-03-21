@@ -180,6 +180,7 @@ class ScrapeResult:
         fetch_ok: bool = True,
         status_code: int = 0,
         diagnostic: dict | None = None,
+        html_snippet: str | None = None,
     ) -> None:
         self.success = success
         self.price = price
@@ -190,6 +191,7 @@ class ScrapeResult:
         self.fetch_ok = fetch_ok
         self.status_code = status_code
         self.diagnostic = diagnostic
+        self.html_snippet = html_snippet
 
 
 def _build_diagnostic(
@@ -289,6 +291,7 @@ class ScraperEngine:
                 fetch_ok=True,
                 status_code=fetch_result.status_code,
                 diagnostic=diag,
+                html_snippet=fetch_result.content[:12_000],
             ), parse_result
 
         diag = _build_diagnostic(fetch_result, parse_result, None)

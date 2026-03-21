@@ -33,7 +33,32 @@ async def list_products(
     stmt = stmt.offset(skip).limit(limit)
     products = list((await db.execute(stmt)).scalars().all())
 
-    return ProductList(items=products, total=total)
+    # Beregn watch_count og lowest_price i én samlet forespørgsel
+    stats: dict = {}
+    if products:
+        product_ids = [p.id for p in products]
+        stats_rows = (
+            await db.execute(
+                select(
+                    Watch.product_id,
+                    func.count(Watch.id).label("wc"),
+                    func.min(Watch.current_price).label("lp"),
+                )
+                .where(Watch.product_id.in_(product_ids))
+                .group_by(Watch.product_id)
+            )
+        ).all()
+        stats = {row.product_id: (row.wc, row.lp) for row in stats_rows}
+
+    items = []
+    for p in products:
+        wc, lp = stats.get(p.id, (0, None))
+        pr = ProductRead.model_validate(p)
+        pr.watch_count = wc
+        pr.lowest_price = float(lp) if lp is not None else None
+        items.append(pr)
+
+    return ProductList(items=items, total=total)
 
 
 @router.get("/{product_id}", response_model=ProductRead)
