@@ -88,8 +88,16 @@ class JsonLdParser(PriceParser):
         if price is None:
             return None
 
-        in_stock = "InStock" in availability if availability else None
-        stock_status = "in_stock" if in_stock else ("out_of_stock" if in_stock is False else None)
+        # schema.org availability values that mean "orderable":
+        # InStock, PreOrder, BackOrder, LimitedAvailability, OnlineOnly, InStoreOnly
+        ORDERABLE = ("InStock", "PreOrder", "BackOrder", "LimitedAvailability", "OnlineOnly", "InStoreOnly")
+        if availability:
+            if any(s in availability for s in ORDERABLE):
+                stock_status = "in_stock"
+            else:
+                stock_status = "out_of_stock"
+        else:
+            stock_status = None
 
         return ParseResult(
             title=title,
