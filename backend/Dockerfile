@@ -3,7 +3,6 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Installér system-afhængigheder (til psycopg2 / lxml)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -11,41 +10,53 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Installér Python-afhængigheder
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# ─── Runtime stage ─────────────────────────────────────────────────────────────
+# ─── Runtime stage (all-in-one: FastAPI + PostgreSQL 16 + Redis 7) ─────────────
 FROM python:3.12-slim AS runtime
-
-# Non-root user
-RUN groupadd -g 1001 appgroup \
-    && useradd -u 1001 -g appgroup -s /bin/bash -m appuser
 
 WORKDIR /app
 
-# System runtime-deps
+# PostgreSQL 16 + Redis 7 + supervisord + curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     libpq5 \
     libxml2 \
     libxslt1.1 \
-    curl \
+    redis-server \
+    supervisor \
+    gnupg \
+    lsb-release \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+       | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] \
+       https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+       > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+       postgresql-16 \
     && rm -rf /var/lib/apt/lists/*
 
-# Kopiér installerede packages fra builder
+# Kopiér Python packages fra builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Kopiér app-kode
-COPY --chown=appuser:appgroup . .
+COPY . .
 
-# Data-mappe til evt. lokal fil-storage
-RUN mkdir -p /app/data && chown appuser:appgroup /app/data
+# Data-mapper
+RUN mkdir -p /app/data /var/lib/postgresql/data /var/run/postgresql \
+    && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
 
-USER appuser
+# supervisord config
+COPY supervisord.conf /etc/supervisor/conf.d/pricepulse.conf
+
+# Startup scripts
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY start-api.sh /app/start-api.sh
+RUN chmod +x /docker-entrypoint.sh /app/start-api.sh
 
 EXPOSE 8000
 
-# Kør migrationer, derefter start API
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+CMD ["/docker-entrypoint.sh"]
