@@ -17,6 +17,7 @@ from app.scraper.parsers.shops.computersalg import (
     HappiiParser,
     KomplettParser,
 )
+from app.scraper.parsers.shops.elgigant import ElgigantParser
 from app.scraper.parsers.shops.proshop import ProshopParser
 from app.scraper.providers.base import (
     ErrorType,
@@ -37,6 +38,8 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "www.compumail.dk": CompumailParser(),
     "computersalg.dk": ComputersalgParser(),
     "www.computersalg.dk": ComputersalgParser(),
+    "elgiganten.dk": ElgigantParser(),
+    "www.elgiganten.dk": ElgigantParser(),
     "elsalg.dk": ELsalgParser(),
     "www.elsalg.dk": ELsalgParser(),
     "happii.dk": HappiiParser(),

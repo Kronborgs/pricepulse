@@ -111,7 +111,21 @@ class CssSelectorParser(PriceParser):
         if "," in num_str and "." in num_str:
             num_str = num_str.replace(".", "").replace(",", ".")
         elif "," in num_str:
-            num_str = num_str.replace(",", ".")
+            # "1.299," or "1299,00" or "1299,"
+            after_comma = num_str.rsplit(",", 1)[-1]
+            if len(after_comma) == 3 and after_comma.isdigit():
+                # Thousands separator: "1.299,000" style (unusual but safe)
+                num_str = num_str.replace(",", "")
+            else:
+                num_str = num_str.replace(",", ".")
+        elif "." in num_str:
+            # Could be decimal (1.99, 10.50) or thousands separator (5.599, 1.099)
+            # Rule: if exactly 3 digits follow every period, it's a thousands separator
+            after_last_dot = num_str.rsplit(".", 1)[-1]
+            if len(after_last_dot) == 3 and after_last_dot.isdigit():
+                # e.g. "5.599" → 5599,  "1.234.567" → 1234567
+                num_str = num_str.replace(".", "")
+            # else keep as decimal: "1.99", "10.50"
         try:
             return float(num_str)
         except ValueError:
