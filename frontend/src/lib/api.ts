@@ -1,14 +1,25 @@
 import {
   DashboardStats,
+  LlmParserAdvice,
+  NormalizedProduct,
+  OllamaStatus,
   PriceEvent,
   PriceHistoryPoint,
   Product,
   ProductList,
+  ProductWatch,
+  ProductWatchCreate,
+  ProductWatchList,
   Shop,
+  SourceCheck,
+  SourceCheckList,
+  SourcePriceEvent,
+  TimelineEvent,
   Watch,
   WatchCreate,
   WatchDetectResult,
   WatchList,
+  WatchSource,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -110,6 +121,83 @@ export const api = {
       apiFetch<Shop>(`/shops/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
+      }),
+  },
+
+  // ─── ProductWatches (v2) ─────────────────────────────────────────────────────
+  productWatches: {
+    list: (params?: { skip?: number; limit?: number; status?: string; search?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.skip != null) qs.set("skip", String(params.skip));
+      if (params?.limit != null) qs.set("limit", String(params.limit));
+      if (params?.status) qs.set("status", params.status);
+      if (params?.search) qs.set("search", params.search);
+      return apiFetch<ProductWatchList>(`/product-watches?${qs}`);
+    },
+    get: (id: string) => apiFetch<ProductWatch>(`/product-watches/${id}`),
+    create: (data: ProductWatchCreate) =>
+      apiFetch<ProductWatch>("/product-watches", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: { name?: string | null; default_interval_min?: number }) =>
+      apiFetch<ProductWatch>(`/product-watches/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    pause: (id: string) =>
+      apiFetch<ProductWatch>(`/product-watches/${id}/pause`, { method: "POST" }),
+    resume: (id: string) =>
+      apiFetch<ProductWatch>(`/product-watches/${id}/resume`, { method: "POST" }),
+    timeline: (id: string, limit = 50) =>
+      apiFetch<TimelineEvent[]>(`/product-watches/${id}/timeline?limit=${limit}`),
+    addSource: (id: string, data: { url: string; provider?: string; interval_override_min?: number; scraper_config?: Record<string, string> }) =>
+      apiFetch<WatchSource>(`/product-watches/${id}/sources`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // ─── Sources (v2) ────────────────────────────────────────────────────────────
+  sources: {
+    get: (id: string) => apiFetch<WatchSource>(`/sources/${id}`),
+    update: (id: string, data: { url?: string; interval_override_min?: number | null; provider?: string; scraper_config?: Record<string, string> | null }) =>
+      apiFetch<WatchSource>(`/sources/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    archive: (id: string) =>
+      apiFetch<void>(`/sources/${id}`, { method: "DELETE" }),
+    pause: (id: string) =>
+      apiFetch<WatchSource>(`/sources/${id}/pause`, { method: "POST" }),
+    resume: (id: string) =>
+      apiFetch<WatchSource>(`/sources/${id}/resume`, { method: "POST" }),
+    check: (id: string) =>
+      apiFetch<WatchSource>(`/sources/${id}/check`, { method: "POST" }),
+    checks: (id: string, params?: { skip?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.skip != null) qs.set("skip", String(params.skip));
+      if (params?.limit != null) qs.set("limit", String(params.limit));
+      return apiFetch<SourceCheckList>(`/sources/${id}/checks?${qs}`);
+    },
+    priceEvents: (id: string, limit = 50) =>
+      apiFetch<SourcePriceEvent[]>(`/sources/${id}/price-events?limit=${limit}`),
+    diagnose: (id: string) =>
+      apiFetch<{ status: string }>(`/sources/${id}/diagnose`, { method: "POST" }),
+  },
+
+  // ─── Ollama (v2) ─────────────────────────────────────────────────────────────
+  ollama: {
+    status: () => apiFetch<OllamaStatus>("/ollama/status"),
+    analyzeParser: (data: { html: string; url: string; existing_config?: Record<string, string> | null }) =>
+      apiFetch<LlmParserAdvice>("/ollama/analyze-parser", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    normalizeProduct: (titles: string[]) =>
+      apiFetch<NormalizedProduct>("/ollama/normalize-product", {
+        method: "POST",
+        body: JSON.stringify({ titles }),
       }),
   },
 };

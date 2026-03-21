@@ -4,17 +4,20 @@ import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Watch } from "@/types";
+import { Watch, ProductWatch } from "@/types";
 import { StatusBadge } from "./status-badge";
+import { SourceStatusPill } from "./source-status-pill";
 import { ERROR_TYPE_LABELS } from "@/types";
 import { formatPrice, formatRelative, getDomain } from "@/lib/utils";
 import { api } from "@/lib/api";
 
-interface Props {
+// ─── V1 Watch card ───────────────────────────────────────────────────────────
+
+interface V1Props {
   watch: Watch;
 }
 
-export function WatchCard({ watch }: Props) {
+export function WatchCard({ watch }: V1Props) {
   const qc = useQueryClient();
   const checkMutation = useMutation({
     mutationFn: () => api.watches.triggerCheck(watch.id),
@@ -121,3 +124,85 @@ export function WatchCard({ watch }: Props) {
     </div>
   );
 }
+
+// ─── V2 ProductWatch card ─────────────────────────────────────────────────────
+
+interface V2Props {
+  watch: ProductWatch;
+}
+
+export function ProductWatchCard({ watch }: V2Props) {
+  const qc = useQueryClient();
+
+  const bestSource = watch.last_best_source_id
+    ? watch.sources.find((s) => s.id === watch.last_best_source_id)
+    : null;
+  const activeSources = watch.sources.filter((s) => s.status !== "archived");
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3 hover:shadow-sm transition-shadow">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <Link
+            href={`/product-watches/${watch.id}`}
+            className="text-sm font-medium leading-tight line-clamp-2 hover:underline"
+          >
+            {watch.name ?? `Watch ${watch.id.slice(0, 8)}`}
+          </Link>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {activeSources.length} kilde{activeSources.length !== 1 ? "r" : ""}
+          </p>
+        </div>
+        <StatusBadge status={watch.status} />
+      </div>
+
+      {/* Best price */}
+      <div className="flex items-end gap-2">
+        <span className="text-2xl font-semibold tabular-nums">
+          {watch.last_best_price != null
+            ? formatPrice(watch.last_best_price)
+            : "—"}
+        </span>
+        {bestSource?.last_stock_status && (
+          <span className="text-xs text-muted-foreground mb-1">
+            {bestSource.last_stock_status === "in_stock"
+              ? "På lager"
+              : bestSource.last_stock_status === "out_of_stock"
+              ? "Udsolgt"
+              : bestSource.last_stock_status}
+          </span>
+        )}
+      </div>
+
+      {/* Source pills */}
+      {activeSources.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {activeSources.map((src) => (
+            <SourceStatusPill
+              key={src.id}
+              source={src}
+              isBest={src.id === watch.last_best_source_id}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          {watch.last_checked_at
+            ? `Tjekket ${formatRelative(watch.last_checked_at)}`
+            : "Aldrig tjekket"}
+        </span>
+        <Link
+          href={`/product-watches/${watch.id}`}
+          className="text-primary hover:underline"
+        >
+          Detaljer →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
