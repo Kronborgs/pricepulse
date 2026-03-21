@@ -26,32 +26,41 @@ function HealthCard() {
     queryKey: ["health"],
     queryFn: async () => {
       const res = await fetch("/api/health");
-      if (!res.ok) throw new Error("unhealthy");
-      return res.json() as Promise<{ status: string; environment: string }>;
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+      return res.json() as Promise<{ status: string; version: string }>;
     },
     retry: false,
+    refetchInterval: 30_000,
   });
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
       <h2 className="text-base font-semibold mb-4">Systemstatus</h2>
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-0.5" />
+            <span className="text-sm text-muted-foreground">Tjekker...</span>
+          </>
         ) : error ? (
           <>
-            <XCircle className="h-4 w-4 text-destructive" />
-            <span className="text-sm text-destructive">Backend ikke nåbar</span>
+            <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="text-sm text-destructive font-medium">Backend fejlede</span>
+              <p className="text-xs text-muted-foreground mt-0.5 font-mono break-all">
+                {error instanceof Error ? error.message : String(error)}
+              </p>
+            </div>
           </>
         ) : (
           <>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            <span className="text-sm">
-              Backend kører{" "}
-              <span className="text-muted-foreground">
-                ({data?.environment ?? "—"})
-              </span>
-            </span>
+            <CheckCircle2 className="h-4 w-4 text-[#8DC63F] flex-shrink-0 mt-0.5" />
+            <div>
+              <span className="text-sm font-medium">Backend kører</span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {data?.version ? `v${data.version}` : "OK"}
+              </p>
+            </div>
           </>
         )}
       </div>

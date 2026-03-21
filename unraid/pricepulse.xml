@@ -20,8 +20,8 @@
   <DateInstalled/>
   <DonateText/>
   <DonateLink/>
-  <Requires>pricepulse-backend, PostgreSQL 16, Redis 7</Requires>
+  <Requires>pricepulse-backend</Requires>
   <Config Name="Frontend Port" Target="3000" Default="3000" Mode="tcp" Description="Porten som PricePulse UI er tilgængeligt på" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
-  <Config Name="API URL" Target="NEXT_PUBLIC_API_URL" Default="http://192.168.1.50:8000" Mode="" Description="URL til backend API — brug din Unraid servers LAN-IP og port 8000" Type="Variable" Display="always" Required="true" Mask="false">http://192.168.1.50:8000</Config>
+  <Config Name="API URL" Target="NEXT_PUBLIC_API_URL" Default="http://DIN-UNRAID-IP:8000" Mode="" Description="URL til backend — brug din Unraid servers LAN-IP og port 8000. Eks: http://10.10.70.22:8000" Type="Variable" Display="always" Required="true" Mask="false">http://DIN-UNRAID-IP:8000</Config>
   <Config Name="Time Zone" Target="TZ" Default="Europe/Copenhagen" Mode="" Description="Find din tidszone her: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">Europe/Copenhagen</Config>
 </Container>
