@@ -52,7 +52,7 @@ DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/${PGDB
 
 # ─── Start FastAPI via supervisord ────────────────────────────────────────────
 echo "[entrypoint] Starting API..."
-supervisorctl start api
+supervisorctl -c /etc/supervisor/conf.d/pricepulse.conf start api
 
 # ─── Keep container alive ─────────────────────────────────────────────────────
 wait $SUPERVISOR_PID
