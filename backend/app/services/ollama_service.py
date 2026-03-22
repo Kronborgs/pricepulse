@@ -94,18 +94,22 @@ def _slim_html_for_prompt(html: str, max_bytes: int = 2_500) -> str:
     """
     Reducér HTML til kun synligt DOM-indhold til Ollama-prompts.
 
-    Fjerner <script>, <style>, <noscript>, <svg> og <footer>/<nav>/<header>
-    som er irrelevante for CSS-selektor-genkendelse men fylder mange tokens.
+    Fjerner <script>, <style>, <noscript>, <svg> og <footer>/<nav>/<header>.
+    Stripper alle attributter undtagen class, id, href, itemprop, content,
+    data-price og data-testid — fjerner aria-*, role, tabindex, style etc.
+    som fylder mange tokens uden at hjælpe med CSS-selektor-genkendelse.
     Derefter trunkeres til max_bytes.
-
-    En 12KB side typisk → 4000-5000 tokens inkl. scripts.
-    Efter stripping → 1000-2000 tokens, hvilket passer til 4096 context.
     """
+    _KEEP_ATTRS = {"class", "id", "href", "itemprop", "content", "data-price", "data-testid", "data-product-price"}
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(html, "lxml")
         for tag in soup(["script", "style", "noscript", "svg", "footer", "nav", "header", "iframe"]):
             tag.decompose()
+        for tag in soup.find_all(True):
+            for attr in list(tag.attrs):
+                if attr not in _KEEP_ATTRS:
+                    del tag.attrs[attr]
         slimmed = str(soup)
     except Exception:
         slimmed = html
