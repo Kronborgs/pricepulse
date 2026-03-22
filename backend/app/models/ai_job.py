@@ -12,7 +12,6 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.watch_source import WatchSource
-    from app.models.product_watch import ProductWatch
     from app.models.product import Product
     from app.models.user import User
 
@@ -50,8 +49,10 @@ class AIJob(Base):
     source_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("watch_sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Soft reference — kan pege på watches.id (v1) eller product_watches.id (v2)
+    # Ingen FK-constraint, da begge tabeltyper bruges
     watch_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("product_watches.id", ondelete="SET NULL"), nullable=True, index=True
+        nullable=True, index=True
     )
     product_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("products.id", ondelete="SET NULL"), nullable=True
@@ -83,9 +84,6 @@ class AIJob(Base):
     # Relations (ingen cascade — vi sletter aldrig ai_jobs)
     source: Mapped["WatchSource | None"] = relationship(
         foreign_keys=[source_id], lazy="select"
-    )
-    watch: Mapped["ProductWatch | None"] = relationship(
-        foreign_keys=[watch_id], lazy="select"
     )
     triggered_by_user: Mapped["User | None"] = relationship(
         foreign_keys=[triggered_by], lazy="select"
