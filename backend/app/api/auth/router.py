@@ -21,7 +21,7 @@ from app.services.auth_service import AuthService, create_access_token
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
-_SECURE = settings.environment == "production"
+_SECURE = settings.cookie_secure
 _SAMESITE = "lax"
 
 

@@ -17,10 +17,12 @@ class Settings(BaseSettings):
     )
 
     # ─── App ──────────────────────────────────────────────────
-    # Sæt til "production" for at aktivere Secure-flag på cookies (kræver HTTPS)
     environment: Literal["development", "production"] = "development"
     secret_key: str = "insecure-dev-key-change-me"
     log_level: str = "INFO"
+    # Sæt til True KUN hvis frontend serveres over HTTPS.
+    # Med False (default) virker cookies over plain HTTP (self-hosted LAN).
+    cookie_secure: bool = False
 
     # ─── Database ─────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://pricepulse:changeme@db:5432/pricepulse"
