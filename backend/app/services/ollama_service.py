@@ -455,7 +455,7 @@ class OllamaService:
             text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s{2,}", " ", text).strip()
-        text = text[:5_000]  # 5000 chars ≈ 2000 tokens — sikkert under 4096-grænsen
+        text = text[:2_000]  # 2000 chars ≈ 800 tokens — sikkert under 4096-grænsen
 
         key = _cache_key([url, text[:2000], "text_extract_v2"])
         cached = await self._get_cached(db, key)
