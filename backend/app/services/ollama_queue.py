@@ -85,21 +85,40 @@ async def process_queue_forever() -> None:
 
 async def _run_source_job(job: OllamaJob) -> None:
     """Kør Ollama-analyse for en WatchSource og gem resultatet."""
+    import time
     from types import SimpleNamespace
 
     from app.database import AsyncSessionLocal
     from app.models.watch_source import WatchSource
+    from app.services.ai_job_service import AIJobService
     from app.services.source_service import SourceService
 
     async with AsyncSessionLocal() as db:
         svc = SourceService(db)
+        ai_svc = AIJobService(db)
         source = await db.get(WatchSource, job.entity_id)
         if not source or source.status in ("archived", "paused"):
             return
 
-        # Sæt midlertidig "ai_analyzing" status
+        # Opret AI-job audit log
+        ai_job = await ai_svc.create(
+            job_type="parser_advice",
+            source_id=source.id,
+            watch_id=source.watch_id,
+            prompt_summary=f"Parser-analyse for {source.shop}: {source.url[:100]}",
+            input_data={
+                "url": source.url,
+                "shop": source.shop,
+                "extractors_tried": job.extractors_tried,
+                "status_code": job.status_code,
+            },
+        )
+
         source.status = "ai_analyzing"
         await db.commit()
+
+        from app.config import settings
+        await ai_svc.mark_processing(ai_job.id, settings.ollama_parser_model)
 
         fake_watch = SimpleNamespace(
             id=source.id,
@@ -124,20 +143,31 @@ async def _run_source_job(job: OllamaJob) -> None:
             else "pending"
         )
 
+        t0 = time.monotonic()
         try:
             result, parse_result = await svc._try_ollama_retry(
                 source, fake_watch, fake_scrape, None
             )
+            duration_ms = int((time.monotonic() - t0) * 1000)
+
             if result.success and parse_result:
                 await svc._process_success(source, parse_result, result.diagnostic, now)
                 source.status = "ai_active"
-                logger.info(
-                    "ollama_queue_succes",
-                    source_id=str(source.id),
-                    price=parse_result.price,
+                await ai_svc.mark_completed(
+                    ai_job.id,
+                    output_data={"price": parse_result.price, "stock": parse_result.stock_status},
+                    summary=f"Fandt pris {parse_result.price} via AI-parser",
+                    duration_ms=duration_ms,
                 )
+                logger.info("ollama_queue_succes", source_id=str(source.id), price=parse_result.price)
             else:
                 source.status = restore_status
+                await ai_svc.mark_completed(
+                    ai_job.id,
+                    output_data=None,
+                    summary="AI fandt ingen pris",
+                    duration_ms=duration_ms,
+                )
                 logger.info("ollama_queue_ingen_pris", source_id=str(source.id))
 
             source.last_check_at = now
@@ -145,7 +175,9 @@ async def _run_source_job(job: OllamaJob) -> None:
             await svc._update_watch_best_price(source.watch_id)
             await svc._update_watch_status(source.watch_id)
 
-        except Exception:
+        except Exception as exc:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            await ai_svc.mark_failed(ai_job.id, str(exc))
             source.status = restore_status
             await db.commit()
             raise

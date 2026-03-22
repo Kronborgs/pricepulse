@@ -15,6 +15,18 @@ from app.models.product_snapshot import ProductSnapshot
 from app.models.watch_timeline_event import WatchTimelineEvent
 from app.models.llm_analysis_result import LlmAnalysisResult
 
+# Auth + Users
+from app.models.user import User
+from app.models.auth_token import AuthToken
+
+# AI Jobs
+from app.models.ai_job import AIJob
+
+# Email / SMTP
+from app.models.smtp_settings import SMTPSettings
+from app.models.email_preference import EmailPreference
+from app.models.email_queue import EmailQueue
+
 __all__ = [
     # base
     "Base",
@@ -33,4 +45,13 @@ __all__ = [
     "ProductSnapshot",
     "WatchTimelineEvent",
     "LlmAnalysisResult",
+    # auth
+    "User",
+    "AuthToken",
+    # ai
+    "AIJob",
+    # email
+    "SMTPSettings",
+    "EmailPreference",
+    "EmailQueue",
 ]

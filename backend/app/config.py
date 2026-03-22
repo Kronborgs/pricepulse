@@ -30,6 +30,19 @@ class Settings(BaseSettings):
     # ─── CORS ─────────────────────────────────────────────────
     cors_origins: str = "http://localhost:3000"
 
+    # ─── Auth / JWT ───────────────────────────────────────────
+    # Access token: kortlivet (15 min). Refresh token: 30 dage.
+    jwt_access_token_expire_minutes: int = 15
+    jwt_refresh_token_expire_days: int = 30
+    # Krypteret Fernet-nøgle til SMTP-kodeord i DB.
+    # Generer med: from cryptography.fernet import Fernet; Fernet.generate_key()
+    # Hvis tom bruges secret_key som basis (ikke anbefalet til produktion).
+    fernet_key: str = ""
+
+    # ─── Guest mode ───────────────────────────────────────────
+    # Hvis True kan uautoriserede brugere se dashboard/produkter (read-only).
+    guest_mode_enabled: bool = True
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

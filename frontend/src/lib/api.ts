@@ -1,5 +1,9 @@
 import {
+  AIJob,
+  AIJobDetail,
+  AIJobList,
   DashboardStats,
+  EmailPreferences,
   LlmParserAdvice,
   NormalizedProduct,
   OllamaStatus,
@@ -10,11 +14,15 @@ import {
   ProductWatch,
   ProductWatchCreate,
   ProductWatchList,
+  SetupStatus,
   Shop,
+  SMTPStatus,
   SourceCheck,
   SourceCheckList,
   SourcePriceEvent,
   TimelineEvent,
+  User,
+  UserList,
   Watch,
   WatchCreate,
   WatchDetectResult,
@@ -209,6 +217,114 @@ export const api = {
       apiFetch<NormalizedProduct>("/ollama/normalize-product", {
         method: "POST",
         body: JSON.stringify({ titles }),
+      }),
+  },
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────
+  auth: {
+    setupStatus: () => apiFetch<SetupStatus>("/auth/setup-status"),
+    setup: (data: { email: string; password: string; display_name?: string }) =>
+      apiFetch<User>("/auth/setup", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    login: (data: { email: string; password: string }) =>
+      apiFetch<User>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    logout: () => apiFetch<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+    me: () => apiFetch<User>("/auth/me"),
+    forgotPassword: (email: string) =>
+      apiFetch<{ ok: boolean }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
+    resetPassword: (token: string, new_password: string) =>
+      apiFetch<{ ok: boolean }>("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, new_password }),
+      }),
+  },
+
+  // ─── Admin: Brugere ───────────────────────────────────────────────────────
+  adminUsers: {
+    list: (params?: { skip?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.skip != null) qs.set("skip", String(params.skip));
+      if (params?.limit != null) qs.set("limit", String(params.limit));
+      return apiFetch<UserList>(`/auth/admin/users?${qs}`);
+    },
+    create: (data: { email: string; password: string; role?: string; display_name?: string }) =>
+      apiFetch<User>("/auth/admin/users", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: { display_name?: string; role?: string; is_active?: boolean }) =>
+      apiFetch<User>(`/auth/admin/users/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // ─── AI Jobs ──────────────────────────────────────────────────────────────
+  aiJobs: {
+    list: (params?: {
+      job_type?: string;
+      status?: string;
+      source_id?: string;
+      watch_id?: string;
+      skip?: number;
+      limit?: number;
+    }) => {
+      const qs = new URLSearchParams();
+      if (params?.job_type) qs.set("job_type", params.job_type);
+      if (params?.status) qs.set("status", params.status);
+      if (params?.source_id) qs.set("source_id", params.source_id);
+      if (params?.watch_id) qs.set("watch_id", params.watch_id);
+      if (params?.skip != null) qs.set("skip", String(params.skip));
+      if (params?.limit != null) qs.set("limit", String(params.limit));
+      return apiFetch<AIJobList>(`/ai/jobs?${qs}`);
+    },
+    get: (id: string) => apiFetch<AIJobDetail>(`/ai/jobs/${id}`),
+    cancel: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/ai/jobs/${id}/cancel`, { method: "POST" }),
+    diagnoseSource: (sourceId: string) =>
+      apiFetch<{ ok: boolean; message: string }>(`/ai/diagnose/source/${sourceId}`, {
+        method: "POST",
+      }),
+    stats: () => apiFetch<{ by_type_status: unknown[] }>("/ai/stats"),
+  },
+
+  // ─── SMTP / Email ────────────────────────────────────────────────────────
+  smtp: {
+    get: () => apiFetch<SMTPStatus>("/admin/smtp"),
+    save: (data: {
+      host: string;
+      port: number;
+      use_tls: boolean;
+      username: string;
+      password: string;
+      from_email: string;
+      from_name: string;
+    }) =>
+      apiFetch<{ ok: boolean }>("/admin/smtp", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    test: (to_email: string) =>
+      apiFetch<{ ok: boolean }>("/admin/smtp/test", {
+        method: "POST",
+        body: JSON.stringify({ to_email }),
+      }),
+  },
+
+  emailPreferences: {
+    get: () => apiFetch<EmailPreferences>("/me/email-preferences"),
+    update: (data: Partial<EmailPreferences>) =>
+      apiFetch<{ ok: boolean }>("/me/email-preferences", {
+        method: "PATCH",
+        body: JSON.stringify(data),
       }),
   },
 };

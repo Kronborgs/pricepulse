@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Prisfald</title></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a">
+  <h1 style="color:#8DC63F">Prisfald registreret</h1>
+  <p><strong>{{ watch_name }}</strong></p>
+  <table style="border-collapse:collapse;margin:16px 0">
+    <tr>
+      <td style="padding:6px 12px;color:#666">Gammel pris</td>
+      <td style="padding:6px 12px;text-decoration:line-through">{{ old_price }} {{ currency }}</td>
+    </tr>
+    <tr>
+      <td style="padding:6px 12px;color:#666">Ny pris</td>
+      <td style="padding:6px 12px;color:#8DC63F;font-weight:bold;font-size:1.2em">{{ new_price }} {{ currency }}</td>
+    </tr>
+  </table>
+  <p>
+    <a href="{{ watch_url }}"
+       style="display:inline-block;background:#29ABE2;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">
+      Se watch
+    </a>
+  </p>
+  <p style="color:#666;font-size:13px">Denne email er sendt automatisk fra PricePulse.</p>
+</body>
+</html>

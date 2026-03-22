@@ -333,3 +333,87 @@ export interface NormalizedProduct {
   confidence: number;
   reasoning: string;
 }
+
+// ─── Auth / Users ─────────────────────────────────────────────────────────────
+export type UserRole = "admin" | "superuser";
+
+export interface User {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: UserRole;
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface UserList {
+  items: User[];
+  total: number;
+}
+
+export interface SetupStatus {
+  setup_required: boolean;
+}
+
+// ─── AI Jobs ──────────────────────────────────────────────────────────────────
+export type AIJobType = "parser_advice" | "normalization" | "product_matching" | "selector_suggest";
+export type AIJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
+
+export interface AIJob {
+  id: string;
+  job_type: AIJobType;
+  status: AIJobStatus;
+  model_used: string | null;
+  source_id: string | null;
+  watch_id: string | null;
+  product_id: string | null;
+  triggered_by: string | null;
+  prompt_summary: string | null;
+  summary: string | null;
+  error_message: string | null;
+  prompt_tokens: number | null;
+  response_tokens: number | null;
+  duration_ms: number | null;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AIJobDetail extends AIJob {
+  input_data: Record<string, unknown> | null;
+  output_data: Record<string, unknown> | null;
+}
+
+export interface AIJobList {
+  items: AIJob[];
+  total: number;
+}
+
+// ─── Email Preferences ────────────────────────────────────────────────────────
+export interface EmailPreferences {
+  notify_price_drop: boolean;
+  notify_back_in_stock: boolean;
+  notify_new_error: boolean;
+  digest_enabled: boolean;
+  digest_frequency: "daily" | "weekly" | "monthly";
+  digest_day_of_week: number;
+}
+
+// ─── SMTP Settings ────────────────────────────────────────────────────────────
+export interface SMTPSettings {
+  id: number;
+  is_active: boolean;
+  host: string;
+  port: number;
+  use_tls: boolean;
+  username: string;
+  from_email: string;
+  from_name: string;
+}
+
+export interface SMTPStatus {
+  configured: boolean;
+  settings?: SMTPSettings;
+}
+

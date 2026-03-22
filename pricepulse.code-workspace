@@ -15,7 +15,23 @@
 			"git init": true,
 			"git remote": true,
 			"git add": true,
-			"git commit": true
+			"git commit": true,
+			"git push": true,
+			"/^cd c:\\\\Users\\\\Kronborgs_LabPC\\\\pricepulse\\\\backend ; python -c \"\nfrom app\\.scraper\\.parsers\\.shops\\.biltema import BiltemaParser\nfrom app\\.scraper\\.parsers\\.shops\\.woocommerce import WooCommerceParser\nfrom app\\.scraper\\.parsers\\.shops\\.elgigant import ElgigantParser\nfrom app\\.scraper\\.parsers\\.shops\\.compumail import CompumailParser\nprint\\('All parser imports OK'\\)\nfrom app\\.scraper\\.engine import SHOP_PARSERS\nprint\\(f'SHOP_PARSERS has \\{len\\(SHOP_PARSERS\\)\\} entries:', sorted\\(SHOP_PARSERS\\)\\)\n\"\n$/": {
+				"approve": true,
+				"matchCommandLine": true
+			},
+			"/^python3 -c \"from app\\.scraper\\.engine import SHOP_PARSERS; print\\(sorted\\(SHOP_PARSERS\\)\\)\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			},
+			"where.exe": true,
+			"uv": true,
+			"git -C c:\\Users\\Kronborgs_LabPC\\pricepulse": true,
+			"py": true,
+			"&": true,
+			"docker run": true,
+			"git tag": true
 		},
 		"chat.agent.maxRequests": 150
 	}

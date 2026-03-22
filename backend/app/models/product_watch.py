@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from app.models.product_snapshot import ProductSnapshot
     from app.models.watch_source import WatchSource
     from app.models.watch_timeline_event import WatchTimelineEvent
+    from app.models.user import User
 
 
 class ProductWatch(Base, TimestampMixin):
@@ -37,6 +38,9 @@ class ProductWatch(Base, TimestampMixin):
     product_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     name: Mapped[str | None] = mapped_column(Text)
     default_interval_min: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False, index=True)
@@ -54,9 +58,18 @@ class ProductWatch(Base, TimestampMixin):
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Notifikationsindstillinger pr. watch
+    notify_on_price_drop: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notify_on_back_in_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    price_threshold: Mapped[float | None] = mapped_column(Numeric(10, 2))  # notify kun hvis under
+
     # Relations
     product: Mapped["Product"] = relationship(
         back_populates="product_watches",
+        lazy="select",
+    )
+    owner: Mapped["User | None"] = relationship(
+        foreign_keys="ProductWatch.owner_id",
         lazy="select",
     )
     sources: Mapped[list["WatchSource"]] = relationship(
