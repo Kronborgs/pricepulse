@@ -41,4 +41,9 @@ class ProductRead(BaseModel):
 
 class ProductList(BaseModel):
     items: list[ProductRead]
+    total: int = 0
+
+
+class MergeProductRequest(BaseModel):
+    source_product_id: uuid.UUID
     total: int

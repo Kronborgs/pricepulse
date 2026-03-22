@@ -4,14 +4,15 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.product import Product
+from app.models.product_watch import ProductWatch
 from app.models.watch import Watch
-from app.schemas.product import ProductCreate, ProductList, ProductRead, ProductUpdate
+from app.schemas.product import MergeProductRequest, ProductCreate, ProductList, ProductRead, ProductUpdate
 
 router = APIRouter()
 
@@ -107,6 +108,59 @@ async def update_product(
     await db.commit()
     await db.refresh(product)
     return product
+
+
+@router.post("/{product_id}/merge", response_model=ProductRead)
+async def merge_products(
+    product_id: uuid.UUID,
+    body: MergeProductRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProductRead:
+    """Sammenflet kilde-produktets watches ind i dette produkt og slet kilde-produktet."""
+    if product_id == body.source_product_id:
+        raise HTTPException(status_code=400, detail="Kan ikke sammenflet et produkt med sig selv")
+
+    target = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+
+    source = (await db.execute(select(Product).where(Product.id == body.source_product_id))).scalar_one_or_none()
+    if not source:
+        raise HTTPException(status_code=404, detail="Kilde-produkt ikke fundet")
+
+    # Flyt V1 watches
+    await db.execute(
+        update(Watch)
+        .where(Watch.product_id == body.source_product_id)
+        .values(product_id=product_id)
+    )
+    # Flyt V2 product_watches
+    await db.execute(
+        update(ProductWatch)
+        .where(ProductWatch.product_id == body.source_product_id)
+        .values(product_id=product_id)
+    )
+    # Arv billede hvis target mangler
+    if not target.image_url and source.image_url:
+        target.image_url = source.image_url
+
+    await db.delete(source)
+    await db.commit()
+
+    # Genindlæs med stats
+    product = (await db.execute(
+        select(Product)
+        .where(Product.id == product_id)
+        .options(selectinload(Product.watches).selectinload(Watch.shop))
+    )).scalar_one()
+    stats_rows = (await db.execute(
+        select(func.count(Watch.id).label("wc"), func.min(Watch.current_price).label("lp"))
+        .where(Watch.product_id == product_id)
+    )).one()
+    pr = ProductRead.model_validate(product)
+    pr.watch_count = stats_rows.wc or 0
+    pr.lowest_price = float(stats_rows.lp) if stats_rows.lp is not None else None
+    return pr
 
 
 @router.delete("/{product_id}", status_code=204, response_model=None)

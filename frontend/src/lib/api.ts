@@ -151,6 +151,11 @@ export const api = {
       return apiFetch<ProductList>(`/products?${qs}`);
     },
     get: (id: string) => apiFetch<Product>(`/products/${id}`),
+    merge: (targetId: string, sourceProductId: string) =>
+      apiFetch<Product>(`/products/${targetId}/merge`, {
+        method: "POST",
+        body: JSON.stringify({ source_product_id: sourceProductId }),
+      }),
   },
 
   // ─── Shops ───────────────────────────────────────────────────────────────────

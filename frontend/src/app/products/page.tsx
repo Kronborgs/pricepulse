@@ -3,14 +3,41 @@
 import { useQuery } from "@tanstack/react-query";
 import { Package2, Search } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
 
+function wordSimilarity(a: string, b: string): number {
+  const words = (s: string) =>
+    new Set(s.toLowerCase().replace(/[^a-z0-9æøå ]/g, " ").split(/\s+/).filter(Boolean));
+  const wa = words(a);
+  const wb = words(b);
+  const intersection = [...wa].filter((w) => wb.has(w)).length;
+  return intersection / Math.max(wa.size, wb.size, 1);
+}
+
+function findDuplicatePairs(products: Product[]): [Product, Product][] {
+  const pairs: [Product, Product][] = [];
+  for (let i = 0; i < products.length; i++) {
+    for (let j = i + 1; j < products.length; j++) {
+      if (wordSimilarity(products[i].name, products[j].name) >= 0.45) {
+        pairs.push([products[i], products[j]]);
+      }
+    }
+  }
+  return pairs.slice(0, 5); // vis max 5 forslag
+}
+
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  // For duplicate detection we always load all products (no pagination filter)
+  const { data: allData } = useQuery({
+    queryKey: ["products-all-for-dups"],
+    queryFn: () => api.products.list({ limit: 200 }),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["products", { search, page }],
@@ -26,6 +53,11 @@ export default function ProductsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / 24));
 
+  const duplicatePairs = useMemo(
+    () => findDuplicatePairs(allData?.items ?? []),
+    [allData]
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -36,6 +68,34 @@ export default function ProductsPage() {
           </p>
         </div>
       </div>
+
+      {/* Duplicate suggestions */}
+      {duplicatePairs.length > 0 && !search && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            {duplicatePairs.length} mulig{duplicatePairs.length !== 1 ? "e dubletter" : " dublet"} fundet
+          </p>
+          <div className="space-y-1.5">
+            {duplicatePairs.map(([a, b]) => (
+              <div key={`${a.id}-${b.id}`} className="flex items-center gap-2 text-sm flex-wrap">
+                <Link href={`/products/${a.id}`} className="text-amber-800 dark:text-amber-300 hover:underline font-medium truncate max-w-[200px]">
+                  {a.name}
+                </Link>
+                <span className="text-amber-600 dark:text-amber-500">↔</span>
+                <Link href={`/products/${b.id}`} className="text-amber-800 dark:text-amber-300 hover:underline font-medium truncate max-w-[200px]">
+                  {b.name}
+                </Link>
+                <Link
+                  href={`/products/${a.id}`}
+                  className="ml-auto shrink-0 text-xs text-amber-700 dark:text-amber-400 hover:underline"
+                >
+                  Sammenflet →
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative w-72">
