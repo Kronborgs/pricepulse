@@ -301,7 +301,7 @@ export const api = {
         method: "DELETE",
         credentials: "include",
       }).then((r) => {
-        if (!r.ok && r.status !== 204) throw new Error(`API ${r.status}`);
+        if (!r.ok) throw new Error(`API ${r.status}`);
       }),
   },
 

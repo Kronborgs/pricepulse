@@ -331,12 +331,12 @@ async def update_user(
     return _user_to_read(user)
 
 
-@router.delete("/admin/users/{user_id}", status_code=204)
+@router.delete("/admin/users/{user_id}", status_code=200)
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
-) -> None:
+) -> dict:
     """
     Slet bruger permanent inkl. alle tokens.
     Hvis ingen brugere er tilbage, returnerer /setup-status setup_required=True igen.
@@ -353,3 +353,4 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     logger.info("user_deleted", user_id=str(user_id))
+    return {"ok": True}
