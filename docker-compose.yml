@@ -10,7 +10,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-pricepulse}:${POSTGRES_PASSWORD:-changeme}@${POSTGRES_HOST:-pricepulse-db}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-pricepulse}
       REDIS_URL: ${REDIS_URL:-redis://pricepulse-redis:6379/0}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       SECRET_KEY: ${SECRET_KEY:-insecure-dev-key-change-me}

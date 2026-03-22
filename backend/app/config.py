@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     )
 
     # ─── App ──────────────────────────────────────────────────
-    environment: Literal["development", "production"] = "production"
+    # Sæt til "production" for at aktivere Secure-flag på cookies (kræver HTTPS)
+    environment: Literal["development", "production"] = "development"
     secret_key: str = "insecure-dev-key-change-me"
     log_level: str = "INFO"
 
