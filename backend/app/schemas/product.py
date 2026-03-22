@@ -46,4 +46,3 @@ class ProductList(BaseModel):
 
 class MergeProductRequest(BaseModel):
     source_product_id: uuid.UUID
-    total: int
