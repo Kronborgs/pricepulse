@@ -1,18 +1,20 @@
 #!/bin/bash
 set -e
 
-PGDATA=/var/lib/postgresql/data
+PGDATA=/app/data/postgres
 PGUSER="${POSTGRES_USER:-pricepulse}"
 PGPASSWORD="${POSTGRES_PASSWORD:-changeme}"
 PGDB="${POSTGRES_DB:-pricepulse}"
 
-# ─── Initialise PostgreSQL data directory if empty ────────────────────────────
+# ─── Opret data-mapper hvis de ikke findes ────────────────────────────────────
+mkdir -p /app/data/postgres /app/data/redis
+chown postgres:postgres /app/data/postgres
 if [ ! -f "$PGDATA/PG_VERSION" ]; then
     echo "[entrypoint] Initialising PostgreSQL..."
     su -c "/usr/lib/postgresql/16/bin/initdb -D $PGDATA --username=postgres --encoding=UTF8" postgres
 fi
 
-# ─── Start PostgreSQL + Redis via supervisord in background ───────────────────
+# ─── Start PostgreSQL + Redis via supervisord in background ─────────────────
 echo "[entrypoint] Starting PostgreSQL and Redis..."
 /usr/bin/supervisord -c /etc/supervisor/conf.d/pricepulse.conf &
 SUPERVISOR_PID=$!
