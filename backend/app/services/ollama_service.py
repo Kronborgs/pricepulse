@@ -14,6 +14,7 @@ Design-principper:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -221,6 +222,28 @@ class OllamaService:
         except httpx.TimeoutException:
             logger.warning("ollama_timeout", model=model)
             return None
+        except (httpx.ConnectError, httpx.RemoteProtocolError) as exc:
+            # Ollama genstartes — vent og forsøg én gang til
+            logger.warning("ollama_connection_error_retry", model=model, error=str(exc))
+            await asyncio.sleep(20)
+            try:
+                resp = await client.post("/api/chat", json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                content = data.get("message", {}).get("content", "")
+                prompt_tokens = data.get("prompt_eval_count")
+                response_tokens = data.get("eval_count")
+                if json_mode:
+                    try:
+                        result = json.loads(content)
+                    except json.JSONDecodeError:
+                        logger.warning("ollama_json_parse_failed", content=content[:200])
+                        return None
+                    return {"result": result, "prompt_tokens": prompt_tokens, "response_tokens": response_tokens}
+                return {"result": content, "prompt_tokens": prompt_tokens, "response_tokens": response_tokens}
+            except Exception as retry_exc:
+                logger.warning("ollama_chat_failed", model=model, error=str(retry_exc))
+                return None
         except Exception as exc:
             logger.warning("ollama_chat_failed", model=model, error=str(exc))
             return None
