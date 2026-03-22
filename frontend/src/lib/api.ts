@@ -365,4 +365,29 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+
+  // ─── Admin: Data management ───────────────────────────────────────────────
+  adminData: {
+    stats: () => apiFetch<{
+      watches_v1: number;
+      watches_v2: number;
+      products: number;
+      price_history_v1: number;
+      price_events_v2: number;
+      ai_jobs: number;
+      email_queue: number;
+      source_checks: number;
+      users: number;
+    }>("/admin/data/stats"),
+    deleteWatches: () =>
+      apiFetch<{ ok: boolean }>("/admin/data/watches", { method: "DELETE" }),
+    deleteProducts: () =>
+      apiFetch<{ ok: boolean }>("/admin/data/products", { method: "DELETE" }),
+    deletePriceHistory: () =>
+      apiFetch<{ ok: boolean }>("/admin/data/price-history", { method: "DELETE" }),
+    deleteAiJobs: () =>
+      apiFetch<{ ok: boolean }>("/admin/data/ai-jobs", { method: "DELETE" }),
+    deleteEmailQueue: () =>
+      apiFetch<{ ok: boolean }>("/admin/data/email-queue", { method: "DELETE" }),
+  },
 };
