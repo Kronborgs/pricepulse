@@ -391,13 +391,35 @@ class OllamaService:
         if not settings.ollama_enabled:
             return None
 
-        # Udtræk synlig tekst fra HTML (fjern tags, behold indhold)
+        # Udtræk synlig tekst fra HTML.
+        # Brug BeautifulSoup til at fjerne cookie-bannere, navigation og
+        # layoutelementer — ellers vil de første 3-5 KB af synlig tekst
+        # typisk indehold cookie-samtykkebannere frem for produktindhold.
         import re
-        text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<[^>]+>", " ", text)
+        try:
+            from bs4 import BeautifulSoup as _BS
+            _soup = _BS(html, "lxml")
+            # Fjern scripts, styles og sideomkransende elementer
+            for _tag in _soup(["script", "style", "noscript", "svg",
+                                "iframe", "footer", "nav", "header"]):
+                _tag.decompose()
+            # Fjern cookie-banner containere (Cookiebot, OneTrust, consentmanager m.fl.)
+            _cookie_re = re.compile(
+                r"cookie|consent|gdpr|CybotCookiebot|onetrust|consentmanager",
+                re.IGNORECASE,
+            )
+            for _tag in _soup.find_all(True, attrs={"id": _cookie_re}):
+                _tag.decompose()
+            for _tag in _soup.find_all(True, attrs={"class": _cookie_re}):
+                _tag.decompose()
+            text = _soup.get_text(separator=" ", strip=True)
+        except Exception:
+            # Fallback til simpel regex-stripping
+            text = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r"<style[^>]*>.*?</style>", " ", text, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s{2,}", " ", text).strip()
-        text = text[:3_000]  # max 3KB tekst — pris/titel er altid tidligt i synlig tekst
+        text = text[:5_000]  # 5000 chars ≈ 2000 tokens — sikkert under 4096-grænsen
 
         key = _cache_key([url, text[:2000], "text_extract_v2"])
         cached = await self._get_cached(db, key)

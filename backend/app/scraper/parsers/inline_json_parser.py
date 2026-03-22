@@ -108,10 +108,12 @@ class InlineJsonParser(PriceParser):
     """
     Udtrækker pris og lagerstatus fra indlejrede JSON-blobs i HTML.
 
-    Understøtter tre datakilder i prioriteret rækkefølge:
+    Understøtter datakilder i prioriteret rækkefølge:
     1. Next.js __NEXT_DATA__ — dækker elgiganten.dk og andre Next.js-shops
     2. Magento 2 x-magento-init — dækker elsalg.dk, compumail.dk m.fl.
     3. Google Tag Manager dataLayer — universelt backup
+    4. OG-meta og microdata — universelt fallback
+    5. window.__INITIAL_STATE__ — ikke-Next.js React-apps (biltema m.fl.)
 
     Bruges som fallback-extractor i scraper-pipeline'en, EFTER JSON-LD
     og shop-specifik parser.
@@ -136,6 +138,11 @@ class InlineJsonParser(PriceParser):
 
         # Strategi 4: OG-meta og microdata — universelt fallback til næsten alle butikssystemer
         result = self._try_og_and_microdata(soup)
+        if result and result.success:
+            return result
+
+        # Strategi 5: window.__INITIAL_STATE__ — ikke-Next.js React-apps
+        result = self._try_initial_state(soup)
         if result and result.success:
             return result
 
@@ -347,7 +354,21 @@ class InlineJsonParser(PriceParser):
                     parser_used=f"{self.parser_name}:og_meta",
                 )
 
-        # 2. Schema.org microdata [itemprop="price"]
+        # 2. Meta product:price:amount (OpenGraph Products-namespace — Facebook Commerce)
+        meta = soup.find("meta", property="product:price:amount")
+        if meta and meta.get("content"):
+            price = _clean_price(meta["content"])
+            if price:
+                title_meta = soup.find("meta", property="og:title")
+                title = title_meta.get("content") if title_meta else None
+                return ParseResult(
+                    price=price,
+                    currency="DKK",
+                    title=title,
+                    parser_used=f"{self.parser_name}:og_product_meta",
+                )
+
+        # 3. Schema.org microdata [itemprop="price"]
         tag = soup.find(attrs={"itemprop": "price"})
         if tag:
             price = _clean_price(tag.get("content") or tag.get_text())
@@ -361,7 +382,7 @@ class InlineJsonParser(PriceParser):
                     parser_used=f"{self.parser_name}:microdata",
                 )
 
-        # 3. [data-price] attribut
+        # 4. [data-price] attribut
         tag = soup.find(attrs={"data-price": True})
         if tag:
             price = _clean_price(tag["data-price"])
@@ -372,4 +393,48 @@ class InlineJsonParser(PriceParser):
                     parser_used=f"{self.parser_name}:data_price",
                 )
 
+        return None
+
+    # ── window.__INITIAL_STATE__ ──────────────────────────────────────────────
+
+    def _try_initial_state(self, soup: BeautifulSoup) -> ParseResult | None:
+        """
+        Ikke-Next.js React-apps (f.eks. biltema.dk) gemmer ofte initial data i
+        window.__INITIAL_STATE__ = {...};  i et inline <script>-tag.
+        """
+        _decoder = json.JSONDecoder()
+        for script in soup.find_all("script"):
+            text = script.get_text()
+            if "__INITIAL_STATE__" not in text:
+                continue
+            m = re.search(r"window\.__INITIAL_STATE__\s*=\s*(\{)", text)
+            if not m:
+                continue
+            try:
+                data, _ = _decoder.raw_decode(text[m.start(1):])
+            except (json.JSONDecodeError, ValueError):
+                continue
+            prices = [
+                _clean_price(p)
+                for p in _deep_find(data, _PRICE_KEYS, max_depth=10)
+            ]
+            valid = [p for p in prices if p and p > 1]
+            if not valid:
+                # Køer også STOCK-lignende price keys med bredere søgning
+                prices2 = [
+                    _clean_price(p)
+                    for p in _deep_find(
+                        data,
+                        frozenset({"price", "priceincvat", "salesprice", "currentprice",
+                                   "listprice", "retailprice", "displayprice"}),
+                        max_depth=12,
+                    )
+                ]
+                valid = [p for p in prices2 if p and p > 1]
+            if valid:
+                return ParseResult(
+                    price=min(valid),
+                    currency="DKK",
+                    parser_used=f"{self.parser_name}:initial_state",
+                )
         return None

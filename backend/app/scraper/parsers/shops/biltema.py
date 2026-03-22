@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import structlog
 from bs4 import BeautifulSoup
@@ -55,7 +56,12 @@ class BiltemaParser(PriceParser):
         if result and result.success:
             return result
 
-        # Strategi 2: CSS selector fallback
+        # Strategi 2: window.__INITIAL_STATE__ (ikke-Next.js React-variant)
+        result = self._try_initial_state(soup)
+        if result and result.success:
+            return result
+
+        # Strategi 3: CSS selector fallback
         result = self._css_primary.parse(content, url)
         if result.success:
             result.parser_used = self.parser_name
@@ -115,3 +121,33 @@ class BiltemaParser(PriceParser):
             title=title,
             parser_used=self.parser_name,
         )
+
+    def _try_initial_state(self, soup: BeautifulSoup) -> ParseResult | None:
+        """Biltema React-app kan gemme data i window.__INITIAL_STATE__ i et inline script."""
+        _decoder = json.JSONDecoder()
+        price_keys = frozenset({
+            "price", "currentprice", "sellingprice", "saleprice",
+            "finalprice", "grossprice", "priceamount", "pricevalue",
+            "incvat", "inclvat", "salespriceincvat", "displayprice",
+            "priceincvat", "listprice", "retailprice",
+        })
+        for script in soup.find_all("script"):
+            text = script.get_text()
+            if "__INITIAL_STATE__" not in text:
+                continue
+            m = re.search(r"window\.__INITIAL_STATE__\s*=\s*(\{)", text)
+            if not m:
+                continue
+            try:
+                data, _ = _decoder.raw_decode(text[m.start(1):])
+            except (json.JSONDecodeError, ValueError):
+                continue
+            prices = _deep_find(data, price_keys, max_depth=12)
+            clean = [_clean_price(p) for p in prices if _clean_price(p) is not None and _clean_price(p) > 1]
+            if clean:
+                return ParseResult(
+                    price=min(clean),
+                    currency="DKK",
+                    parser_used=self.parser_name,
+                )
+        return None
