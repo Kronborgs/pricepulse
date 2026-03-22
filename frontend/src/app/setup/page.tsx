@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
 export default function SetupPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -24,7 +25,12 @@ export default function SetupPage() {
   const mutation = useMutation({
     mutationFn: () =>
       api.auth.setup({ email, password, display_name: displayName || undefined }),
-    onSuccess: () => router.push("/"),
+    onSuccess: () => {
+      // Ugyldiggør cache så setup-status og currentUser hentes frisk ved navigation
+      queryClient.invalidateQueries({ queryKey: ["auth", "setup-status"] });
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      router.push("/");
+    },
     onError: (err: Error) => setError(err.message),
   });
 
