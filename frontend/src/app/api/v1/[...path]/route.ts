@@ -23,11 +23,27 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
       signal: AbortSignal.timeout(30000),
     });
 
-    return new NextResponse(res.body, {
+    const nextRes = new NextResponse(res.body, {
       status: res.status,
       statusText: res.statusText,
-      headers: res.headers,
     });
+
+    // Kopiér alle response-headers undtagen Set-Cookie (håndteres separat)
+    res.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== "set-cookie") {
+        nextRes.headers.set(key, value);
+      }
+    });
+
+    // Set-Cookie skal kopieres én ad gangen — Headers-klassen joiner dem
+    // ellers med komma, hvilket ødelægger browser-parsingen.
+    const setCookies =
+      typeof (res.headers as Headers & { getSetCookie?(): string[] }).getSetCookie === "function"
+        ? (res.headers as Headers & { getSetCookie(): string[] }).getSetCookie()
+        : [];
+    setCookies.forEach((c) => nextRes.headers.append("set-cookie", c));
+
+    return nextRes;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 502 });

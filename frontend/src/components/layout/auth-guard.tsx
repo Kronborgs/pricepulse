@@ -24,7 +24,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
     retry: false,
   });
 
-  const { data: user, isLoading: userLoading } = useCurrentUser();
+  const { data: user, isLoading: userLoading, isError: userError } = useCurrentUser();
 
   useEffect(() => {
     if (setupLoading || userLoading) return;
@@ -34,7 +34,7 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
       return;
     }
 
-    if (!user) {
+    if (!user || userError) {
       router.replace("/login");
       return;
     }
@@ -42,11 +42,11 @@ export function AuthGuard({ children, adminOnly = false }: { children: React.Rea
     if (adminOnly && user.role !== "admin") {
       router.replace("/");
     }
-  }, [setupLoading, userLoading, setupStatus, user, adminOnly, router]);
+  }, [setupLoading, userLoading, setupStatus, user, userError, adminOnly, router]);
 
   if (setupLoading || userLoading) return null;
   if (setupStatus?.setup_required) return null;
-  if (!user) return null;
+  if (!user || userError) return null;
   if (adminOnly && user.role !== "admin") return null;
 
   return <>{children}</>;

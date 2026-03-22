@@ -96,13 +96,13 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         secure=_SECURE,
         samesite=_SAMESITE,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
-        path="/api/v1/auth/refresh",
+        path="/",
     )
 
 
 def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+    response.delete_cookie("refresh_token", path="/")
 
 
 def _user_to_read(user: User) -> dict:

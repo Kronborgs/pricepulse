@@ -18,7 +18,7 @@ function SSEMount() {
 /** Reads the current user's session_timeout_minutes and starts inactivity timer */
 function InactivityMount() {
   const { data: user } = useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["auth", "me"],
     queryFn: () => api.auth.me(),
     retry: false,
     staleTime: 5 * 60 * 1000,
