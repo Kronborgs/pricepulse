@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Kronborgs/pricepulse</Support>
   <Project>https://github.com/Kronborgs/pricepulse</Project>
-  <Overview>Self-hosted prisovervågningssystem til danske webshops. Overvåg priser på compumail, computersalg, elsalg, happii, komplett og proshop med interaktive prisgrafer og multi-store sammenligning.&#xD;&#xD;Kræver pricepulse-backend container \u2014 se README for fuld opsætning.</Overview>
+  <Overview>Self-hosted prisovervågningssystem til danske webshops. Overvåg produktpriser automatisk med interaktive prisgrafer og multi-store sammenligning.&#xD;&#xD;Kræver pricepulse-backend container — se README for fuld opsætning.</Overview>
   <Category>Tools:</Category>
   <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Kronborgs/pricepulse/main/unraid/pricepulse.xml</TemplateURL>
