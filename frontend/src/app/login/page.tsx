@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -14,6 +14,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const { data: setupStatus, isLoading: setupLoading } = useQuery({
+    queryKey: ["auth", "setup-status"],
+    queryFn: () => api.auth.setupStatus(),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!setupLoading && setupStatus?.setup_required) {
+      router.replace("/setup");
+    }
+  }, [setupLoading, setupStatus, router]);
+
   const mutation = useMutation({
     mutationFn: () => api.auth.login({ email, password }),
     onSuccess: (user) => {
@@ -24,6 +37,9 @@ export default function LoginPage() {
       setError(err.message.includes("401") ? "Forkert e-mail eller adgangskode" : err.message);
     },
   });
+
+  // Vis ingenting mens vi tjekker om setup er nødvendig
+  if (setupLoading || setupStatus?.setup_required) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950">
