@@ -20,12 +20,7 @@ export default function SetupPage() {
     retry: false,
   });
 
-  if (!statusLoading && !status?.setup_required) {
-    router.replace("/login");
-    return null;
-  }
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // Must always be called before any conditional return (Rules of Hooks)
   const mutation = useMutation({
     mutationFn: () =>
       api.auth.setup({ email, password, display_name: displayName || undefined }),
@@ -34,6 +29,11 @@ export default function SetupPage() {
   });
 
   if (statusLoading) return null;
+
+  if (status && !status.setup_required) {
+    router.replace("/login");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950">

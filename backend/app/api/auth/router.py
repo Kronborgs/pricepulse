@@ -8,7 +8,7 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -190,7 +190,7 @@ async def logout(
 async def refresh_token(
     response: Response,
     db: AsyncSession = Depends(get_db),
-    refresh_token: Annotated[str | None, __import__("fastapi", fromlist=["Cookie"]).Cookie()] = None,
+    refresh_token: Annotated[str | None, Cookie()] = None,
 ) -> dict:
     """
     Roter refresh token → ny access token + ny refresh token.
