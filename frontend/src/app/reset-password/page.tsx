@@ -12,6 +12,7 @@ function ResetForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const isInvite = searchParams.get("invite") === "1";
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -49,7 +50,7 @@ function ResetForm() {
     >
       <div className="space-y-1">
         <label className="text-xs text-slate-400" htmlFor="password">
-          Ny adgangskode
+          {isInvite ? "Vælg adgangskode" : "Ny adgangskode"}
         </label>
         <input
           id="password"
@@ -90,7 +91,7 @@ function ResetForm() {
         className="w-full flex items-center justify-center gap-2 rounded-md bg-[#29ABE2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#29ABE2]/90 disabled:opacity-60 transition-colors"
       >
         {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Skift adgangskode
+        {isInvite ? "Opret konto" : "Skift adgangskode"}
       </button>
     </form>
   );
@@ -100,17 +101,29 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950">
       <div className="w-full max-w-sm space-y-6 p-8 rounded-xl border border-slate-800 bg-slate-900">
-        <div className="text-center space-y-1">
-          <h1 className="text-xl font-bold tracking-tight text-slate-100">
-            Nyt kodeord
-          </h1>
-          <p className="text-sm text-slate-400">Vælg en ny adgangskode</p>
-        </div>
+        <Suspense fallback={null}>
+          <ResetPageHeader />
+        </Suspense>
 
         <Suspense>
           <ResetForm />
         </Suspense>
       </div>
+    </div>
+  );
+}
+
+function ResetPageHeader() {
+  const searchParams = useSearchParams();
+  const isInvite = searchParams.get("invite") === "1";
+  return (
+    <div className="text-center space-y-1">
+      <h1 className="text-xl font-bold tracking-tight text-slate-100">
+        {isInvite ? "Velkommen til PricePulse" : "Nyt kodeord"}
+      </h1>
+      <p className="text-sm text-slate-400">
+        {isInvite ? "Vælg en adgangskode for at aktivere din konto" : "Vælg en ny adgangskode"}
+      </p>
     </div>
   );
 }

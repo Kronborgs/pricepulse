@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { User } from "@/types";
-import { Loader2, UserPlus, Trash2 } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function UsersPage() {
@@ -13,10 +13,10 @@ export default function UsersPage() {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<"admin" | "superuser">("superuser");
   const [error, setError] = useState<string | null>(null);
+  const [inviteSent, setInviteSent] = useState<string | null>(null);
   // Per-row editing state: userId → pending timeout value (string for input)
   const [editingTimeout, setEditingTimeout] = useState<Record<string, string>>({});
 
@@ -32,11 +32,13 @@ export default function UsersPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () => api.adminUsers.create({ email, password, role, display_name: displayName || undefined }),
-    onSuccess: () => {
+    mutationFn: () => api.adminUsers.create({ email, role, display_name: displayName || undefined }),
+    onSuccess: (_data, _vars) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       setShowForm(false);
-      setEmail(""); setPassword(""); setDisplayName("");
+      setEmail(""); setDisplayName("");
+      setInviteSent(email);
+      setTimeout(() => setInviteSent(null), 6000);
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -87,13 +89,20 @@ export default function UsersPage() {
             </p>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { setShowForm(!showForm); setError(null); }}
             className="flex items-center gap-2 rounded-md bg-[#29ABE2] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#29ABE2]/90"
           >
             <UserPlus className="h-4 w-4" />
             Ny bruger
           </button>
         </div>
+
+        {inviteSent && (
+          <div className="flex items-center gap-2 rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
+            <Mail className="h-4 w-4 shrink-0" />
+            Invitationsmail sendt til <strong>{inviteSent}</strong>
+          </div>
+        )}
 
         {showForm && (
           <form
@@ -121,15 +130,6 @@ export default function UsersPage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               />
-              <input
-                type="password"
-                required
-                minLength={8}
-                placeholder="Adgangskode"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
-              />
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "admin" | "superuser")}
@@ -148,8 +148,8 @@ export default function UsersPage() {
                 disabled={createMutation.isPending}
                 className="flex items-center gap-2 rounded-md bg-[#29ABE2] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#29ABE2]/90 disabled:opacity-60"
               >
-                {createMutation.isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-                Opret
+                {createMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                Send invitation
               </button>
               <button
                 type="button"

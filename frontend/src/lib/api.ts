@@ -286,7 +286,7 @@ export const api = {
       if (params?.limit != null) qs.set("limit", String(params.limit));
       return apiFetch<UserList>(`/auth/admin/users?${qs}`);
     },
-    create: (data: { email: string; password: string; role?: string; display_name?: string }) =>
+    create: (data: { email: string; password?: string; role?: string; display_name?: string }) =>
       apiFetch<User>("/auth/admin/users", {
         method: "POST",
         body: JSON.stringify(data),

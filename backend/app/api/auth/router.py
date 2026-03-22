@@ -65,7 +65,7 @@ class SetupStatus(BaseModel):
 
 class CreateUserRequest(BaseModel):
     email: str
-    password: str
+    password: str | None = None  # Ingen password = send invitationsmail
     role: str = "superuser"
     display_name: str | None = None
 
@@ -237,7 +237,7 @@ async def forgot_password(
 <html><head><meta charset="UTF-8"></head>
 <body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
   <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
-    <img src="{base}/logo.png" alt="PricePulse" style="height:40px;display:block" />
+    <span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
   </div>
   <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
     <h1 style="color:#29ABE2;margin-top:0">Nulstil dit kodeord</h1>
@@ -308,19 +308,49 @@ async def create_user(
     try:
         user = await svc.create_user(
             email=body.email,
-            password=body.password,
+            password=body.password,  # None → tilfældig temp-kode
             role=body.role,
             display_name=body.display_name,
         )
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err))
 
-    # Send velkomstmail
+    # Send invitationsmail (med link til at sætte kodeord)
     try:
-        from app.services.smtp_service import smtp_service
-        await smtp_service.queue_welcome(db=db, user=user)
-    except Exception:
-        pass
+        from app.services.smtp_service import smtp_service, _app_url
+        inv_token = await svc.create_invitation_token(user.id)
+        base = _app_url()
+        invite_url = f"{base}/reset-password?token={inv_token}&invite=1"
+        display = user.display_name or user.email.split("@")[0]
+        body_html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
+    <span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
+  </div>
+  <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
+    <h1 style="color:#29ABE2;margin-top:0">Du er inviteret til PricePulse</h1>
+    <p>Hej {display},</p>
+    <p>Du har fået adgang til PricePulse. Klik på knappen nedenfor for at oprette dit kodeord og aktivere din konto. Linket er gyldigt i 7 dage.</p>
+    <p style="margin:24px 0">
+      <a href="{invite_url}" style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+        Opret dit kodeord
+      </a>
+    </p>
+    <p style="color:#aaa;font-size:12px;word-break:break-all">{invite_url}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="color:#999;font-size:12px;margin:0">PricePulse — automatisk prisovervågning</p>
+  </div>
+</body></html>"""
+        await smtp_service.send_email(
+            db,
+            to_email=user.email,
+            subject="Du er inviteret til PricePulse — opret dit kodeord",
+            body_html=body_html,
+        )
+        logger.info("invitation_mail_sendt", user_id=str(user.id))
+    except Exception as exc:
+        logger.warning("invitation_mail_fejl", user_id=str(user.id), error=str(exc))
 
     return _user_to_read(user)
 

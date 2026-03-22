@@ -93,15 +93,16 @@ class AuthService:
     async def create_user(
         self,
         email: str,
-        password: str,
+        password: str | None = None,
         role: str = "superuser",
         display_name: str | None = None,
     ) -> User:
-        """Opretter bruger. Kaster ValueError hvis email allerede er i brug."""
+        """Opretter bruger. Hvis password er None bruges en tilfældig temp-kode (til invitationsflow)."""
         existing = await self.db.scalar(select(User).where(User.email == email))
         if existing:
             raise ValueError("Email er allerede i brug")
-        return await self._create_user(email, password, role=role, display_name=display_name)
+        temp_pw = password or secrets.token_urlsafe(24)
+        return await self._create_user(email, temp_pw, role=role, display_name=display_name)
 
     async def _create_user(
         self, email: str, password: str, role: str, display_name: str | None
@@ -219,9 +220,22 @@ class AuthService:
         await self.db.commit()
         return raw
 
+    async def create_invitation_token(self, user_id: uuid.UUID) -> str:
+        """Opretter invitationstoken (7 dage) til ny bruger."""
+        raw = secrets.token_urlsafe(32)
+        expires = datetime.now(timezone.utc) + timedelta(days=7)
+        self.db.add(AuthToken(
+            user_id=user_id,
+            token_hash=_hash_token(raw),
+            token_type="invitation",
+            expires_at=expires,
+        ))
+        await self.db.commit()
+        return raw
+
     async def reset_password(self, raw_token: str, new_password: str) -> bool:
         """
-        Validerer reset-token og sætter nyt password.
+        Validerer reset-token (eller invitationstoken) og sætter nyt password.
         Returnerer True ved succes, False ved ugyldigt/udløbet token.
         """
         hashed = _hash_token(raw_token)
@@ -229,7 +243,7 @@ class AuthService:
         token_row = await self.db.scalar(
             select(AuthToken).where(
                 AuthToken.token_hash == hashed,
-                AuthToken.token_type == "password_reset",
+                AuthToken.token_type.in_(["password_reset", "invitation"]),
                 AuthToken.revoked_at.is_(None),
                 AuthToken.expires_at > now,
             )
