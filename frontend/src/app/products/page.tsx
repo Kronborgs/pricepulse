@@ -13,7 +13,7 @@ function wordSimilarity(a: string, b: string): number {
     new Set(s.toLowerCase().replace(/[^a-z0-9æøå ]/g, " ").split(/\s+/).filter(Boolean));
   const wa = words(a);
   const wb = words(b);
-  const intersection = [...wa].filter((w) => wb.has(w)).length;
+  const intersection = Array.from(wa).filter((w) => wb.has(w)).length;
   return intersection / Math.max(wa.size, wb.size, 1);
 }
 
