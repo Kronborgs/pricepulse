@@ -37,6 +37,15 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "email"
 _MAX_ATTEMPTS = 3
 
 
+def _app_url() -> str:
+    """Frontend base-URL fra cors_origins."""
+    for origin in settings.cors_origins.split(","):
+        origin = origin.strip()
+        if origin.startswith("http"):
+            return origin.rstrip("/")
+    return ""
+
+
 def _get_fernet() -> Any:
     """Returner Fernet-instans til kryptering/dekryptering af SMTP-kodeord."""
     from cryptography.fernet import Fernet
@@ -65,7 +74,13 @@ def _render_template(name: str, context: dict) -> str:
             autoescape=select_autoescape(["html"]),
         )
         tpl = env.get_template(name)
-        return tpl.render(**context)
+        base = _app_url()
+        merged = {
+            "app_url": base,
+            "logo_url": f"{base}/logo.png",
+            **context,
+        }
+        return tpl.render(**merged)
     except Exception:
         # Fallback til plain text
         return str(context)

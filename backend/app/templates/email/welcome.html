@@ -1,10 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><title>Velkommen</title></head>
-<body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a">
-  <h1 style="color:#29ABE2">Velkommen til PricePulse</h1>
-  <p>Hej {{ display_name }},</p>
-  <p>Din konto er nu oprettet. Du kan logge ind og begynde at overvåge priser på dine yndlingsprodukter.</p>
-  <p style="color:#666;font-size:13px">Denne email er sendt automatisk fra PricePulse.</p>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
+  <!-- Header -->
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px;">
+    <img src="{{ logo_url }}" alt="PricePulse" style="height:40px;display:block" />
+  </div>
+  <!-- Body -->
+  <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
+    <h1 style="color:#29ABE2;margin-top:0">Velkommen til PricePulse</h1>
+    <p>Hej {{ display_name }},</p>
+    <p>Din konto er nu oprettet. Du kan logge ind og begynde at overvåge priser på dine yndlingsprodukter.</p>
+    <p style="margin:24px 0">
+      <a href="{{ app_url }}"
+         style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+        Gå til PricePulse
+      </a>
+    </p>
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="color:#999;font-size:12px;margin:0">PricePulse — automatisk prisovervågning</p>
+  </div>
 </body>
 </html>

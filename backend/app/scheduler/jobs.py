@@ -12,11 +12,14 @@ from app.config import settings
 logger = structlog.get_logger()
 
 _scheduler: AsyncIOScheduler | None = None
+# Alias eksponeret til andre moduler (fx main.py)
+scheduler: AsyncIOScheduler | None = None
 
 
 async def start_scheduler() -> None:
-    global _scheduler
+    global _scheduler, scheduler
     _scheduler = AsyncIOScheduler(timezone="Europe/Copenhagen")
+    scheduler = _scheduler
     _scheduler.add_job(
         run_due_watches,
         trigger=IntervalTrigger(minutes=1),
