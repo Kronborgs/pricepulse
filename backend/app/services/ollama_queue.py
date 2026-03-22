@@ -187,6 +187,7 @@ async def _run_source_job(job: OllamaJob) -> None:
 
 async def _run_watch_job(job: OllamaJob) -> None:
     """Kør Ollama-analyse for en legacy v1 Watch og gem resultatet."""
+    import time
     from types import SimpleNamespace
 
     from sqlalchemy import select
@@ -194,13 +195,30 @@ async def _run_watch_job(job: OllamaJob) -> None:
     from app.database import AsyncSessionLocal
     from app.models.watch import Watch
     from app.services.watch_service import WatchService
+    from app.services.ai_job_service import AIJobService
 
     async with AsyncSessionLocal() as db:
         svc = WatchService(db)
+        ai_svc = AIJobService(db)
         stmt = select(Watch).where(Watch.id == job.entity_id)
         watch = (await db.execute(stmt)).scalar_one_or_none()
         if not watch or not watch.is_active:
             return
+
+        # Opret AI-job audit log
+        ai_job = await ai_svc.create(
+            job_type="parser_advice",
+            watch_id=watch.id,
+            prompt_summary=f"Parser-analyse (v1) for {watch.url[:100]}",
+            input_data={
+                "url": watch.url,
+                "extractors_tried": job.extractors_tried,
+                "status_code": job.status_code,
+            },
+        )
+
+        from app.config import settings
+        await ai_svc.mark_processing(ai_job.id, settings.ollama_parser_model)
 
         # Sæt previous_status tilbage så _try_ollama_retry fanger den korrekte prev
         restore_status = (
@@ -220,12 +238,30 @@ async def _run_watch_job(job: OllamaJob) -> None:
             error=None,
         )
 
-        # _try_ollama_retry: sætter watch.status = 'ai_analyzing' under kørsel,
-        # gendanner til prev_status (= restore_status) ved fejl, eller lader
-        # process_scraped_data sætte 'active' ved succes.
-        success = await svc._try_ollama_retry(watch, fake_scrape, None)
+        t0 = time.monotonic()
+        try:
+            # _try_ollama_retry: sætter watch.status = 'ai_analyzing' under kørsel,
+            # gendanner til prev_status (= restore_status) ved fejl, eller lader
+            # process_scraped_data sætte 'active' ved succes.
+            success = await svc._try_ollama_retry(watch, fake_scrape, None)
+            duration_ms = int((time.monotonic() - t0) * 1000)
 
-        if success is True:
-            # Overskriv 'active' → 'ai_active' for at markere AI-fundet pris
-            watch.status = "ai_active"
-            await db.commit()
+            if success is True:
+                # Overskriv 'active' → 'ai_active' for at markere AI-fundet pris
+                watch.status = "ai_active"
+                await db.commit()
+                await ai_svc.mark_completed(
+                    ai_job.id,
+                    summary="AI fandt pris (v1 watch)",
+                    duration_ms=duration_ms,
+                )
+            else:
+                await ai_svc.mark_completed(
+                    ai_job.id,
+                    summary="AI fandt ingen pris (v1 watch)",
+                    duration_ms=duration_ms,
+                )
+        except Exception as exc:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            await ai_svc.mark_failed(ai_job.id, str(exc))
+            raise

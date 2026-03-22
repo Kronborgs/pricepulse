@@ -32,12 +32,43 @@ import {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+let _refreshing: Promise<boolean> | null = null;
+
+async function _silentRefresh(): Promise<boolean> {
+  // Deduplicate — kun ét refresh-kald ad gangen
+  if (_refreshing) return _refreshing;
+  _refreshing = fetch(`${BASE_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+  })
+    .then((r) => r.ok)
+    .catch(() => false)
+    .finally(() => { _refreshing = null; });
+  return _refreshing;
+}
+
+async function apiFetch<T>(path: string, init?: RequestInit, _retried = false): Promise<T> {
   const url = `${BASE_URL}/api/v1${path}`;
   const res = await fetch(url, {
     headers: { "Content-Type": "application/json", ...init?.headers },
+    credentials: "include",
     ...init,
   });
+
+  // Forsøg stille token-refresh ved 401 (undtagen på selve auth-endpoints)
+  if (
+    res.status === 401 &&
+    !_retried &&
+    path !== "/auth/refresh" &&
+    path !== "/auth/login" &&
+    path !== "/auth/setup"
+  ) {
+    const refreshed = await _silentRefresh();
+    if (refreshed) {
+      return apiFetch<T>(path, init, true);
+    }
+  }
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status}: ${text}`);
@@ -260,10 +291,17 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: { display_name?: string; role?: string; is_active?: boolean }) =>
+    update: (id: string, data: { display_name?: string; role?: string; is_active?: boolean; session_timeout_minutes?: number }) =>
       apiFetch<User>(`/auth/admin/users/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetch(`${BASE_URL}/api/v1/auth/admin/users/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      }).then((r) => {
+        if (!r.ok && r.status !== 204) throw new Error(`API ${r.status}`);
       }),
   },
 

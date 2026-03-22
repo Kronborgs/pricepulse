@@ -344,6 +344,7 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   email_verified: boolean;
+  session_timeout_minutes: number | null;
   created_at: string;
 }
 

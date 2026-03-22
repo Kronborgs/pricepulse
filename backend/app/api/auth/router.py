@@ -74,6 +74,7 @@ class UpdateUserRequest(BaseModel):
     display_name: str | None = None
     role: str | None = None
     is_active: bool | None = None
+    session_timeout_minutes: int | None = None  # 0 = deaktiveret, None = uændret
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -95,13 +96,13 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         secure=_SECURE,
         samesite=_SAMESITE,
         max_age=settings.jwt_refresh_token_expire_days * 86400,
-        path="/api/auth/refresh",
+        path="/api/v1/auth/refresh",
     )
 
 
 def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/api/auth/refresh")
+    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
 
 
 def _user_to_read(user: User) -> dict:
@@ -112,6 +113,7 @@ def _user_to_read(user: User) -> dict:
         "role": user.role,
         "is_active": user.is_active,
         "email_verified": user.email_verified,
+        "session_timeout_minutes": getattr(user, "session_timeout_minutes", None),
         "created_at": user.created_at.isoformat(),
     }
 
@@ -187,15 +189,13 @@ async def logout(
 @router.post("/refresh")
 async def refresh_token(
     response: Response,
-    refresh_token: str | None = None,
     db: AsyncSession = Depends(get_db),
+    refresh_token: Annotated[str | None, __import__("fastapi", fromlist=["Cookie"]).Cookie()] = None,
 ) -> dict:
     """
     Roter refresh token → ny access token + ny refresh token.
-    Læser 'refresh_token' fra cookie (sat på /api/auth/refresh path).
+    Læser 'refresh_token' fra httpOnly cookie (path=/api/v1/auth/refresh).
     """
-    from fastapi import Cookie as FCookie
-    # refresh_token cookie er path-restricted til /api/auth/refresh
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Ingen refresh token")
 
@@ -322,6 +322,34 @@ async def update_user(
         user.is_active = body.is_active
         if not body.is_active:
             user.deactivated_at = datetime.now(timezone.utc)
+    if body.session_timeout_minutes is not None:
+        user.session_timeout_minutes = (
+            None if body.session_timeout_minutes == 0 else body.session_timeout_minutes
+        )
     await db.commit()
     await db.refresh(user)
     return _user_to_read(user)
+
+
+@router.delete("/admin/users/{user_id}", status_code=204)
+async def delete_user(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
+) -> None:
+    """
+    Slet bruger permanent inkl. alle tokens.
+    Hvis ingen brugere er tilbage, returnerer /setup-status setup_required=True igen.
+    """
+    from sqlalchemy import delete as sa_delete
+    from app.models.auth_token import AuthToken
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+
+    # Slet tokens først (FK constraint)
+    await db.execute(sa_delete(AuthToken).where(AuthToken.user_id == user_id))
+    await db.delete(user)
+    await db.commit()
+    logger.info("user_deleted", user_id=str(user_id))
