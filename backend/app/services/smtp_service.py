@@ -96,14 +96,15 @@ class SMTPService:
         try:
             import aiosmtplib
             password = decrypt_password(config.password_enc)
+            msg = self._build_message(
+                from_email=config.from_email,
+                from_name=config.from_name,
+                to_email=to_email,
+                subject=subject,
+                body_html=body_html,
+            )
             await aiosmtplib.send(
-                message=self._build_message(
-                    from_email=config.from_email,
-                    from_name=config.from_name,
-                    to_email=to_email,
-                    subject=subject,
-                    body_html=body_html,
-                ),
+                msg,
                 hostname=config.host,
                 port=config.port,
                 start_tls=config.use_tls,
