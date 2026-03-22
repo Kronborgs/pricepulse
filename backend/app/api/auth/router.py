@@ -264,10 +264,10 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
 ) -> dict:
-    from sqlalchemy import select
+    from sqlalchemy import select, func
     result = await db.execute(select(User).offset(skip).limit(limit))
     users = result.scalars().all()
-    total = await db.scalar(__import__("sqlalchemy", fromlist=["func"]).func.count(User.id))
+    total = await db.scalar(select(func.count(User.id)))
     return {
         "items": [_user_to_read(u) for u in users],
         "total": total or 0,

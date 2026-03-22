@@ -26,7 +26,7 @@ export default function UsersPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: listError } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: () => api.adminUsers.list({ limit: 100 }),
   });
@@ -165,6 +165,10 @@ export default function UsersPage() {
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+          </div>
+        ) : listError ? (
+          <div className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+            Kunne ikke hente brugerliste: {(listError as Error).message}
           </div>
         ) : (
           <div className="rounded-lg border border-slate-800 overflow-hidden">
