@@ -119,14 +119,15 @@ async def test_smtp(
     if not result["ok"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Forbindelsesfejl"))
 
-    ok = await svc.send_email(
-        db,
-        to_email=body.to_email,
-        subject="PricePulse SMTP test",
-        body_html="<p>Test-mail fra PricePulse. SMTP fungerer korrekt.</p>",
-    )
-    if not ok:
-        raise HTTPException(status_code=500, detail="Mail-udsendelse fejlede")
+    try:
+        await svc.send_email(
+            db,
+            to_email=body.to_email,
+            subject="PricePulse SMTP test",
+            body_html="<p>Test-mail fra PricePulse. SMTP fungerer korrekt.</p>",
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return {"ok": True}
 
 

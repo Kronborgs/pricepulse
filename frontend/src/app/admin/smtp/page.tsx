@@ -205,7 +205,7 @@ export default function SMTPPage() {
               <button
                 onClick={() => { setTestResult(null); testMutation.mutate(); }}
                 disabled={testMutation.isPending || !testEmail}
-                className="flex items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm hover:bg-white/5 disabled:opacity-60"
+                className="flex items-center gap-2 rounded-md bg-[#29ABE2] px-3 py-2 text-sm font-semibold text-white hover:bg-[#29ABE2]/90 disabled:opacity-60"
               >
                 {testMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send test"}
               </button>

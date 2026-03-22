@@ -114,7 +114,7 @@ class SMTPService:
             return True
         except Exception as exc:
             logger.error("mail_fejl", to=to_email, error=str(exc))
-            return False
+            raise
 
     def _build_message(
         self,
@@ -249,11 +249,11 @@ class SMTPService:
 
             for item in rows:
                 item.attempts += 1
-                ok = await self.send_email(db, item.to_email, item.subject or "", item.body_html or "")
-                if ok:
+                try:
+                    await self.send_email(db, item.to_email, item.subject or "", item.body_html or "")
                     item.status = "sent"
                     item.sent_at = datetime.now(timezone.utc)
-                else:
+                except Exception:
                     if item.attempts >= _MAX_ATTEMPTS:
                         item.status = "failed"
                 await db.commit()
