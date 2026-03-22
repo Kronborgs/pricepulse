@@ -97,13 +97,14 @@ def _slim_html_for_prompt(html: str, max_bytes: int = 1_500) -> str:
 
     Fjerner <script>, <style>, <noscript>, <svg> og <footer>/<nav>/<header>.
     Stripper alle attributter undtagen class, id, href, itemprop, content,
-    data-price og data-testid — fjerner aria-*, role, tabindex, style etc.
-    som fylder mange tokens uden at hjælpe med CSS-selektor-genkendelse.
-    Derefter trunkeres til max_bytes.
+    data-price og data-testid.
+    Forsøger at finde pris-relevante elementer og fokusere på dem frem for
+    at slice fra toppen — sikrer at price-elementet er i de første max_bytes.
     """
     _KEEP_ATTRS = {"class", "id", "href", "itemprop", "content", "data-price", "data-testid", "data-product-price"}
     # Matcher React CSS module hash-suffikser: "-sc-1a2b3c4d-0" eller "-abcdef12"
     _CSS_HASH_RE = re.compile(r'-[a-f0-9]{6,}(?:-\d+)?', re.IGNORECASE)
+    _PRICE_CLASS_RE = re.compile(r'price|pris|amount|value|cost', re.IGNORECASE)
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(html, "lxml")
@@ -119,7 +120,27 @@ def _slim_html_for_prompt(html: str, max_bytes: int = 1_500) -> str:
                         tag.attrs[attr] = [_CSS_HASH_RE.sub('', c) for c in classes]
                     else:
                         tag.attrs[attr] = _CSS_HASH_RE.sub('', classes)
-        slimmed = str(soup)
+
+        # Forsøg at finde pris-relevant del af DOM frem for at slice fra toppen
+        price_el = (
+            soup.find(attrs={"data-price": True}) or
+            soup.find(attrs={"data-product-price": True}) or
+            soup.find(attrs={"itemprop": "price"}) or
+            soup.find(attrs={"itemprop": "offers"}) or
+            soup.find(class_=_PRICE_CLASS_RE)
+        )
+        if price_el:
+            # Gå op til 4 niveauer for at få pris-element i kontekst
+            context = price_el
+            for _ in range(4):
+                parent = context.parent
+                if parent and parent.name not in ("[document]", "html", "body", None):
+                    context = parent
+                else:
+                    break
+            slimmed = str(context)
+        else:
+            slimmed = str(soup)
     except Exception:
         slimmed = html
 

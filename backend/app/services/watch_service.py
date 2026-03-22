@@ -182,6 +182,11 @@ class WatchService:
                             "Aktivér Playwright-provider i watch-indstillinger (Ollama: siden kræver JS-rendering)"
                         )
 
+            if advice and not (advice.price_selector and advice.confidence >= 0.5):
+                logger.info("ollama_ingen_selector", watch_id=str(watch.id),
+                            selector=advice.price_selector, confidence=advice.confidence,
+                            page_type=advice.page_type, requires_js=advice.requires_js)
+
             if advice and advice.price_selector and advice.confidence >= 0.5:
                 logger.info("ollama_css_forslag", watch_id=str(watch.id),
                             selector=advice.price_selector, confidence=advice.confidence)
