@@ -229,14 +229,38 @@ async def forgot_password(
     svc = AuthService(db)
     raw_token = await svc.create_password_reset_token(body.email)
     if raw_token:
-        # Kø reset-mail — importér her for at undgå cirkulære imports
         try:
-            from app.services.smtp_service import smtp_service
-            await smtp_service.queue_password_reset(
-                db=db, email=body.email, token=raw_token
+            from app.services.smtp_service import smtp_service, _app_url
+            base = _app_url()
+            reset_url = f"{base}/reset-password?token={raw_token}"
+            body_html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
+    <img src="{base}/logo.png" alt="PricePulse" style="height:40px;display:block" />
+  </div>
+  <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
+    <h1 style="color:#29ABE2;margin-top:0">Nulstil dit kodeord</h1>
+    <p>Klik på knappen nedenfor for at nulstille dit kodeord. Linket er gyldigt i 2 timer.</p>
+    <p style="margin:24px 0">
+      <a href="{reset_url}" style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+        Nulstil kodeord
+      </a>
+    </p>
+    <p style="color:#aaa;font-size:12px;word-break:break-all">{reset_url}</p>
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="color:#999;font-size:12px;margin:0">PricePulse — automatisk prisovervågning</p>
+  </div>
+</body></html>"""
+            await smtp_service.send_email(
+                db,
+                to_email=body.email,
+                subject="Nulstil dit kodeord — PricePulse",
+                body_html=body_html,
             )
-        except Exception:
-            logger.warning("forgot_password_mail_fejl", email=body.email)
+            logger.info("password_reset_mail_sendt", email=body.email)
+        except Exception as exc:
+            logger.warning("forgot_password_mail_fejl", email=body.email, error=str(exc))
     return {"ok": True}
 
 

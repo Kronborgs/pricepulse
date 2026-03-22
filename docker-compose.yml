@@ -13,6 +13,7 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-production}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       SECRET_KEY: ${SECRET_KEY:-insecure-dev-key-change-me}
       SCRAPER_DOMAIN_DELAY: ${SCRAPER_DOMAIN_DELAY:-5}

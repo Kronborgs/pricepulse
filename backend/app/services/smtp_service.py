@@ -38,7 +38,9 @@ _MAX_ATTEMPTS = 3
 
 
 def _app_url() -> str:
-    """Frontend base-URL fra cors_origins."""
+    """Frontend base-URL: frontend_url har forrang, ellers første cors_origins-værdi."""
+    if settings.frontend_url.strip():
+        return settings.frontend_url.strip().rstrip("/")
     for origin in settings.cors_origins.split(","):
         origin = origin.strip()
         if origin.startswith("http"):

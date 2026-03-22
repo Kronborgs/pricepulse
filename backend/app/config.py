@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # ─── CORS ─────────────────────────────────────────────────
     cors_origins: str = "http://localhost:3000"
 
+    # ─── Frontend ─────────────────────────────────────────────
+    # Bruges til links i emails (glemt kodeord, notifikationer).
+    # Sæt til den URL brugeren tilgår frontenden fra, fx http://10.10.80.21:3000
+    # Hvis tom bruges første cors_origins-opslag som fallback.
+    frontend_url: str = ""
+
     # ─── Auth / JWT ───────────────────────────────────────────
     # Access token: kortlivet (15 min). Refresh token: 30 dage.
     jwt_access_token_expire_minutes: int = 15
