@@ -31,7 +31,8 @@
 			"py": true,
 			"&": true,
 			"docker run": true,
-			"git tag": true
+			"git tag": true,
+			"npx tsc": true
 		},
 		"chat.agent.maxRequests": 150
 	}
