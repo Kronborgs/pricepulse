@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -101,6 +102,8 @@ def _slim_html_for_prompt(html: str, max_bytes: int = 2_500) -> str:
     Derefter trunkeres til max_bytes.
     """
     _KEEP_ATTRS = {"class", "id", "href", "itemprop", "content", "data-price", "data-testid", "data-product-price"}
+    # Matcher React CSS module hash-suffikser: "-sc-1a2b3c4d-0" eller "-abcdef12"
+    _CSS_HASH_RE = re.compile(r'-[a-f0-9]{6,}(?:-\d+)?', re.IGNORECASE)
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(html, "lxml")
@@ -110,6 +113,12 @@ def _slim_html_for_prompt(html: str, max_bytes: int = 2_500) -> str:
             for attr in list(tag.attrs):
                 if attr not in _KEEP_ATTRS:
                     del tag.attrs[attr]
+                elif attr == "class":
+                    classes = tag.attrs[attr]
+                    if isinstance(classes, list):
+                        tag.attrs[attr] = [_CSS_HASH_RE.sub('', c) for c in classes]
+                    else:
+                        tag.attrs[attr] = _CSS_HASH_RE.sub('', classes)
         slimmed = str(soup)
     except Exception:
         slimmed = html
