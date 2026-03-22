@@ -9,7 +9,7 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Kronborgs/pricepulse</Support>
   <Project>https://github.com/Kronborgs/pricepulse</Project>
-  <Overview>Self-hosted prisovervågningssystem til danske webshops. Overvåg priser på compumail, computersalg, elsalg, happii, komplett og proshop med interaktive prisgrafer og multi-store sammenligning.&#xD;&#xD;Kræver også pricepulse-backend, PostgreSQL og Redis containers — se README for fuld Docker Compose opsætning.</Overview>
+  <Overview>Self-hosted prisovervågningssystem til danske webshops. Overvåg priser på compumail, computersalg, elsalg, happii, komplett og proshop med interaktive prisgrafer og multi-store sammenligning.&#xD;&#xD;Kræver pricepulse-backend container \u2014 se README for fuld opsætning.</Overview>
   <Category>Tools:</Category>
   <WebUI>http://[IP]:[PORT:3000]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Kronborgs/pricepulse/main/unraid/pricepulse.xml</TemplateURL>
@@ -22,6 +22,6 @@
   <DonateLink/>
   <Requires>pricepulse-backend</Requires>
   <Config Name="Frontend Port" Target="3000" Default="3000" Mode="tcp" Description="Porten som PricePulse UI er tilgængeligt på" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
-  <Config Name="Backend URL (server-side)" Target="NEXT_PUBLIC_API_URL" Default="http://pricepulse-backend:8000" Mode="" Description="URL til backend — brug containernavnet http://pricepulse-backend:8000 når begge containere er på dockernet. Skift til LAN-IP hvis de er på forskelligt netværk." Type="Variable" Display="always" Required="true" Mask="false">http://pricepulse-backend:8000</Config>
+  <Config Name="Backend URL" Target="NEXT_PUBLIC_API_URL" Default="http://pricepulse-backend:8000" Mode="" Description="URL til backend API — brug containernavnet http://pricepulse-backend:8000 når begge containere er på dockernet. Ved Reverse Proxy med HTTPS: sæt til https://api.ditdomæne.dk eller https://ditdomæne.dk/api" Type="Variable" Display="always" Required="true" Mask="false">http://pricepulse-backend:8000</Config>
   <Config Name="Time Zone" Target="TZ" Default="Europe/Copenhagen" Mode="" Description="Find din tidszone her: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">Europe/Copenhagen</Config>
 </Container>
