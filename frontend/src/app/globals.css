@@ -2,60 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 199 76% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 210 16% 94%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 16% 94%;
-    --muted-foreground: 215 14% 47%;
-    --accent: 33 93% 54%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 90%;
-    --input: 214 32% 90%;
-    --ring: 199 76% 53%;
-    --chart-1: 199 76% 53%;
-    --chart-2: 83 53% 51%;
-    --chart-3: 33 93% 54%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 262 83% 58%;
-    --radius: 0.625rem;
-  }
+/*
+  Design tokens — PricePulse dark theme
+  Primary:  #29ABE2  (brand blue)
+  Accent:   #8DC63F  (brand green)
+  Palette:  Tailwind slate-950 → slate-700
+*/
 
+@layer base {
+  :root,
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 210 20% 96%;
-    --card: 222 47% 9%;
-    --card-foreground: 210 20% 96%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 20% 96%;
-    --primary: 199 76% 58%;
-    --primary-foreground: 222 47% 7%;
-    --secondary: 215 28% 16%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 215 28% 14%;
-    --muted-foreground: 215 20% 58%;
-    --accent: 33 93% 58%;
+    /* Page & layout */
+    --background: 222 47% 8%;          /* ~slate-950, main content area */
+    --foreground: 213 27% 84%;         /* ~slate-300, body text */
+
+    /* Cards / panels */
+    --card: 222 39% 11%;               /* ~slate-900, elevated surfaces */
+    --card-foreground: 213 27% 84%;
+    --popover: 222 39% 11%;
+    --popover-foreground: 213 27% 84%;
+
+    /* Primary action — brand blue #29ABE2 */
+    --primary: 199 75% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary — slate-800 */
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 213 27% 84%;
+
+    /* Muted backgrounds & placeholder text */
+    --muted: 215 28% 14%;              /* subtle bg, hover overlays */
+    --muted-foreground: 215 16% 56%;   /* ~slate-500, descriptions */
+
+    /* Accent — brand green #8DC63F */
+    --accent: 83 52% 51%;
     --accent-foreground: 222 47% 7%;
-    --destructive: 0 63% 31%;
+
+    /* Destructive — visible red */
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 27% 16%;
-    --input: 215 27% 16%;
-    --ring: 199 76% 58%;
-    --chart-1: 199 76% 58%;
-    --chart-2: 83 53% 51%;
-    --chart-3: 33 93% 58%;
-    --chart-4: 0 62% 50%;
-    --chart-5: 262 83% 58%;
+
+    /* Borders & inputs */
+    --border: 217 28% 20%;             /* ~slate-700/800 dividers */
+    --input: 217 28% 17%;              /* input borders */
+    --ring: 199 75% 52%;               /* focus ring = brand blue */
+
+    /* Charts */
+    --chart-1: 199 75% 52%;            /* blue */
+    --chart-2: 83 52% 51%;             /* green */
+    --chart-3: 34 93% 54%;             /* orange */
+    --chart-4: 0 70% 50%;              /* red */
+    --chart-5: 262 83% 58%;            /* purple */
+
+    --radius: 0.625rem;
   }
 }
 
@@ -65,5 +64,22 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  ::placeholder {
+    color: hsl(215 16% 40%);
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(222 47% 8%);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(217 28% 25%);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(217 28% 35%);
   }
 }

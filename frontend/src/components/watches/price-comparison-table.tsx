@@ -81,11 +81,11 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
               const isBest = src.id === bestSourceId;
               const isWorking = pauseMutation.isPending || resumeMutation.isPending || checkMutation.isPending;
               return (
-                <tr key={src.id} className={`hover:bg-muted/20 transition-colors ${isBest ? "bg-green-50/50 dark:bg-green-950/10" : ""}`}>
+                <tr key={src.id} className={`hover:bg-slate-800/50 transition-colors ${isBest ? "bg-[#8DC63F]/5" : ""}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {isBest && (
-                        <span className="inline-flex items-center rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium">
+                        <span className="inline-flex items-center rounded-full bg-[#8DC63F]/15 text-[#8DC63F] px-1.5 py-0.5 text-xs font-medium">
                           Bedst
                         </span>
                       )}

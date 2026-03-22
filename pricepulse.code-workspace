@@ -33,7 +33,11 @@
 			"docker run": true,
 			"git tag": true,
 			"npx tsc": true,
-			"npm run build": true
+			"npm run build": true,
+			"/^cmd /c \"type C:\\\\Users\\\\Kronborgs_LabPC\\\\pricepulse\\\\frontend\\\\src\\\\app\\\\page\\.tsx 2>&1 \\| head -200\"$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
 		},
 		"chat.agent.maxRequests": 150
 	}

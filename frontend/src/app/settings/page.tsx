@@ -123,7 +123,7 @@ function OllamaSection() {
           <button
             onClick={() => refetch()}
             disabled={isRefetching}
-            className="p-1.5 rounded hover:bg-accent text-muted-foreground transition-colors"
+            className="p-1.5 rounded hover:bg-white/8 text-muted-foreground transition-colors"
             title="Genindlæs status"
           >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />

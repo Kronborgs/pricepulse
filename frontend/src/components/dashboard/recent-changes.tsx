@@ -55,9 +55,9 @@ function EventRow({ event }: { event: PriceEvent }) {
       <div
         className={`flex-shrink-0 rounded-full p-1.5 ${
           isDrop
-            ? "bg-green-100 text-green-600 dark:bg-green-900/20"
+            ? "bg-green-900/30 text-[#8DC63F]"
             : isRise
-            ? "bg-red-100 text-red-600 dark:bg-red-900/20"
+            ? "bg-red-900/30 text-red-400"
             : "bg-muted text-muted-foreground"
         }`}
       >

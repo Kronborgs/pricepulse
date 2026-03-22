@@ -172,7 +172,7 @@ export function AddWatchDialog() {
           {mode === "single" && (
             <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
               {lastAdded && (
-                <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+                <div className="flex items-center gap-2 rounded-lg bg-[#8DC63F]/10 border border-[#8DC63F]/25 px-3 py-2 text-sm text-[#8DC63F]">
                   <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   <span><strong>{lastAdded}</strong> tilføjet — indtast ny URL for at fortsætte</span>
                 </div>

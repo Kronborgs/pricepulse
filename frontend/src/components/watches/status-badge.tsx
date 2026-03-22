@@ -4,15 +4,15 @@ import { ProductWatchStatus, SourceStatus, WatchStatus } from "@/types";
 type AnyStatus = WatchStatus | ProductWatchStatus | SourceStatus;
 
 const STATUS_CONFIG: Record<AnyStatus, { label: string; class: string; pulse?: boolean }> = {
-  pending:   { label: "Afventer",        class: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400" },
-  active:    { label: "Aktiv",           class: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400" },
-  paused:    { label: "Pauset",          class: "bg-slate-100 text-slate-600 dark:bg-slate-900/20 dark:text-slate-400" },
-  error:     { label: "Fejl",            class: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400" },
-  blocked:   { label: "Blokeret",        class: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400" },
-  partial:   { label: "Delvist",         class: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400" },
-  archived:  { label: "Arkiveret",       class: "bg-zinc-100 text-zinc-500 dark:bg-zinc-900/20 dark:text-zinc-500" },
-  ai_analyzing: { label: "AI analyserer",   class: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400", pulse: true },
-  ai_active:    { label: "AI analyse",       class: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400" },
+  pending:   { label: "Afventer",        class: "bg-yellow-900/20 text-yellow-400" },
+  active:    { label: "Aktiv",           class: "bg-[#8DC63F]/15 text-[#8DC63F]" },
+  paused:    { label: "Pauset",          class: "bg-slate-800 text-slate-400" },
+  error:     { label: "Fejl",            class: "bg-red-900/20 text-red-400" },
+  blocked:   { label: "Blokeret",        class: "bg-orange-900/20 text-orange-400" },
+  partial:   { label: "Delvist",         class: "bg-blue-900/20 text-blue-400" },
+  archived:  { label: "Arkiveret",       class: "bg-zinc-900/20 text-zinc-500" },
+  ai_analyzing: { label: "AI analyserer",   class: "bg-purple-900/20 text-purple-400", pulse: true },
+  ai_active:    { label: "AI analyse",       class: "bg-purple-900/20 text-purple-400" },
 };
 
 export function StatusBadge({ status }: { status: AnyStatus }) {

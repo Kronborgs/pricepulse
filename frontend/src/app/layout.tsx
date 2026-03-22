@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="da" suppressHydrationWarning>
+    <html lang="da" className="dark" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
           <div className="flex flex-col h-screen overflow-hidden bg-background">

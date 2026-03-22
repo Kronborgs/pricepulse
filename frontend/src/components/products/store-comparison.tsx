@@ -63,8 +63,8 @@ export function StoreComparison({ productId }: StoreComparisonProps) {
             return (
               <tr
                 key={watch.id}
-                className={`transition-colors hover:bg-muted/20 ${
-                  isCheapest ? "bg-green-50 dark:bg-green-900/10" : ""
+                className={`transition-colors hover:bg-slate-800/50 ${
+                  isCheapest ? "bg-[#8DC63F]/5" : ""
                 }`}
               >
                 <td className="px-4 py-3">
@@ -72,7 +72,7 @@ export function StoreComparison({ productId }: StoreComparisonProps) {
                     {watch.shop?.name ?? watch.url}
                   </span>
                   {isCheapest && (
-                    <span className="ml-2 rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                    <span className="ml-2 rounded-full bg-[#8DC63F]/15 px-1.5 py-0.5 text-xs font-medium text-[#8DC63F]">
                       Billigst
                     </span>
                   )}

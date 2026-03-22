@@ -29,15 +29,15 @@ export function SourceStatusPill({ source, isBest }: Props) {
     <Link
       href={`/sources/${source.id}`}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-accent",
-        isBest ? "border-green-500/40 bg-green-50 dark:bg-green-950/20" : "border-border bg-card"
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-slate-700/50",
+        isBest ? "border-[#8DC63F]/30 bg-[#8DC63F]/5" : "border-border bg-card"
       )}
       title={`${domain} — ${source.status}`}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full flex-shrink-0", dotClass)} />
       <span className="truncate max-w-[120px]">{domain}</span>
       {source.last_price != null && (
-        <span className={cn("font-medium tabular-nums", isBest ? "text-green-700 dark:text-green-400" : "")}>
+        <span className={cn("font-medium tabular-nums", isBest ? "text-[#8DC63F]" : "")}>
           {formatPrice(source.last_price, source.last_currency)}
         </span>
       )}
