@@ -154,7 +154,7 @@ export default function UsersPage() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-slate-700 px-3 py-1.5 text-sm hover:bg-white/5"
+                className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-white hover:bg-white/5"
               >
                 Annuller
               </button>

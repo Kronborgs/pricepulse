@@ -140,32 +140,32 @@ export default function AdminDataPage() {
           </button>
         </div>
 
-        <div className="rounded-lg border border-slate-800 overflow-hidden">
+        <div className="rounded-lg border border-slate-700 overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Datatype</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider w-24">Antal</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider w-48"></th>
+                <tr className="border-b border-slate-700 bg-slate-800">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-200 uppercase tracking-wider">Datatype</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-200 uppercase tracking-wider w-24">Antal</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-200 uppercase tracking-wider w-52"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-700">
                 {rows.map((row) => {
                   const count = stats?.[row.key] ?? 0;
                   const mut = row.deleteKey ? mutations[row.deleteKey] : null;
                   const isPending = mut?.isPending ?? false;
                   return (
-                    <tr key={row.key} className="hover:bg-slate-900/30">
+                    <tr key={row.key} className="hover:bg-slate-800/60">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-200">{row.label}</div>
-                        <div className="text-xs text-slate-500">{row.description}</div>
+                        <div className="font-semibold text-white">{row.label}</div>
+                        <div className="text-xs text-slate-400">{row.description}</div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums text-slate-300">
+                      <td className="px-4 py-3 text-right font-mono tabular-nums text-white font-bold text-base">
                         {count.toLocaleString("da-DK")}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -173,7 +173,7 @@ export default function AdminDataPage() {
                           <button
                             onClick={() => handleDelete(row)}
                             disabled={isPending || count === 0}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-red-900/40 border border-red-800/50 px-2.5 py-1 text-xs font-medium text-red-400 hover:bg-red-900/70 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="inline-flex items-center gap-1.5 rounded-md bg-red-700/60 border border-red-600/60 px-2.5 py-1 text-xs font-semibold text-red-200 hover:bg-red-600/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             {isPending ? (
                               <Loader2 className="h-3 w-3 animate-spin" />

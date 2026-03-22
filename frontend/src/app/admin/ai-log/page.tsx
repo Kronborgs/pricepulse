@@ -70,7 +70,7 @@ export default function AILogPage() {
           </div>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm hover:bg-white/5"
+            className="hidden"
           >
             <RefreshCw className="h-4 w-4" />
             Opdater
