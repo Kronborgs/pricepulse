@@ -89,7 +89,7 @@ def _truncate_html(html: str, max_bytes: int = 12_000) -> str:
     return encoded.decode("utf-8", errors="ignore")
 
 
-def _slim_html_for_prompt(html: str, max_bytes: int = 3_500) -> str:
+def _slim_html_for_prompt(html: str, max_bytes: int = 2_500) -> str:
     """
     Reducér HTML til kun synligt DOM-indhold til Ollama-prompts.
 

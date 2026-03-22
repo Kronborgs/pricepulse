@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     ollama_parser_model: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_normalize_model: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_timeout: int = 30
+    ollama_timeout: int = 120
     # Cache LLM-resultater i antal sekunder (24 timer standard)
     ollama_cache_ttl: int = 86400
 
