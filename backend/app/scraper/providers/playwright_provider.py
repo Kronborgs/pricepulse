@@ -48,7 +48,30 @@ class PlaywrightProvider(FetchProvider):
                 )
                 page = await context.new_page()
 
-                # Bloker unødvendige ressourcer for hastighed
+                # Maskér automatiseringsmarkører — forhindrer de fleste bot-detektionssystemer
+                await page.add_init_script("""
+                    // Fjern navigator.webdriver flag
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+
+                    // Giv realistisk plugins-liste
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5],
+                    });
+
+                    // Giv realistisk sprog
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['da-DK', 'da', 'en-US', 'en'],
+                    });
+
+                    // Fjern Playwright-specifikke window-properties
+                    delete window.__playwright;
+                    delete window.__pw_manual;
+
+                    // Chrome runtime (forventes af mange sites)
+                    if (!window.chrome) {
+                        window.chrome = { runtime: {} };
+                    }
+                """)
                 await page.route(
                     "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf}",
                     lambda route: route.abort(),

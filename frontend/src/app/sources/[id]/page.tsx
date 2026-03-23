@@ -68,7 +68,7 @@ export default function SourceDetailPage({
     onSuccess: qInvalidate,
   });
   const updateMutation = useMutation({
-    mutationFn: (data: { url?: string; interval_override_min?: number | null }) =>
+    mutationFn: (data: { url?: string; interval_override_min?: number | null; provider?: string }) =>
       api.sources.update(id, data),
     onSuccess: () => {
       qInvalidate();
@@ -282,6 +282,44 @@ export default function SourceDetailPage({
               : "Bruger watch-standardinterval"}
           </p>
         )}
+      </div>
+
+      {/* Fetch method */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Hente-metode</h2>
+          <span className="text-xs text-muted-foreground">
+            Aktiv: <span className="font-medium text-foreground">{source.provider === "playwright" ? "Browser/JS" : "HTTP"}</span>
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Brug Browser/JS hvis siden kræver JavaScript-rendering eller har bot-beskyttelse.
+          Kræver at Playwright er aktiveret i backend (PLAYWRIGHT_ENABLED=true).
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => updateMutation.mutate({ provider: "http" })}
+            disabled={updateMutation.isPending || source.provider === "http"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              source.provider === "http"
+                ? "border-[#29ABE2] bg-[#29ABE2]/10 text-[#29ABE2] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            ⚡ HTTP (hurtig)
+          </button>
+          <button
+            onClick={() => updateMutation.mutate({ provider: "playwright" })}
+            disabled={updateMutation.isPending || source.provider === "playwright"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              source.provider === "playwright"
+                ? "border-[#8DC63F] bg-[#8DC63F]/10 text-[#8DC63F] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            🌐 Browser/JS (Playwright)
+          </button>
+        </div>
       </div>
 
       {/* Diagnostic */}
