@@ -46,6 +46,11 @@ export default function WatchDetailPage({
     },
   });
 
+  const providerMutation = useMutation({
+    mutationFn: (provider: string) => api.watches.update(id, { provider }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["watch", id] }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => api.watches.delete(id),
     onSuccess: () => router.push("/watches"),
@@ -166,6 +171,43 @@ export default function WatchDetailPage({
       <div className="rounded-lg border border-border bg-card p-5">
         <h2 className="text-base font-semibold mb-4">Prishistorik</h2>
         <PriceChart watchId={id} />
+      </div>
+
+      {/* Fetch method */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Hente-metode</h2>
+          <span className="text-xs text-muted-foreground">
+            Aktiv: <span className="font-medium text-foreground">{watch.provider === "playwright" ? "Browser/JS" : "HTTP"}</span>
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Skift til Browser/JS hvis siden kræver JavaScript eller har bot-beskyttelse (kræver PLAYWRIGHT_ENABLED=true i backend).
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => providerMutation.mutate("http")}
+            disabled={providerMutation.isPending || watch.provider === "http"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              watch.provider === "http"
+                ? "border-[#29ABE2] bg-[#29ABE2]/10 text-[#29ABE2] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            ⚡ HTTP (hurtig)
+          </button>
+          <button
+            onClick={() => providerMutation.mutate("playwright")}
+            disabled={providerMutation.isPending || watch.provider === "playwright"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              watch.provider === "playwright"
+                ? "border-[#8DC63F] bg-[#8DC63F]/10 text-[#8DC63F] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            🌐 Browser/JS (Playwright)
+          </button>
+        </div>
       </div>
 
       {/* Diagnostic panel — vis kun ved fejl eller hvis der er diagnostik */}

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ExternalLink, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Pause, Pencil, Play, RefreshCw, Trash2, X } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WatchSource, SourceStatus } from "@/types";
 import { StatusBadge } from "./status-badge";
@@ -23,6 +24,8 @@ interface Props {
 
 export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) {
   const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editUrl, setEditUrl] = useState("");
 
   const pauseMutation = useMutation({
     mutationFn: (id: string) => api.sources.pause(id),
@@ -39,6 +42,14 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => api.sources.archive(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["product-watch", watchId] }),
+  });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, url }: { id: string; url: string }) =>
+      api.sources.update(id, { url }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product-watch", watchId] });
+      setEditingId(null);
+    },
   });
 
   const active = sources.filter((s) => s.status !== "archived");
@@ -80,19 +91,58 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
             {sorted.map((src) => {
               const isBest = src.id === bestSourceId;
               const isWorking = pauseMutation.isPending || resumeMutation.isPending || checkMutation.isPending;
+              const isEditing = editingId === src.id;
               return (
-                <tr key={src.id} className={`hover:bg-slate-800/50 transition-colors ${isBest ? "bg-[#8DC63F]/5" : ""}`}>
+                <tr key={src.id} className={`group hover:bg-slate-800/50 transition-colors ${isBest ? "bg-[#8DC63F]/5" : ""}`}>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {isBest && (
-                        <span className="inline-flex items-center rounded-full bg-[#8DC63F]/15 text-[#8DC63F] px-1.5 py-0.5 text-xs font-medium">
-                          Bedst
-                        </span>
-                      )}
-                      <Link href={`/sources/${src.id}`} className="font-medium hover:underline">
-                        {getDomain(src.url)}
-                      </Link>
-                    </div>
+                    {isEditing ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="url"
+                          value={editUrl}
+                          onChange={(e) => setEditUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && editUrl.trim()) updateMutation.mutate({ id: src.id, url: editUrl.trim() });
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          autoFocus
+                          className="w-full rounded border border-input bg-slate-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                        <button
+                          onClick={() => updateMutation.mutate({ id: src.id, url: editUrl.trim() })}
+                          disabled={!editUrl.trim() || updateMutation.isPending}
+                          title="Gem"
+                          className="p-1 rounded text-[#8DC63F] hover:bg-[#8DC63F]/10 disabled:opacity-40"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          title="Annuller"
+                          className="p-1 rounded text-muted-foreground hover:bg-muted"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        {isBest && (
+                          <span className="inline-flex items-center rounded-full bg-[#8DC63F]/15 text-[#8DC63F] px-1.5 py-0.5 text-xs font-medium">
+                            Bedst
+                          </span>
+                        )}
+                        <Link href={`/sources/${src.id}`} className="font-medium hover:underline">
+                          {getDomain(src.url)}
+                        </Link>
+                        <button
+                          onClick={() => { setEditUrl(src.url); setEditingId(src.id); }}
+                          title="Rediger URL"
+                          className="p-0.5 rounded text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {src.last_price != null ? formatPrice(src.last_price, src.last_currency) : "—"}
@@ -108,6 +158,14 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => { setEditUrl(src.url); setEditingId(src.id); }}
+                        disabled={isEditing}
+                        title="Rediger URL"
+                        className="p-1.5 rounded hover:bg-slate-700/50 disabled:opacity-40 transition-colors text-muted-foreground"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={() => checkMutation.mutate(src.id)}
                         disabled={isWorking}
