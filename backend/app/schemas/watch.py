@@ -13,7 +13,7 @@ class WatchCreate(BaseModel):
     url: str
     product_id: uuid.UUID | None = None
     check_interval: int = 60
-    provider: str = "http"
+    provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
 
     @field_validator("url")

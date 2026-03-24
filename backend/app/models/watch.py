@@ -56,7 +56,7 @@ class Watch(Base, TimestampMixin):
 
     # Scraper-konfiguration
     check_interval: Mapped[int] = mapped_column(Integer, default=60, nullable=False)  # minutter
-    provider: Mapped[str] = mapped_column(String(50), default="http", nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), default="curl_cffi", nullable=False)
 
     # JSONB: {price_selector, title_selector, stock_selector, wait_for_selector, ...}
     scraper_config: Mapped[dict | None] = mapped_column(JSONB)

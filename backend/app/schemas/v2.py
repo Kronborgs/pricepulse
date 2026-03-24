@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator
 class WatchSourceCreate(BaseModel):
     url: str
     interval_override_min: int | None = None
-    provider: str = "http"
+    provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
 
     @field_validator("url")
@@ -66,7 +66,7 @@ class ProductWatchCreate(BaseModel):
     name: str | None = None
     product_id: uuid.UUID | None = None
     default_interval_min: int = 60
-    provider: str = "http"
+    provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
 
     @field_validator("url")

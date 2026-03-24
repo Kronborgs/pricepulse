@@ -373,7 +373,7 @@ class ScraperEngine:
         return self._parse_with_fallback(fetch_result.content, fake_watch, domain)
 
     def _resolve_provider(self, watch: Watch, domain: str) -> FetchProvider:
-        explicit = watch.provider or "http"
+        explicit = watch.provider or "curl_cffi"
         if explicit == "curl_cffi":
             return _get_curl_cffi_provider()
         if explicit == "playwright" or domain in PLAYWRIGHT_REQUIRED_DOMAINS:

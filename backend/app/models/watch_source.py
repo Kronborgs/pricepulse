@@ -52,7 +52,7 @@ class WatchSource(Base, TimestampMixin):
     last_diagnostic: Mapped[dict | None] = mapped_column(JSONB)
     consecutive_errors: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     bot_suspected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    provider: Mapped[str] = mapped_column(String(50), default="http", nullable=False)
+    provider: Mapped[str] = mapped_column(String(50), default="curl_cffi", nullable=False)
     scraper_config: Mapped[dict | None] = mapped_column(JSONB)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
