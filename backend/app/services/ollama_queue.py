@@ -162,6 +162,9 @@ async def _run_source_job(job: OllamaJob) -> None:
                 logger.info("ollama_queue_succes", source_id=str(source.id), price=parse_result.price)
             else:
                 source.status = restore_status
+                # Gem Ollama-beriget diagnostik (inkl. ollama_advice) selvom ingen pris fundet
+                if fake_scrape.diagnostic:
+                    source.last_diagnostic = fake_scrape.diagnostic
                 await ai_svc.mark_completed(
                     ai_job.id,
                     output_data=None,
@@ -256,6 +259,10 @@ async def _run_watch_job(job: OllamaJob) -> None:
                     duration_ms=duration_ms,
                 )
             else:
+                # Gem det Ollama-berigede diagnostik (inkl. ollama_advice) selvom ingen pris fundet
+                if fake_scrape.diagnostic:
+                    watch.last_diagnostic = fake_scrape.diagnostic
+                await db.commit()
                 await ai_svc.mark_completed(
                     ai_job.id,
                     summary="AI fandt ingen pris (v1 watch)",

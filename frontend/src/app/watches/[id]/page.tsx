@@ -178,13 +178,15 @@ export default function WatchDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Hente-metode</h2>
           <span className="text-xs text-muted-foreground">
-            Aktiv: <span className="font-medium text-foreground">{watch.provider === "playwright" ? "Browser/JS" : "HTTP"}</span>
+            Aktiv: <span className="font-medium text-foreground">
+              {watch.provider === "playwright" ? "Browser/JS" : watch.provider === "curl_cffi" ? "Chrome-TLS" : "HTTP"}
+            </span>
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Skift til Browser/JS hvis siden kræver JavaScript eller har bot-beskyttelse (kræver PLAYWRIGHT_ENABLED=true i backend).
+          Skift til Chrome-TLS hvis siden blokerer HTTP pga. TLS-fingerprinting. Brug Browser/JS hvis siden kræver JavaScript-rendering (kræver PLAYWRIGHT_ENABLED=true).
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => providerMutation.mutate("http")}
             disabled={providerMutation.isPending || watch.provider === "http"}
@@ -197,6 +199,17 @@ export default function WatchDetailPage({
             ⚡ HTTP (hurtig)
           </button>
           <button
+            onClick={() => providerMutation.mutate("curl_cffi")}
+            disabled={providerMutation.isPending || watch.provider === "curl_cffi"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              watch.provider === "curl_cffi"
+                ? "border-[#F5A623] bg-[#F5A623]/10 text-[#F5A623] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            🔓 Chrome-TLS
+          </button>
+          <button
             onClick={() => providerMutation.mutate("playwright")}
             disabled={providerMutation.isPending || watch.provider === "playwright"}
             className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
@@ -205,7 +218,7 @@ export default function WatchDetailPage({
                 : "border-border hover:bg-muted disabled:opacity-50"
             }`}
           >
-            🌐 Browser/JS (Playwright)
+            🌐 Browser/JS
           </button>
         </div>
       </div>

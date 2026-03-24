@@ -105,6 +105,9 @@ class WatchService:
                     previous_status=watch.status,
                 ))
                 watch.last_checked_at = datetime.now(timezone.utc)
+                # Gem diagnostik nu så UI viser fejltype mens Ollama arbejder
+                if scrape_result.diagnostic:
+                    watch.last_diagnostic = scrape_result.diagnostic
                 await self.db.commit()
                 return
 

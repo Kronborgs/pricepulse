@@ -289,14 +289,15 @@ export default function SourceDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Hente-metode</h2>
           <span className="text-xs text-muted-foreground">
-            Aktiv: <span className="font-medium text-foreground">{source.provider === "playwright" ? "Browser/JS" : "HTTP"}</span>
+            Aktiv: <span className="font-medium text-foreground">
+              {source.provider === "playwright" ? "Browser/JS" : source.provider === "curl_cffi" ? "Chrome-TLS" : "HTTP"}
+            </span>
           </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          Brug Browser/JS hvis siden kræver JavaScript-rendering eller har bot-beskyttelse.
-          Kræver at Playwright er aktiveret i backend (PLAYWRIGHT_ENABLED=true).
+          Skift til Chrome-TLS hvis siden blokerer HTTP pga. TLS-fingerprinting. Brug Browser/JS hvis siden kræver JavaScript-rendering (kræver PLAYWRIGHT_ENABLED=true).
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => updateMutation.mutate({ provider: "http" })}
             disabled={updateMutation.isPending || source.provider === "http"}
@@ -309,6 +310,17 @@ export default function SourceDetailPage({
             ⚡ HTTP (hurtig)
           </button>
           <button
+            onClick={() => updateMutation.mutate({ provider: "curl_cffi" })}
+            disabled={updateMutation.isPending || source.provider === "curl_cffi"}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+              source.provider === "curl_cffi"
+                ? "border-[#F5A623] bg-[#F5A623]/10 text-[#F5A623] font-medium"
+                : "border-border hover:bg-muted disabled:opacity-50"
+            }`}
+          >
+            🔓 Chrome-TLS
+          </button>
+          <button
             onClick={() => updateMutation.mutate({ provider: "playwright" })}
             disabled={updateMutation.isPending || source.provider === "playwright"}
             className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
@@ -317,7 +329,7 @@ export default function SourceDetailPage({
                 : "border-border hover:bg-muted disabled:opacity-50"
             }`}
           >
-            🌐 Browser/JS (Playwright)
+            🌐 Browser/JS
           </button>
         </div>
       </div>

@@ -31,6 +31,7 @@ from app.scraper.providers.base import (
     ParseResult,
     PriceParser,
 )
+from app.scraper.providers.curl_cffi_provider import CurlCffiProvider
 from app.scraper.providers.http_provider import HttpProvider
 from app.scraper.providers.playwright_provider import PlaywrightProvider
 
@@ -136,6 +137,7 @@ _ERROR_LABELS: dict[ErrorType, tuple[str, str]] = {
 
 # Singleton providers
 _http_provider = HttpProvider()
+_curl_cffi_provider: CurlCffiProvider | None = None
 _playwright_provider: PlaywrightProvider | None = None
 _semaphore: asyncio.Semaphore | None = None
 
@@ -145,6 +147,13 @@ def _get_semaphore() -> asyncio.Semaphore:
     if _semaphore is None:
         _semaphore = asyncio.Semaphore(settings.scraper_max_concurrent)
     return _semaphore
+
+
+def _get_curl_cffi_provider() -> CurlCffiProvider:
+    global _curl_cffi_provider
+    if _curl_cffi_provider is None:
+        _curl_cffi_provider = CurlCffiProvider()
+    return _curl_cffi_provider
 
 
 def _get_playwright_provider() -> PlaywrightProvider:
@@ -278,6 +287,20 @@ class ScraperEngine:
         async with _get_semaphore():
             fetch_result = await provider.fetch(watch.url, fetch_options)
 
+        # Auto-fallback: hvis httpx får bot_protection → prøv med curl_cffi TLS-impersonation
+        if (
+            not fetch_result.ok
+            and fetch_result.error_type == ErrorType.bot_protection
+            and fetch_result.provider == "http"
+        ):
+            logger.info(
+                "HTTP bot_protection — prøver curl_cffi TLS-impersonation",
+                url=watch.url,
+                domain=domain,
+            )
+            async with _get_semaphore():
+                fetch_result = await _get_curl_cffi_provider().fetch(watch.url, fetch_options)
+
         if not fetch_result.ok:
             error_type = _classify_fetch_failure(fetch_result)
             diag = _build_diagnostic(fetch_result, None, error_type)
@@ -337,6 +360,11 @@ class ScraperEngine:
             provider = _http_provider
 
         fetch_result = await provider.fetch(url)
+
+        # Auto-fallback til curl_cffi ved bot_protection
+        if not fetch_result.ok and fetch_result.error_type == ErrorType.bot_protection and fetch_result.provider == "http":
+            fetch_result = await _get_curl_cffi_provider().fetch(url)
+
         if not fetch_result.ok:
             return ParseResult(error=fetch_result.error or f"HTTP {fetch_result.status_code}")
 
@@ -346,6 +374,8 @@ class ScraperEngine:
 
     def _resolve_provider(self, watch: Watch, domain: str) -> FetchProvider:
         explicit = watch.provider or "http"
+        if explicit == "curl_cffi":
+            return _get_curl_cffi_provider()
         if explicit == "playwright" or domain in PLAYWRIGHT_REQUIRED_DOMAINS:
             if settings.playwright_enabled:
                 return _get_playwright_provider()

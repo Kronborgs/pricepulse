@@ -415,6 +415,32 @@ class SourceService:
                 failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
                 source_id=str(source.id),
             )
+            if advice and not (advice.price_selector and advice.confidence >= 0.5):
+                logger.info("ollama_ingen_selector", source_id=str(source.id),
+                            selector=advice.price_selector, confidence=advice.confidence)
+
+            if advice:
+                # Gem råd i diagnostik uanset om CSS-retry lykkes — UI viser forklaringen
+                ollama_advice_dict = {
+                    "reasoning": advice.reasoning,
+                    "recommended_action": advice.recommended_action,
+                    "price_selector": advice.price_selector,
+                    "stock_selector": advice.stock_selector,
+                    "requires_js": advice.requires_js,
+                    "likely_bot_protection": advice.likely_bot_protection,
+                    "confidence": advice.confidence,
+                    "page_type": advice.page_type,
+                }
+                if scrape_result.diagnostic:
+                    scrape_result.diagnostic["ollama_advice"] = ollama_advice_dict
+                    if advice.recommended_action:
+                        scrape_result.diagnostic["recommended_action"] = advice.recommended_action
+                    if advice.requires_js and scrape_result.diagnostic.get("error_type") == "parser_mismatch":
+                        scrape_result.diagnostic["error_type"] = "js_render_required"
+                        scrape_result.diagnostic["recommended_action"] = (
+                            "Aktivér Playwright-provider i source-indstillinger (Ollama: siden kræver JS-rendering)"
+                        )
+
             if advice and advice.price_selector and advice.confidence >= 0.5:
                 logger.info("ollama_css_forslag", source_id=str(source.id),
                             selector=advice.price_selector, confidence=advice.confidence)
