@@ -103,7 +103,6 @@ class BiltemaParser(PriceParser):
         except (json.JSONDecodeError, ValueError):
             return None
 
-        # Søg bredt i hele __NEXT_DATA__ strukturen
         price_keys = frozenset({
             "price", "currentprice", "sellingprice", "saleprice",
             "finalprice", "grossprice", "priceamount", "pricevalue",
@@ -112,45 +111,88 @@ class BiltemaParser(PriceParser):
             "currentpriceincvat", "priceexvat", "netprice",
         })
         stock_keys = frozenset({"availability", "instock", "isinstock", "isavailable", "stock"})
+        title_keys = frozenset({"name", "title", "productname"})
+        image_keys = frozenset({"image", "imageurl", "thumbnail", "imageuri", "imagesrc"})
 
-        prices = _deep_find(data, price_keys, max_depth=12)
-        clean_prices = [_clean_price(p) for p in prices if _clean_price(p) is not None and _clean_price(p) > 1]
+        page_props = data.get("props", {}).get("pageProps", {})
 
-        if not clean_prices:
-            return None
+        # Søgescopes fra mest specifik til bredest:
+        # 1. React Query dehydratedState (Biltema bruger Next.js + React Query)
+        # 2. Direkte pageProps.product/item-nøgler
+        # 3. Hele pageProps
+        # 4. Bred fallback: hele __NEXT_DATA__
+        search_scopes: list[dict] = []
+        queries = page_props.get("dehydratedState", {}).get("queries", [])
+        for q in queries[:5]:
+            q_data = q.get("state", {}).get("data")
+            if isinstance(q_data, dict):
+                search_scopes.append(q_data)
+        for key in ("product", "item", "initialProduct", "articleData", "productData"):
+            obj = page_props.get(key)
+            if isinstance(obj, dict):
+                search_scopes.append(obj)
+        if page_props:
+            search_scopes.append(page_props)
+        search_scopes.append(data)  # bred fallback
 
-        # Brug den laveste rimelige pris (undgå prishistorik-outliers)
-        price = min(clean_prices)
+        result_price: float | None = None
+        result_stock = None
+        result_title: str | None = None
+        result_image: str | None = None
 
-        stocks = _deep_find(data, stock_keys, max_depth=12)
-        stock_status = None
-        for s in stocks:
-            from app.scraper.parsers.inline_json_parser import _normalize_stock
-            ns = _normalize_stock(s)
-            if ns:
-                stock_status = ns
+        for scope in search_scopes:
+            if result_price is None:
+                raw_prices = _deep_find(scope, price_keys, max_depth=8)
+                # Tag den FØRSTE gyldige pris i dette scope (DFS-rækkefølge = øverste/mest
+                # relevante felt først).  Undgå kun at bruge min() som kan ramle ind i
+                # billige tilbehørsvarer fra relaterede produkter.
+                for rp in raw_prices:
+                    cp = _clean_price(rp)
+                    if cp is not None and cp > 1:
+                        result_price = cp
+                        break
+
+            if result_stock is None:
+                stocks = _deep_find(scope, stock_keys, max_depth=8)
+                for s in stocks:
+                    from app.scraper.parsers.inline_json_parser import _normalize_stock
+                    ns = _normalize_stock(s)
+                    if ns:
+                        result_stock = ns
+                        break
+
+            if result_title is None:
+                titles = _deep_find(scope, title_keys, max_depth=6)
+                result_title = next(
+                    (str(t) for t in titles if isinstance(t, str) and 3 < len(t) < 200),
+                    None,
+                )
+
+            if result_image is None:
+                images = _deep_find(scope, image_keys, max_depth=8)
+                result_image = next(
+                    (str(i) for i in images if isinstance(i, str) and i.startswith("http")),
+                    None,
+                )
+
+            # Har vi pris og titel fra dette scope — stop her, gå ikke bredere
+            if result_price is not None and result_title is not None:
                 break
 
-        # Hent titel
-        title_keys = frozenset({"name", "title", "productname"})
-        titles = _deep_find(data, title_keys, max_depth=6)
-        title = next((str(t) for t in titles if isinstance(t, str) and 3 < len(t) < 200), None)
+        if result_price is None:
+            return None
 
-        # Hent billede fra __NEXT_DATA__ eller og:image meta-tag
-        image_keys = frozenset({"image", "imageurl", "thumbnail", "imageuri", "imagesrc"})
-        images = _deep_find(data, image_keys, max_depth=8)
-        image_url = next((str(i) for i in images if isinstance(i, str) and i.startswith("http")), None)
-        if not image_url:
+        if not result_image:
             og = soup.find("meta", property="og:image")
             if og:
-                image_url = og.get("content")
+                result_image = og.get("content")
 
         return ParseResult(
-            price=price,
+            price=result_price,
             currency="DKK",
-            stock_status=stock_status,
-            title=title,
-            image_url=image_url,
+            stock_status=result_stock,
+            title=result_title,
+            image_url=result_image,
             parser_used=self.parser_name,
         )
 
@@ -175,10 +217,13 @@ class BiltemaParser(PriceParser):
             except (json.JSONDecodeError, ValueError):
                 continue
             prices = _deep_find(data, price_keys, max_depth=12)
-            clean = [_clean_price(p) for p in prices if _clean_price(p) is not None and _clean_price(p) > 1]
-            if clean:
+            price = next(
+                (cp for p in prices for cp in [_clean_price(p)] if cp is not None and cp > 1),
+                None,
+            )
+            if price is not None:
                 return ParseResult(
-                    price=min(clean),
+                    price=price,
                     currency="DKK",
                     parser_used=self.parser_name,
                 )
