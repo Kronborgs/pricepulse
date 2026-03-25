@@ -73,7 +73,7 @@ export function WatchTable({ watches, isLoading }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.watches.delete(id),
-    onSuccess: () => {
+    onSettled: () => {
       setDeleteTarget(null);
       qc.invalidateQueries({ queryKey: ["watches"] });
     },
