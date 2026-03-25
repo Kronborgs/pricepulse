@@ -23,6 +23,7 @@ from app.scraper.parsers.shops.elgigant import ElgigantParser
 from app.scraper.parsers.shops.jemogfix import JemogfixParser
 from app.scraper.parsers.shops.proshop import ProshopParser
 from app.scraper.parsers.shops.woocommerce import WooCommerceParser
+from app.scraper.parsers.generic_shop_parser import GenericShopParser
 from app.scraper.providers.base import (
     ErrorType,
     FetchOptions,
@@ -426,6 +427,10 @@ class ScraperEngine:
                 )
             )
 
+        # 5. Generisk bred shop-parser — microdata, data-attrs, CSS-mønstre, regexp
+        #    Dækker ukendte shops og tilfælde uden strukturerede data
+        parsers.append(GenericShopParser())
+
         url = getattr(watch, "url", "")
         extractors_tried: list[str] = []
 
@@ -454,7 +459,77 @@ class ScraperEngine:
             error="Ingen parser lykkedes. Konfigurér CSS selectors manuelt.",
             parser_used="none",
             extractors_tried=extractors_tried,
+            recommended_action=_html_analysis_hint(content),
         )
+
+
+def _html_analysis_hint(content: str) -> str:
+    """
+    Analysér HTML-strukturen og returnér et konkret hint til hvad der skal tilpasses.
+    Bruges i last_diagnostic.recommended_action når ingen parser lykkedes.
+    """
+    from bs4 import BeautifulSoup
+    import re
+
+    if not content or len(content) < 200:
+        return "Siden returnerede meget lidt HTML — prøv Browser/JS provider (Playwright)."
+
+    soup = BeautifulSoup(content, "lxml")
+    hints: list[str] = []
+
+    # Tjek om siden er JS-rendered (næsten ingen tekst i body)
+    body_text = soup.get_text(" ", strip=True)
+    if len(body_text) < 500:
+        hints.append("Siden ser JS-renderet ud (meget lidt tekst i HTML) — skift til Browser/JS provider.")
+
+    # Tjek for bot-blokering
+    lc = content.lower()
+    if any(x in lc for x in ["cloudflare", "captcha", "robot check", "access denied"]):
+        hints.append("Bot-blokering detekteret — prøv Chrome-TLS eller Browser/JS provider.")
+
+    # Find elementer med price i class
+    price_els = [
+        f"[class='{' '.join(el.get('class', []))}']"
+        for el in soup.find_all(True)
+        if any("price" in c.lower() for c in el.get("class", []))
+    ][:5]
+    if price_els:
+        hints.append(f"Elementer med 'price' i klasse: {', '.join(price_els[:3])}")
+
+    # Find microdata
+    if soup.find(attrs={"itemprop": "price"}):
+        hints.append("Side har itemprop='price' microdata — prøv CSS-selector: [itemprop='price']")
+
+    # Find __NEXT_DATA__
+    if soup.find("script", id="__NEXT_DATA__"):
+        hints.append("Side har __NEXT_DATA__ (Next.js) — InlineJsonParser burde virke, men måske kræves JS-rendering.")
+
+    # Find JSON-LD
+    if soup.find("script", type="application/ld+json"):
+        hints.append("Side har JSON-LD structured data — JsonLdParser burde virke, tjek om Product-type er med.")
+
+    # WooCommerce tegn
+    if "woocommerce" in lc or "wc-" in lc:
+        hints.append("WooCommerce-shop detekteret — prøv CSS-selector: .woocommerce-Price-amount eller bdi")
+
+    # Shopify tegn
+    if "shopify" in lc or "cdn.shopify.com" in lc:
+        hints.append("Shopify-shop detekteret — prøv CSS-selector: .product__price eller .price__regular")
+
+    if not hints:
+        # Bred pris-scan: find klasser der nævner pris
+        candidates = set()
+        for el in soup.find_all(True):
+            classes = el.get("class", [])
+            for c in classes:
+                if re.search(r"price|pris|amount|kost", c, re.I):
+                    candidates.add(f".{c}")
+        if candidates:
+            hints.append(f"Mulige pris-CSS-selectors: {', '.join(list(candidates)[:5])}")
+        else:
+            hints.append("Ingen kendte mønstre fundet. Inspect siden manuelt og tilføj en CSS-selector.")
+
+    return " | ".join(hints)
 
 
 # Singleton engine
