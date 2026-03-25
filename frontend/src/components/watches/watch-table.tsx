@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Watch } from "@/types";
 import { StatusBadge } from "./status-badge";
 import { formatPrice, formatRelative, getDomain } from "@/lib/utils";
@@ -13,8 +14,57 @@ interface Props {
   isLoading: boolean;
 }
 
+function ConfirmDeleteDialog({
+  watch,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  watch: Watch;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
+      <div className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="rounded-full bg-destructive/15 p-2.5">
+            <Trash2 className="h-5 w-5 text-destructive" />
+          </div>
+          <h2 className="text-base font-semibold">Slet watch?</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-1">
+          {watch.title ?? getDomain(watch.url)}
+        </p>
+        <p className="text-xs text-muted-foreground mb-6">
+          Handlingen kan ikke fortrydes. Al prishistorik for denne watch slettes permanent.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isPending}
+            className="flex-1 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            Annuller
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="flex-1 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+          >
+            {isPending ? "Sletter…" : "Ja, slet"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WatchTable({ watches, isLoading }: Props) {
   const qc = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<Watch | null>(null);
 
   const checkMutation = useMutation({
     mutationFn: (id: string) => api.watches.triggerCheck(id),
@@ -23,7 +73,10 @@ export function WatchTable({ watches, isLoading }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.watches.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["watches"] }),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ["watches"] });
+    },
   });
 
   if (isLoading) {
@@ -120,11 +173,7 @@ export function WatchTable({ watches, isLoading }: Props) {
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                   <button
-                    onClick={() => {
-                      if (confirm("Slet denne watch?")) {
-                        deleteMutation.mutate(watch.id);
-                      }
-                    }}
+                    onClick={() => setDeleteTarget(watch)}
                     className="p-1.5 rounded hover:bg-destructive/10 text-destructive/60 hover:text-destructive"
                     title="Slet"
                   >
@@ -136,6 +185,15 @@ export function WatchTable({ watches, isLoading }: Props) {
           ))}
         </tbody>
       </table>
+
+      {deleteTarget && (
+        <ConfirmDeleteDialog
+          watch={deleteTarget}
+          isPending={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
