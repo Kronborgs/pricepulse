@@ -68,6 +68,7 @@ SHOP_PARSERS: dict[str, PriceParser] = {
 PLAYWRIGHT_REQUIRED_DOMAINS = {
     "proshop.dk", "www.proshop.dk",
     "komplett.dk", "www.komplett.dk",
+    "biltema.dk", "www.biltema.dk",
 }
 
 # Prissammenligningssider — returnér fejl med det samme, ingen HTTP-hentning

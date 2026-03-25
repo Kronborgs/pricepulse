@@ -29,19 +29,41 @@ class BiltemaParser(PriceParser):
     _css_primary = CssSelectorParser(
         SelectorConfig(
             price_selector=(
+                # Biltema Next.js genererede klasser (CSS modules)
                 "[class*='price__Price'], "
                 "[class*='Price__price'], "
-                "[class*='product-price'], "
-                "[data-price], "
                 "[class*='ProductPrice'], "
-                "span[class*='price']"
+                "[class*='product-price'], "
+                # data-attributter
+                "[data-price], "
+                "[data-product-price], "
+                # microdata
+                "[itemprop='price'], "
+                # bred fallback
+                "span[class*='price'], "
+                "div[class*='price']"
             ),
-            title_selector="h1[class*='ProductName'], h1[class*='product'], h1",
+            title_selector=(
+                "h1[class*='ProductName'], "
+                "h1[class*='product'], "
+                "h1[class*='title'], "
+                "[itemprop='name'], "
+                "h1"
+            ),
             stock_selector=(
                 "[class*='StockStatus'], "
                 "[class*='stock-status'], "
+                "[class*='InStock'], "
                 "[class*='availability'], "
-                "[class*='Availability']"
+                "[class*='Availability'], "
+                "[class*='stock__'], "
+                "[data-stock-status]"
+            ),
+            image_selector=(
+                "[class*='ProductImage'] img, "
+                "[class*='product-image'] img, "
+                "[class*='Gallery'] img, "
+                "meta[property='og:image']"
             ),
             stock_in_text="på lager",
             stock_out_text="ikke på lager",
@@ -114,11 +136,21 @@ class BiltemaParser(PriceParser):
         titles = _deep_find(data, title_keys, max_depth=6)
         title = next((str(t) for t in titles if isinstance(t, str) and 3 < len(t) < 200), None)
 
+        # Hent billede fra __NEXT_DATA__ eller og:image meta-tag
+        image_keys = frozenset({"image", "imageurl", "thumbnail", "imageuri", "imagesrc"})
+        images = _deep_find(data, image_keys, max_depth=8)
+        image_url = next((str(i) for i in images if isinstance(i, str) and i.startswith("http")), None)
+        if not image_url:
+            og = soup.find("meta", property="og:image")
+            if og:
+                image_url = og.get("content")
+
         return ParseResult(
             price=price,
             currency="DKK",
             stock_status=stock_status,
             title=title,
+            image_url=image_url,
             parser_used=self.parser_name,
         )
 
