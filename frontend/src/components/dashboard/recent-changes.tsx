@@ -49,31 +49,66 @@ export function RecentChanges() {
 function EventRow({ event }: { event: PriceEvent }) {
   const isDrop = (event.price_delta ?? 0) < 0;
   const isRise = (event.price_delta ?? 0) > 0;
+  const displayName = event.watch_title ?? `Watch ${event.watch_id.slice(0, 8)}…`;
 
   return (
     <li className="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-      <div
-        className={`flex-shrink-0 rounded-full p-1.5 ${
-          isDrop
-            ? "bg-green-900/30 text-[#8DC63F]"
-            : isRise
-            ? "bg-red-900/30 text-red-400"
-            : "bg-muted text-muted-foreground"
-        }`}
-      >
-        {isDrop ? (
-          <ArrowDown className="h-3.5 w-3.5" />
-        ) : isRise ? (
-          <ArrowUp className="h-3.5 w-3.5" />
-        ) : null}
+      {/* Produkt-miniaturebillede */}
+      <div className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden bg-muted border border-border">
+        {event.watch_image_url ? (
+          <img
+            src={event.watch_image_url}
+            alt={displayName}
+            className="w-full h-full object-contain"
+            loading="lazy"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div
+              className={`rounded-full p-1 ${
+                isDrop
+                  ? "bg-green-900/40 text-[#8DC63F]"
+                  : isRise
+                  ? "bg-red-900/40 text-red-400"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {isDrop ? (
+                <ArrowDown className="h-3 w-3" />
+              ) : isRise ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Pil-indikator (kun vist når der er billede) */}
+      {event.watch_image_url && (
+        <div
+          className={`flex-shrink-0 rounded-full p-1.5 ${
+            isDrop
+              ? "bg-green-900/30 text-[#8DC63F]"
+              : isRise
+              ? "bg-red-900/30 text-red-400"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {isDrop ? (
+            <ArrowDown className="h-3.5 w-3.5" />
+          ) : isRise ? (
+            <ArrowUp className="h-3.5 w-3.5" />
+          ) : null}
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
         <Link
           href={`/watches/${event.watch_id}`}
           className="text-sm font-medium hover:underline truncate block"
         >
-          Watch {event.watch_id.slice(0, 8)}…
+          {displayName}
         </Link>
         <p className="text-xs text-muted-foreground">
           {event.event_type === "price_change"

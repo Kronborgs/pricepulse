@@ -159,6 +159,8 @@ export interface PriceEvent {
   new_stock: string | null;
   occurred_at: string;
   extra_data: Record<string, unknown> | null;
+  watch_title: string | null;
+  watch_image_url: string | null;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
