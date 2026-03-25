@@ -73,8 +73,14 @@ class BiltemaParser(PriceParser):
     def parse(self, content: str, url: str) -> ParseResult:
         soup = BeautifulSoup(content, "lxml")
 
-        # Strategi 1: __NEXT_DATA__ med dehydratedState (Biltema standard)
-        result = self._try_next_data(soup)
+        # Strategi 0: og:price:amount / product:price:amount meta-tag
+        # Next.js SSR sætter altid disse korrekt for det aktuelle produkt
+        result = self._try_og_price(soup)
+        if result and result.success:
+            return result
+
+        # Strategi 1: __NEXT_DATA__ — find query der matcher artikel-nummer fra URL
+        result = self._try_next_data(soup, url)
         if result and result.success:
             return result
 
@@ -94,7 +100,46 @@ class BiltemaParser(PriceParser):
             parser_used=self.parser_name,
         )
 
-    def _try_next_data(self, soup: BeautifulSoup) -> ParseResult | None:
+    def _try_og_price(self, soup: BeautifulSoup) -> ParseResult | None:
+        """Tjek product:price:amount / og:price:amount meta-tags — præcist for det aktuelle produkt."""
+        price: float | None = None
+        for prop in ("product:price:amount", "og:price:amount"):
+            tag = soup.find("meta", property=prop)
+            if tag and tag.get("content"):
+                price = _clean_price(tag["content"])
+                if price and price > 1:
+                    break
+        if not price:
+            return None
+
+        currency = "DKK"
+        for prop in ("product:price:currency", "og:price:currency"):
+            tag = soup.find("meta", property=prop)
+            if tag and tag.get("content"):
+                currency = tag["content"]
+                break
+
+        title: str | None = None
+        title_tag = soup.find("meta", property="og:title")
+        if title_tag:
+            raw = title_tag.get("content", "")
+            # Fjern evt. " - Biltema" suffix
+            title = raw.split(" - ")[0].strip() if raw else None
+
+        image_url: str | None = None
+        img_tag = soup.find("meta", property="og:image")
+        if img_tag:
+            image_url = img_tag.get("content")
+
+        return ParseResult(
+            price=price,
+            currency=currency,
+            title=title,
+            image_url=image_url,
+            parser_used=self.parser_name,
+        )
+
+    def _try_next_data(self, soup: BeautifulSoup, url: str = "") -> ParseResult | None:
         tag = soup.find("script", id="__NEXT_DATA__")
         if not tag:
             return None
@@ -116,21 +161,39 @@ class BiltemaParser(PriceParser):
 
         page_props = data.get("props", {}).get("pageProps", {})
 
-        # Søgescopes fra mest specifik til bredest:
-        # 1. React Query dehydratedState (Biltema bruger Next.js + React Query)
-        # 2. Direkte pageProps.product/item-nøgler
-        # 3. Hele pageProps
-        # 4. Bred fallback: hele __NEXT_DATA__
+        # Prøv at udtrække artikel-nummer fra URL-ens sidste segment (typisk 10 cifre)
+        article_number: str | None = None
+        m = re.search(r'[-/](\d{7,})(?:[/?#]|$)', url)
+        if m:
+            article_number = m.group(1)
+
+        # Søgescopes fra mest specifik til bredest.
+        # Prioritér den React Query der matcher artikel-nummeret i URL.
         search_scopes: list[dict] = []
         queries = page_props.get("dehydratedState", {}).get("queries", [])
-        for q in queries[:5]:
+
+        # Opdel queries: dem med artikel-nummeret i queryKey/data vs. resten
+        priority_queries: list[dict] = []
+        other_queries: list[dict] = []
+        for q in queries:
             q_data = q.get("state", {}).get("data")
-            if isinstance(q_data, dict):
-                search_scopes.append(q_data)
+            if not isinstance(q_data, dict):
+                continue
+            if article_number:
+                q_str = json.dumps(q.get("queryKey", []))
+                if article_number in q_str or article_number in json.dumps(q_data)[:500]:
+                    priority_queries.append(q_data)
+                else:
+                    other_queries.append(q_data)
+            else:
+                other_queries.append(q_data)
+
+        search_scopes.extend(priority_queries)
         for key in ("product", "item", "initialProduct", "articleData", "productData"):
             obj = page_props.get(key)
             if isinstance(obj, dict):
                 search_scopes.append(obj)
+        search_scopes.extend(other_queries[:3])  # kun de første 3 øvrige queries
         if page_props:
             search_scopes.append(page_props)
         search_scopes.append(data)  # bred fallback
