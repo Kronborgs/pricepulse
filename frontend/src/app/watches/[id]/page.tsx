@@ -3,10 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  Check,
   ExternalLink,
   Loader2,
   RefreshCw,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -225,7 +227,7 @@ export default function WatchDetailPage({
 
       {/* Diagnostic panel — vis kun ved fejl eller hvis der er diagnostik */}
       {watch.last_diagnostic && (
-        <DiagnosticPanel diagnostic={watch.last_diagnostic} />
+        <DiagnosticPanel diagnostic={watch.last_diagnostic} watchId={id} />
       )}
 
       {/* Events timeline */}
@@ -283,12 +285,27 @@ function StatCard({
   );
 }
 
-function DiagnosticPanel({ diagnostic }: { diagnostic: WatchDiagnostic }) {
+function DiagnosticPanel({ diagnostic, watchId }: { diagnostic: WatchDiagnostic; watchId: string }) {
   const errType = diagnostic.error_type;
   const errorLabel = errType && errType in ERROR_TYPE_LABELS
     ? ERROR_TYPE_LABELS[errType].short
     : null;
   const ollama = diagnostic.ollama_advice;
+  const [applied, setApplied] = useState(false);
+  const queryClient = useQueryClient();
+  const applyMutation = useMutation({
+    mutationFn: () =>
+      api.watches.update(watchId, {
+        scraper_config: {
+          ...(ollama?.price_selector ? { price_selector: ollama.price_selector } : {}),
+          ...(ollama?.stock_selector ? { stock_selector: ollama.stock_selector } : {}),
+        },
+      }),
+    onSuccess: () => {
+      setApplied(true);
+      queryClient.invalidateQueries({ queryKey: ["watch", watchId] });
+    },
+  });
 
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -358,6 +375,23 @@ function DiagnosticPanel({ diagnostic }: { diagnostic: WatchDiagnostic }) {
                     </code>
                   </div>
                 )}
+                <div className="pt-1">
+                  <button
+                    onClick={() => { setApplied(false); applyMutation.mutate(); }}
+                    disabled={applyMutation.isPending}
+                    className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                      applied
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                    } disabled:opacity-50`}
+                  >
+                    {applied ? (
+                      <><Check className="h-3 w-3" />Selectors gemt!</>
+                    ) : (
+                      <><Wand2 className="h-3 w-3" />Anvend AI-forslag</>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 

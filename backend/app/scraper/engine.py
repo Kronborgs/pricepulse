@@ -18,6 +18,7 @@ from app.scraper.parsers.shops.computersalg import (
     HappiiParser,
     KomplettParser,
 )
+from app.scraper.parsers.shops.amazon import AmazonParser
 from app.scraper.parsers.shops.biltema import BiltemaParser
 from app.scraper.parsers.shops.elgigant import ElgigantParser
 from app.scraper.parsers.shops.jemogfix import JemogfixParser
@@ -40,6 +41,16 @@ logger = structlog.get_logger()
 
 # Registry: domain → parser
 SHOP_PARSERS: dict[str, PriceParser] = {
+    "amazon.com": AmazonParser(),
+    "www.amazon.com": AmazonParser(),
+    "amazon.de": AmazonParser(),
+    "www.amazon.de": AmazonParser(),
+    "amazon.co.uk": AmazonParser(),
+    "www.amazon.co.uk": AmazonParser(),
+    "amazon.se": AmazonParser(),
+    "www.amazon.se": AmazonParser(),
+    "amazon.nl": AmazonParser(),
+    "www.amazon.nl": AmazonParser(),
     "biltema.dk": BiltemaParser(),
     "www.biltema.dk": BiltemaParser(),
     "compumail.dk": CompumailParser(),
@@ -67,6 +78,11 @@ SHOP_PARSERS: dict[str, PriceParser] = {
 
 # Shops der kræver Playwright (aktiv bot-beskyttelse / JS-renderet pris)
 PLAYWRIGHT_REQUIRED_DOMAINS = {
+    "amazon.com", "www.amazon.com",
+    "amazon.de", "www.amazon.de",
+    "amazon.co.uk", "www.amazon.co.uk",
+    "amazon.se", "www.amazon.se",
+    "amazon.nl", "www.amazon.nl",
     "proshop.dk", "www.proshop.dk",
     "komplett.dk", "www.komplett.dk",
     # biltema.dk bruger window.productData i rå HTML — Playwright ikke nødvendig

@@ -24,7 +24,14 @@ def _clean_price(v: Any) -> float | None:
         if v.endswith(",-"):
             v = v[:-2]
         elif "," in v and "." in v:
-            v = v.replace(".", "").replace(",", ".")
+            last_comma = v.rfind(",")
+            last_dot = v.rfind(".")
+            if last_dot > last_comma:
+                # US format: 1,036.38 → slet tusinde-separatoren
+                v = v.replace(",", "")
+            else:
+                # EU format: 1.036,38 → slet tusind-pkt, erstat komma med pkt
+                v = v.replace(".", "").replace(",", ".")
         elif "," in v:
             after = v.rsplit(",", 1)[-1]
             if after == "-" or not after:
