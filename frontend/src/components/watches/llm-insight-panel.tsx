@@ -1,7 +1,8 @@
 "use client";
 
-import { Brain, Loader2, RefreshCw } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Brain, Check, Loader2, RefreshCw, Wand2 } from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { LlmParserAdvice } from "@/types";
 import { cn } from "@/lib/utils";
@@ -28,15 +29,31 @@ const PAGE_TYPE_LABELS: Record<LlmParserAdvice["page_type"], string> = {
 
 export function LlmInsightPanel({ sourceId, existing }: Props) {
   const qc = useQueryClient();
+  const [applied, setApplied] = useState(false);
 
   // Kick off a background diagnose job and poll the source for updated advice
   const diagnoseMutation = useMutation({
     mutationFn: () => api.sources.diagnose(sourceId),
     onSuccess: () => {
+      setApplied(false);
       // Give the background task a moment, then re-fetch source
       setTimeout(() => {
         qc.invalidateQueries({ queryKey: ["source", sourceId] });
       }, 3000);
+    },
+  });
+
+  // Apply the AI-suggested selectors to scraper_config
+  const applyMutation = useMutation({
+    mutationFn: (advice: LlmParserAdvice) => {
+      const cfg: Record<string, string> = {};
+      if (advice.price_selector) cfg.price_selector = advice.price_selector;
+      if (advice.stock_selector) cfg.stock_selector = advice.stock_selector;
+      return api.sources.update(sourceId, { scraper_config: cfg });
+    },
+    onSuccess: () => {
+      setApplied(true);
+      qc.invalidateQueries({ queryKey: ["source", sourceId] });
     },
   });
 
@@ -127,6 +144,25 @@ export function LlmInsightPanel({ sourceId, existing }: Props) {
                     </code>
                   </div>
                 )}
+                <button
+                  onClick={() => applyMutation.mutate(advice)}
+                  disabled={applyMutation.isPending || applied}
+                  className={cn(
+                    "mt-1 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                    applied
+                      ? "bg-green-600/15 text-green-600 dark:text-green-400 border border-green-600/30"
+                      : "bg-purple-600 hover:bg-purple-700 text-white"
+                  )}
+                >
+                  {applyMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : applied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Wand2 className="h-3.5 w-3.5" />
+                  )}
+                  {applied ? "Anvend — selectors gemt!" : "Anvend AI-forslag"}
+                </button>
               </div>
             )}
 

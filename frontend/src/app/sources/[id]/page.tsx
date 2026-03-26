@@ -96,9 +96,18 @@ export default function SourceDetailPage({
     );
   }
 
-  const llmAdvice = source.last_diagnostic
-    ? null
-    : null; // Will be populated from LlmAnalysisResult when backend exposes it
+  const llmAdvice = source.last_diagnostic?.ollama_advice
+    ? {
+        page_type: source.last_diagnostic.ollama_advice.page_type as import("@/types").LlmParserAdvice["page_type"],
+        price_selector: source.last_diagnostic.ollama_advice.price_selector,
+        stock_selector: source.last_diagnostic.ollama_advice.stock_selector,
+        requires_js: source.last_diagnostic.ollama_advice.requires_js,
+        likely_bot_protection: source.last_diagnostic.ollama_advice.likely_bot_protection,
+        confidence: source.last_diagnostic.ollama_advice.confidence,
+        reasoning: source.last_diagnostic.ollama_advice.reasoning,
+        recommended_action: source.last_diagnostic.ollama_advice.recommended_action,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
