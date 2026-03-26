@@ -17,11 +17,10 @@ class BiltemaParser(PriceParser):
     """
     Parser til biltema.dk.
 
-    Biltema bruger et Next.js/React-frontend.
-    Strategi 1: __NEXT_DATA__ → dehydratedState.queries → product price
+    Strategi 0: window.productData JSON blob (mest pålidelig — sat direkte i HTML)
+    Strategi 1: __NEXT_DATA__ dehydratedState queries
     Strategi 2: window.__INITIAL_STATE__ JSON blob
-    Strategi 3: JSON-LD priceSpecification (Biltema eksponerer schema.org)
-    Strategi 4: CSS-selectors som fallback
+    Strategi 3: CSS-selectors som fallback
     """
 
     parser_name = "biltema"
@@ -73,9 +72,8 @@ class BiltemaParser(PriceParser):
     def parse(self, content: str, url: str) -> ParseResult:
         soup = BeautifulSoup(content, "lxml")
 
-        # Strategi 0: og:price:amount / product:price:amount meta-tag
-        # Next.js SSR sætter altid disse korrekt for det aktuelle produkt
-        result = self._try_og_price(soup)
+        # Strategi 0: window.productData — sat direkte i HTML af Biltema, ingen JS nødvendig
+        result = self._try_product_data(content)
         if result and result.success:
             return result
 
@@ -84,7 +82,7 @@ class BiltemaParser(PriceParser):
         if result and result.success:
             return result
 
-        # Strategi 2: window.__INITIAL_STATE__ (ikke-Next.js React-variant)
+        # Strategi 2: window.__INITIAL_STATE__ (ældre variant)
         result = self._try_initial_state(soup)
         if result and result.success:
             return result
@@ -97,6 +95,65 @@ class BiltemaParser(PriceParser):
 
         return ParseResult(
             error="biltema: ingen pris fundet",
+            parser_used=self.parser_name,
+        )
+
+    def _try_product_data(self, content: str) -> ParseResult | None:
+        """
+        Biltema indsætter window.productData = {...} direkte i HTML'en.
+        Strukturen: variations[0].priceIncVAT er produktets pris inkl. moms.
+        """
+        m = re.search(r'window\.productData\s*=\s*window\.productData\s*\|\|\s*(\{)', content)
+        if not m:
+            # Prøv uden || fallback
+            m = re.search(r'window\.productData\s*=\s*(\{)', content)
+        if not m:
+            return None
+        try:
+            decoder = json.JSONDecoder()
+            data, _ = decoder.raw_decode(content[m.start(1):])
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+        # Biltema's struktur: { variations: [{ priceIncVAT, name, articleNumber, ... }] }
+        variations = data.get("variations", [])
+        if not variations:
+            return None
+
+        # Tag første variation (er altid produktet selv for en simpel produkt-URL)
+        v = variations[0]
+        price = _clean_price(v.get("priceIncVAT") or v.get("priceExVAT") or v.get("unitPrice"))
+        if not price or price <= 1:
+            return None
+
+        title = v.get("name") or data.get("name")
+        if title:
+            title = str(title)
+
+        # Lager: variations har ikke direkte lager-status — tjek data.inStock eller availability
+        stock_status: str | None = None
+        for key in ("inStock", "isInStock", "availability", "stock"):
+            val = v.get(key) or data.get(key)
+            if val is not None:
+                from app.scraper.parsers.inline_json_parser import _normalize_stock
+                stock_status = _normalize_stock(val)
+                if stock_status:
+                    break
+
+        image_url = (
+            v.get("imageUrl")
+            or v.get("imageUrlMedium")
+            or data.get("mainImageUrl")
+        )
+        if image_url and not str(image_url).startswith("http"):
+            image_url = None
+
+        return ParseResult(
+            price=price,
+            currency="DKK",
+            stock_status=stock_status,
+            title=title,
+            image_url=str(image_url) if image_url else None,
             parser_used=self.parser_name,
         )
 
