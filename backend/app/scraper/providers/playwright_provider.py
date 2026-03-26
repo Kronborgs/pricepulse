@@ -86,7 +86,7 @@ class PlaywrightProvider(FetchProvider):
 
                     if opts.wait_for_selector:
                         await page.wait_for_selector(
-                            opts.wait_for_selector, timeout=10000
+                            opts.wait_for_selector, timeout=20000
                         )
 
                     content = await page.content()

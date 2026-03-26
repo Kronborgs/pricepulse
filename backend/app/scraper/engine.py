@@ -406,9 +406,16 @@ class ScraperEngine:
 
     def _resolve_fetch_options(self, watch: Watch, domain: str) -> FetchOptions:
         cfg = watch.scraper_config or {}
+        # Amazon: siden sender konstant baggrundstrafik — networkidle nås aldrig.
+        # Brug domcontentloaded + vent på pris-elementet i stedet.
+        is_amazon = "amazon." in domain
         return FetchOptions(
             timeout=float(cfg.get("timeout", 30.0)),
-            wait_for_selector=cfg.get("wait_for_selector"),
+            wait_for_selector=cfg.get("wait_for_selector") or (
+                "#corePriceDisplay_desktop_feature_div, #productTitle"
+                if is_amazon else None
+            ),
+            wait_for_networkidle=not is_amazon,
         )
 
     def _parse_with_fallback(
