@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, LineChart } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatPrice, formatRelative } from "@/lib/utils";
@@ -9,19 +9,21 @@ import { Watch } from "@/types";
 
 interface StoreComparisonProps {
   productId: string;
+  watches?: Watch[]; // kan sendes udefra for at undgå dobbelt fetch
 }
 
-export function StoreComparison({ productId }: StoreComparisonProps) {
+export function StoreComparison({ productId, watches: watchesProp }: StoreComparisonProps) {
   const { data, isLoading } = useQuery({
     queryKey: ["product-watches", productId],
     queryFn: () => api.watches.list({ product_id: productId }),
+    enabled: !watchesProp, // hent kun hvis ingen watches er givet
   });
 
-  if (isLoading) {
+  if (!watchesProp && isLoading) {
     return <p className="text-sm text-muted-foreground">Indlæser butikker…</p>;
   }
 
-  const watches: Watch[] = data?.items ?? [];
+  const watches: Watch[] = watchesProp ?? data?.items ?? [];
 
   if (watches.length === 0) {
     return (
@@ -91,14 +93,24 @@ export function StoreComparison({ productId }: StoreComparisonProps) {
                     : "—"}
                 </td>
                 <td className="px-4 py-3">
-                  <Link
-                    href={watch.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Link
+                      href={`/watches/${watch.id}`}
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      title="Se graf og diagnostik"
+                    >
+                      <LineChart className="h-3.5 w-3.5" />
+                    </Link>
+                    <Link
+                      href={watch.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      title="Åbn i butik"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </td>
               </tr>
             );

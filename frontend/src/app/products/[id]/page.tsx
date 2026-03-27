@@ -7,7 +7,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { StoreComparison } from "@/components/products/store-comparison";
-import { Product } from "@/types";
+import { MultiPriceChart } from "@/components/products/multi-price-chart";
+import { Product, Watch } from "@/types";
 import { formatPrice } from "@/lib/utils";
 
 // ─── Word-overlap similarity (0-1) ──────────────────────────────────────────
@@ -41,6 +42,13 @@ export default function ProductDetailPage({
     queryKey: ["product", id],
     queryFn: () => api.products.get(id),
   });
+
+  const { data: watchesData } = useQuery({
+    queryKey: ["product-watches", id],
+    queryFn: () => api.watches.list({ product_id: id }),
+    enabled: !!product,
+  });
+  const watches: Watch[] = watchesData?.items ?? [];
 
   // Load all products for the merge dialog (only when open)
   const { data: allProductsData } = useQuery({
@@ -286,10 +294,18 @@ export default function ProductDetailPage({
         </div>
       )}
 
+      {/* Combined price chart */}
+      {watches.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="text-base font-semibold mb-4">Prishistorik</h2>
+          <MultiPriceChart watches={watches} />
+        </div>
+      )}
+
       {/* Store comparison */}
       <div>
         <h2 className="text-base font-semibold mb-3">Prissammenligning</h2>
-        <StoreComparison productId={id} />
+        <StoreComparison productId={id} watches={watches} />
       </div>
     </div>
   );
