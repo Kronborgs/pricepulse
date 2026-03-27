@@ -78,14 +78,10 @@ SHOP_PARSERS: dict[str, PriceParser] = {
 
 # Shops der kræver Playwright (aktiv bot-beskyttelse / JS-renderet pris)
 PLAYWRIGHT_REQUIRED_DOMAINS = {
-    "amazon.com", "www.amazon.com",
-    "amazon.de", "www.amazon.de",
-    "amazon.co.uk", "www.amazon.co.uk",
-    "amazon.se", "www.amazon.se",
-    "amazon.nl", "www.amazon.nl",
     "proshop.dk", "www.proshop.dk",
     "komplett.dk", "www.komplett.dk",
-    # biltema.dk bruger window.productData i rå HTML — Playwright ikke nødvendig
+    # amazon: twister-data JSON er i statisk HTML — Playwright ikke nødvendig
+    # biltema.dk: window.productData er i statisk HTML — Playwright ikke nødvendig
 }
 
 # Prissammenligningssider — returnér fejl med det samme, ingen HTTP-hentning
