@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Package2, Plus, Merge, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Package2, Plus, Merge, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -49,6 +49,16 @@ export default function ProductDetailPage({
     enabled: !!product,
   });
   const watches: Watch[] = watchesData?.items ?? [];
+
+  // All products for prev/next navigation (reuses cache from the products list page)
+  const { data: navProductsData } = useQuery({
+    queryKey: ["products-all-for-dups"],
+    queryFn: () => api.products.list({ limit: 200 }),
+  });
+  const navProducts = navProductsData?.items ?? [];
+  const navIndex = navProducts.findIndex((p) => p.id === id);
+  const prevId = navIndex > 0 ? navProducts[navIndex - 1].id : null;
+  const nextId = navIndex >= 0 && navIndex < navProducts.length - 1 ? navProducts[navIndex + 1].id : null;
 
   // Load all products for the merge dialog (only when open)
   const { data: allProductsData } = useQuery({
@@ -122,12 +132,33 @@ export default function ProductDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Link
-          href="/products"
-          className="mt-1 rounded-md p-1 hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        <div className="flex items-center gap-0.5 mt-1 shrink-0">
+          <Link
+            href="/products"
+            className="rounded-md p-1 hover:bg-muted transition-colors"
+            title="Tilbage til produkter"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          {prevId && (
+            <Link
+              href={`/products/${prevId}`}
+              className="rounded-md p-1 hover:bg-muted transition-colors"
+              title="Forrige produkt"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+          )}
+          {nextId && (
+            <Link
+              href={`/products/${nextId}`}
+              className="rounded-md p-1 hover:bg-muted transition-colors"
+              title="Næste produkt"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
         <div className="flex items-start gap-4 flex-1 min-w-0">
           {product.image_url ? (
             <img
