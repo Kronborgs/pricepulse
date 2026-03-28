@@ -168,7 +168,7 @@ export default function ProductDetailPage({
             />
           ) : (
             <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center shrink-0">
-              <img src="/logo.png" alt="PricePulse" className="h-14 w-14 object-contain opacity-20" />
+              <img src="/logo.png" alt="PricePulse" className="h-16 w-16 object-contain opacity-60" />
             </div>
           )}
           <div className="min-w-0 flex-1">
