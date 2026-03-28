@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Package2, Plus, Merge, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus, Merge, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -168,7 +168,7 @@ export default function ProductDetailPage({
             />
           ) : (
             <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center shrink-0">
-              <Package2 className="h-8 w-8 text-muted-foreground/40" />
+              <img src="/logo.png" alt="PricePulse" className="h-14 w-14 object-contain opacity-20" />
             </div>
           )}
           <div className="min-w-0 flex-1">

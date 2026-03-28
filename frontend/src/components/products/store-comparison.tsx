@@ -122,7 +122,7 @@ export function StoreComparison({ productId, watches: watchesProp }: StoreCompar
 }
 
 function StockBadge({ status }: { status?: string | null }) {
-  if (!status) return <span className="text-muted-foreground">—</span>;
+  if (!status) return <span className="text-muted-foreground text-xs">Lagerstatus kendes ikke</span>;
   const label =
     status === "in_stock"
       ? "På lager"

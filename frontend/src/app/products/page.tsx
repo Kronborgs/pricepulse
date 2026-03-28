@@ -174,7 +174,7 @@ function ProductCard({ product }: { product: Product }) {
             className="h-full w-full object-contain p-3 group-hover:scale-105 transition-transform"
           />
         ) : (
-          <Package2 className="h-12 w-12 text-muted-foreground/40" />
+          <img src="/logo.png" alt="PricePulse" className="h-16 w-16 object-contain opacity-20" />
         )}
       </div>
       <div className="p-3">

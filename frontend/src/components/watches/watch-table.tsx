@@ -144,7 +144,7 @@ export function WatchTable({ watches, isLoading }: Props) {
                 ) : watch.current_stock_status === "out_of_stock" ? (
                   <span className="text-red-500 text-xs">Udsolgt</span>
                 ) : (
-                  <span className="text-muted-foreground text-xs">—</span>
+                  <span className="text-muted-foreground text-xs">Lagerstatus kendes ikke</span>
                 )}
               </td>
               <td className="px-4 py-3">
