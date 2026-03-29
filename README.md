@@ -1,43 +1,103 @@
-# PricePulse
+﻿<div align="center">
+  <img src="assets/icon.png" alt="PricePulse" width="80" />
+  <h1>PricePulse</h1>
+  <p><strong>Self-hosted prisovervågning til danske webshops</strong></p>
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js" alt="Next.js" />
+    <img src="https://img.shields.io/badge/FastAPI-0.11x-009688?logo=fastapi" alt="FastAPI" />
+    <img src="https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker" />
+    <img src="https://img.shields.io/badge/Unraid-compatible-F15A2C" alt="Unraid" />
+  </p>
+</div>
 
-Self-hosted prisovervågningssystem til danske webshops. Kører stabilt som Docker-container på Unraid.
+---
 
-## Features
+PricePulse holder øje med priser på tværs af danske webshops og sender dig besked, når prisen falder eller en vare kommer tilbage på lager. Alt kører lokalt i din egen infrastruktur  ingen cloud, ingen abonnement.
 
-- **Multi-shop overvågning** — compumail, computersalg, elsalg, happii, komplett, proshop og mere
-- **Prishistorik** — interaktive grafer over prisudvikling over tid
-- **Multi-store sammenligning** — se samme vare fra flere butikker i ét overblik
-- **Modulær scraper-arkitektur** — HTTP og Playwright providers, pluggable parsers
-- **Robust fejlhåndtering** — rate limiting, retry, tydelig status ved blokering
-- **Moderne dashboard** — clean UI med TailwindCSS og shadcn/ui
+## Skærmbilleder
+
+<!-- SCREENSHOT-GUIDE
+     Alle billeder tages i browseren med PricePulse kørende (mørkt tema).
+     Gem som PNG, helst 1400-1600px bred, i mappen assets/screenshots/.
+-->
+
+### Dashboard
+![Dashboard](assets/screenshots/dashboard.png)
+> **Tag screenshot af:** Hele dashboard-siden  stats-rækken øverst (antal watches, aktive, fejl, prisfald i dag), seneste prisændringer i midten, og evt. fejl-banneret i bunden.
+
+### Watches  oversigt
+![Watches](assets/screenshots/watches.png)
+> **Tag screenshot af:** Watch-listen med statusfiltre øverst (Alle / Aktiv / Afventer / AI / Pause / Fejl / Blokeret), sogefelt, og et par rækker watches med statusbadges og priser.
+
+### Watch  detalje & prisgraf
+![Watch detalje](assets/screenshots/watch-detail.png)
+> **Tag screenshot af:** En enkelt watch åbnet  prisgrafen i toppen, kilde-listen nedenunder med butikslogoer og priser side om side.
+
+### Produkter
+![Produkter](assets/screenshots/products.png)
+> **Tag screenshot af:** Produktoversigten med sogefelt, et par produktkort med billede og bedste pris, og gerne duplikat-advarslen overst hvis der er nogen.
+
+### Indstillinger  Backup
+![Backup](assets/screenshots/backup.png)
+> **Tag screenshot af:** Settings-siden åben på Backup-sektionen  vis automatisk backup-konfiguration, SMTP-info-noten, og backup-listen med en eller flere filer.
+
+### Første opsætning
+![Setup](assets/screenshots/setup.png)
+> **Tag screenshot af:** Setup-guiden (åbnes automatisk ved ny installation)  vis de to faner "Ny konto" og "Gendan backup".
+
+### Admin  SMTP
+![SMTP](assets/screenshots/smtp.png)
+> **Tag screenshot af:** Admin -> SMTP-siden med konfigurationsformularen udfyldt. Vis at status står "Konfigureret".
+
+### Global SMTP-advarsel
+![SMTP banner](assets/screenshots/smtp-banner.png)
+> **Tag screenshot af:** En hvilken som helst side (f.eks. dashboard) hvor SMTP-banneret vises øverst  det amber-farvede banner med "SMTP ikke konfigureret" og knappen "Opsæt SMTP".
+
+---
+
+## Funktioner
+
+| Område | Hvad det gør |
+|--------|-------------|
+| **Prisovervågning** | Følger en eller flere butikskilder pr. produkt og registrerer hvert prisfald og lageraeandring |
+| **Multi-kilde sammenligning** | Viser alle butikspriser pa samme produkt side om side med prisgraf pr. kilde |
+| **Produktkatalog** | Samler watch-kilder under ét produkt og foreslår automatisk mulige dubletter |
+| **E-mail notifikationer** | Sender besked ved prisfald, vare tilbage pa lager eller ny fejl  konfigurerbart pr. bruger |
+| **AI-assistent (Ollama)** | Analyserer sider der fejler og foreslar CSS-selectors, Playwright-behov og bot-beskyttelse |
+| **Automatisk backup** | Tidsplanlagt backup af hele databasen til disk  download, gendan eller importer til ny server |
+| **Brugeradministration** | Fler-bruger support med roller (admin/bruger), invitation via e-mail, session-timeout |
+| **Scraper-engine** | HTTP (httpx) og JavaScript-rendering (Playwright), pluggable parsers: CSS, JSON-LD, inline JSON |
+| **Fejlklassificering** | Kategoriserer fejl: parser-mismatch, JS-render krævet, bot-beskyttelse, timeout, HTTP-fejl |
+
+---
 
 ## Quick Start
 
 ```bash
-# Klon repo og kopiér env-fil
 git clone https://github.com/Kronborgs/pricepulse.git
 cd pricepulse
 cp .env.example .env
-
-# Start alle services
+# Redigér .env  se sektionen Miljø-variabler nedenfor
 docker compose up -d
-
-# Se logs
-docker compose logs -f backend
 ```
 
-Frontend: http://localhost:3000  
-API docs: http://localhost:8000/docs
+- **Web UI:** `http://localhost:3000`
+- **API docs:** `http://localhost:8000/docs`
 
-## Opsætning på Unraid
+Forste gang du abner UI'en guides du igennem opsætnings-wizarden, hvor du opretter din admin-konto (eller gendanner fra en eksisterende backup).
 
-PricePulse kører som en Docker Compose-stack på Unraid via **Compose Manager** (Community Applications plugin).
+---
+
+## Opsetning pa Unraid
+
+PricePulse kører som en Docker Compose-stack pa Unraid via **Compose Manager** (Community Applications plugin).
 
 ### Forudsætninger
 
-1. **Community Applications** installeret (søg i Apps → "Community Applications")
+1. **Community Applications** installeret (søg i Apps -> "Community Applications")
 2. **Compose Manager** installeret via Community Applications
-3. Git installeret på Unraid (`Nerd Tools` plugin → installer `git`)
+3. Git installeret på Unraid (`Nerd Tools` plugin -> installer `git`)
 
 ---
 
@@ -78,32 +138,21 @@ DATABASE_URL=postgresql+asyncpg://pricepulse:MitSterkePassword123@db:5432/pricep
 
 #### 3. Tilføj stacken i Compose Manager
 
-1. Gå til **Unraid webUI → Docker → Compose Manager**
+1. Gå til **Unraid webUI -> Docker -> Compose Manager**
 2. Klik **Add New Stack**
 3. Navn: `pricepulse`
 4. Compose file path: `/mnt/user/appdata/pricepulse/docker-compose.yml`
 5. Env file path: `/mnt/user/appdata/pricepulse/.env`
 6. Klik **Save**
-7. Klik **Start** på stacken
+7. Klik **Start** pa stacken
 
-#### 4. Seed databasen (første gang)
+#### 4. Abn appen og gennemfor opsetningen
 
-Vent ca. 30 sekunder til alle containers er oppe, kør derefter:
+Gå til `http://DIN-UNRAID-IP:3000`  opsætnings-wizarden starter automatisk første gang. Opret din admin-konto eller gendan fra en eksisterende backup.
 
-```bash
-docker exec pricepulse-backend python -m app.scripts.seed
-```
+> Forste gang du installerer oprettes butikker (Komplett, Proshop, mfl.) automatisk af migrationen. Du behøver ikke køre `seed` manuelt.
 
-Dette tilføjer de 6 danske butikker (compumail, computersalg, elsalg, happii, komplett, proshop).
-
-#### 5. Åbn appen
-
-- **Frontend:** `http://DIN-UNRAID-IP:3000`
-- **API docs:** `http://DIN-UNRAID-IP:8000/docs`
-
----
-
-### Porte
+#### 5. Porte
 
 | Service | Port | Kan ændres via |
 |---|---|---|
@@ -112,22 +161,16 @@ Dette tilføjer de 6 danske butikker (compumail, computersalg, elsalg, happii, k
 
 ---
 
-### Unraid Community Applications — Icon
-
-Hvis du ønsker PricePulse som et ikon i Unraid's Docker-oversigt, kan du bruge dette ikon:
+### Unraid Community Applications  ikon
 
 **Icon URL:**
 ```
 https://raw.githubusercontent.com/Kronborgs/pricepulse/main/assets/icon.png
 ```
 
-Filen ligger allerede i `assets/icon.png` i repo'et.
-
 ---
 
 ### Opdatering
-
-SSH ind og kør:
 
 ```bash
 cd /mnt/user/appdata/pricepulse
@@ -142,41 +185,63 @@ Eller i **Compose Manager**: klik **Pull** og derefter **Restart**.
 
 ## Releases og versionering
 
-Versioner følger formatet **`v[YYYYMMDD]v[N]`** — dato + build-nummer samme dag:
+Versioner følger formatet **`v[YYYYMMDD]v[N]`**  dato + build-nummer samme dag:
 
-| Tag | Hvornår |
+| Tag | Hvornaar |
 |---|---|
 | `v20260320v1` | Første release den 20. marts 2026 |
 | `v20260320v2` | Anden ændring samme dag |
 | `v20260321v1` | Første release næste dag |
 
-### Udgiv en ny version
-
 ```bash
-# Første release i dag
-git tag v20260320v1
-git push origin v20260320v1
-
-# Endnu en ændring samme dag
-git tag v20260320v2
-git push origin v20260320v2
+# Tag og publicér en ny version
+git tag v20260329v1
+git push origin v20260329v1
 ```
 
-GitHub Actions bygger og pusher automatisk:
-- `ghcr.io/kronborgs/pricepulse-backend:v20260320v1`
-- `ghcr.io/kronborgs/pricepulse-backend:latest`
-- `ghcr.io/kronborgs/pricepulse-frontend:v20260320v1`
-- `ghcr.io/kronborgs/pricepulse-frontend:latest`
-
-Unraid henter `:latest` automatisk når du klikker **Pull** i Compose Manager.
+GitHub Actions bygger og pusher automatisk til `ghcr.io/kronborgs/pricepulse-backend:latest` og `ghcr.io/kronborgs/pricepulse-frontend:latest`.
 
 ---
 
-### Fejlfinding
+## E-mail notifikationer (SMTP)
+
+SMTP konfigureres under **Admin -> SMTP** i web-UI'en. Hvis SMTP ikke er sat op, vises en advarsel overst pa alle sider (kun synlig for admins).
+
+> **Bemærk:** SMTP-kodeordet gemmes **ikke** i backup af sikkerhedsmæssige årsager. Øvrige SMTP-indstillinger gendannes ved restore, men som deaktiverede  genindtast kodeordet under Admin -> SMTP for at aktivere notifikationer igen.
+
+---
+
+## Backup & restore
+
+Backups gemmes automatisk (eller manuelt) under **Indstillinger -> Backup**.
+
+- Filer gemmes i `/app/data/backup` (Unraid: `/mnt/user/appdata/pricepulse/backup`)
+- Download backup-filen lokalt som `.json.gz`
+- Gendan direkte fra listen, eller upload en fil fra en anden installation
+- Ved **Ny installation**: Opsætnings-wizarden tilbyder "Gendan backup" som alternativ til at oprette en ny konto
+
+---
+
+## Stack
+
+| Lag | Teknologi |
+|-----|-----------|
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2 (async) |
+| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
+| Database | PostgreSQL 16 |
+| Cache/Queue | Redis 7 |
+| Scraping | httpx + Playwright |
+| AI (valgfrit) | Ollama (lokal LLM til parser-analyse) |
+| Charts | Recharts |
+| Scheduling | APScheduler |
+
+---
+
+## Fejlfinding
 
 ```bash
 # Se alle container-logs
-docker compose -f /mnt/user/appdata/pricepulse/docker-compose.yml logs -f
+docker compose logs -f
 
 # Kun backend
 docker logs pricepulse-backend -f
@@ -188,29 +253,13 @@ docker logs pricepulse-frontend -f
 docker exec -it pricepulse-db psql -U pricepulse
 ```
 
-## Stack
-
-| Lag | Teknologi |
-|-----|-----------|
-| Backend | Python 3.12, FastAPI, SQLAlchemy 2 (async) |
-| Frontend | Next.js 14, TypeScript, Tailwind, shadcn/ui |
-| Database | PostgreSQL 16 |
-| Cache | Redis 7 |
-| Scraping | httpx + Playwright |
-| Charts | Recharts |
+---
 
 ## Miljø-variabler
 
 Se [.env.example](.env.example) for komplet liste.
 
-## Docker Compose Services
-
-```
-backend   — FastAPI + APScheduler (port 8000)
-frontend  — Next.js UI (port 3000)
-db        — PostgreSQL 16
-redis     — Redis 7
-```
+---
 
 ## Licens
 
