@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Check, CheckCircle2, Download, HardDrive, Loader2, RefreshCw, RotateCcw, Trash2, Upload, X, XCircle } from "lucide-react";
+import { Brain, Check, CheckCircle2, Download, HardDrive, Info, KeyRound, Loader2, RefreshCw, RotateCcw, Trash2, Upload, X, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Shop } from "@/types";
 import { cn } from "@/lib/utils";
@@ -545,6 +545,26 @@ function BackupSection() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* SMTP note */}
+      <div className="px-6 py-3 flex items-start gap-3 bg-muted/30">
+        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-slate-800 ring-1 ring-slate-700 mt-0.5">
+          <KeyRound className="h-3.5 w-3.5 text-slate-400" />
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+            <Info className="h-3 w-3 text-slate-500" />
+            SMTP-kodeord gemmes ikke i backup
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Af sikkerhedsmæssige årsager inkluderer backuppen <strong className="text-slate-400">ikke</strong> dit SMTP-kodeord.
+            Øvrige SMTP-indstillinger (server, port, afsender m.m.) er gemt, men
+            genoplæses som <em>deaktiverede</em> — du skal genindtaste kodeordet
+            under <strong className="text-slate-400">Admin → SMTP</strong> for at
+            aktivere e-mail notifikationer igen.
+          </p>
+        </div>
       </div>
 
       {/* Backup list */}
