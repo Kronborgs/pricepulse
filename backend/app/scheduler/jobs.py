@@ -27,8 +27,34 @@ async def start_scheduler() -> None:
         replace_existing=True,
         max_instances=1,
     )
+
+    # ── Backup-job ────────────────────────────────────────────
+    from app.services.backup_service import load_config, create_backup
+
+    backup_cfg = load_config()
+    if backup_cfg.get("enabled"):
+        interval_h = max(1, int(backup_cfg.get("interval_hours", 24)))
+        _scheduler.add_job(
+            _run_scheduled_backup,
+            trigger=IntervalTrigger(hours=interval_h),
+            id="backup_job",
+            replace_existing=True,
+            max_instances=1,
+        )
+        logger.info("Backup-job tilføjet", interval_hours=interval_h)
+
     _scheduler.start()
     logger.info("Scheduler startet")
+
+
+async def _run_scheduled_backup() -> None:
+    """Planlagt backup — køres af scheduleren."""
+    from app.services.backup_service import create_backup
+    try:
+        filename = await create_backup()
+        logger.info("Planlagt backup gennemført", filename=filename)
+    except Exception as e:
+        logger.error("Planlagt backup fejlede", error=str(e))
 
 
 async def stop_scheduler() -> None:

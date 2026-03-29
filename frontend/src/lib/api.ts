@@ -398,4 +398,19 @@ export const api = {
     deleteEmailQueue: () =>
       apiFetch<{ ok: boolean }>("/admin/data/email-queue", { method: "DELETE" }),
   },
+
+  // ─── Admin: Backup ────────────────────────────────────────────────────────
+  backup: {
+    list: () => apiFetch<{ filename: string; size_bytes: number; created_at: string }[]>("/admin/backup/list"),
+    run: () => apiFetch<{ ok: boolean; filename: string }>("/admin/backup/run", { method: "POST" }),
+    getConfig: () => apiFetch<{ enabled: boolean; interval_hours: number; keep_count: number }>("/admin/backup/config"),
+    updateConfig: (data: { enabled: boolean; interval_hours: number; keep_count: number }) =>
+      apiFetch<{ enabled: boolean; interval_hours: number; keep_count: number }>("/admin/backup/config", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    deleteBackup: (filename: string) =>
+      apiFetch<{ ok: boolean }>(`/admin/backup/${encodeURIComponent(filename)}`, { method: "DELETE" }),
+    downloadUrl: (filename: string) => `/api/v1/admin/backup/download/${encodeURIComponent(filename)}`,
+  },
 };
