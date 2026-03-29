@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AuthGuard } from "@/components/layout/auth-guard";
+import { SmtpBanner } from "@/components/layout/smtp-banner";
 
 const AUTH_ROUTES = ["/login", "/setup", "/forgot-password", "/reset-password"];
 
@@ -19,9 +20,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <AuthGuard>
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto p-6 max-w-7xl">{children}</div>
-        </main>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <SmtpBanner />
+          <main className="flex-1 overflow-y-auto">
+            <div className="container mx-auto p-6 max-w-7xl">{children}</div>
+          </main>
+        </div>
       </div>
     </AuthGuard>
   );
