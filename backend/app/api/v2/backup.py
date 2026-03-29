@@ -1,13 +1,15 @@
 """
-Backup API — liste, kør, konfigurér og download backups.
+Backup API — liste, kør, konfigurér, download og gendan backups.
 Kun tilgængelig for admin-brugere.
 """
 from __future__ import annotations
 
 import re
+import shutil
+import tempfile
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -17,6 +19,7 @@ from app.services.backup_service import (
     create_backup,
     list_backups,
     load_config,
+    restore_from_backup,
     save_config,
 )
 
@@ -32,11 +35,14 @@ class BackupConfig(BaseModel):
     keep_count: int = Field(default=7, ge=1, le=365)
 
 
+class RestoreRequest(BaseModel):
+    import_users: bool = True
+
+
 # ── List ──────────────────────────────────────────────────────────────────────
 
 @router.get("/admin/backup/list")
 async def get_backup_list(_admin: AdminUser = None) -> list[dict]:
-    """Returner liste af gemte backupfiler, nyeste først."""
     return list_backups()
 
 
@@ -44,7 +50,6 @@ async def get_backup_list(_admin: AdminUser = None) -> list[dict]:
 
 @router.post("/admin/backup/run")
 async def run_backup_now(_admin: AdminUser = None) -> dict:
-    """Kør en øjeblikkelig backup."""
     try:
         filename = await create_backup()
         return {"ok": True, "filename": filename}
@@ -75,7 +80,6 @@ async def update_backup_config(
 
 @router.get("/admin/backup/download/{filename}")
 async def download_backup(filename: str, _admin: AdminUser = None) -> FileResponse:
-    """Download én backupfil (valideret filnavn — ingen path-traversal)."""
     if not _SAFE_FILENAME_RE.fullmatch(filename):
         raise HTTPException(status_code=400, detail="Ugyldigt filnavn")
     filepath = BACKUP_DIR / filename
@@ -88,11 +92,67 @@ async def download_backup(filename: str, _admin: AdminUser = None) -> FileRespon
     )
 
 
+# ── Restore from existing backup ──────────────────────────────────────────────
+
+@router.post("/admin/backup/restore/{filename}")
+async def restore_backup(
+    filename: str,
+    body: RestoreRequest,
+    _admin: AdminUser = None,
+) -> dict:
+    """Gendan fra en gemt backup-fil på serveren."""
+    if not _SAFE_FILENAME_RE.fullmatch(filename):
+        raise HTTPException(status_code=400, detail="Ugyldigt filnavn")
+    filepath = BACKUP_DIR / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Backup ikke fundet")
+    try:
+        stats = await restore_from_backup(filepath, import_users=body.import_users)
+        return {"ok": True, "stats": stats}
+    except Exception as e:
+        logger.error("Restore fejlede", filename=filename, error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Restore from uploaded file ────────────────────────────────────────────────
+
+@router.post("/admin/backup/upload-restore")
+async def upload_and_restore(
+    file: UploadFile = File(...),
+    import_users: bool = True,
+    _admin: AdminUser = None,
+) -> dict:
+    """
+    Upload og gendan en backup-fil direkte.
+    Bruges til 'frisk installation' — upload den gemte .json.gz-fil.
+    """
+    if not file.filename or not file.filename.endswith(".json.gz"):
+        raise HTTPException(status_code=400, detail="Filen skal være en .json.gz backup-fil")
+
+    # Skriv uploadet fil til en midlertidig placering
+    with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        from pathlib import Path
+        stats = await restore_from_backup(Path(tmp_path), import_users=import_users)
+        return {"ok": True, "stats": stats}
+    except Exception as e:
+        logger.error("Upload-restore fejlede", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        import os
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
 # ── Delete ────────────────────────────────────────────────────────────────────
 
 @router.delete("/admin/backup/{filename}")
 async def delete_backup(filename: str, _admin: AdminUser = None) -> dict:
-    """Slet én specifik backupfil."""
     if not _SAFE_FILENAME_RE.fullmatch(filename):
         raise HTTPException(status_code=400, detail="Ugyldigt filnavn")
     filepath = BACKUP_DIR / filename
@@ -105,7 +165,6 @@ async def delete_backup(filename: str, _admin: AdminUser = None) -> dict:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _apply_scheduler(cfg: dict) -> None:
-    """Opdater APScheduler live med ny backup-konfiguration."""
     try:
         from app.scheduler.jobs import scheduler
         from apscheduler.triggers.interval import IntervalTrigger
@@ -121,7 +180,6 @@ def _apply_scheduler(cfg: dict) -> None:
                     trigger=IntervalTrigger(hours=interval_h),
                 )
             except Exception:
-                # Job eksisterer ikke endnu — tilføj det
                 from app.scheduler.jobs import _run_scheduled_backup
                 scheduler.add_job(
                     _run_scheduled_backup,
@@ -134,7 +192,6 @@ def _apply_scheduler(cfg: dict) -> None:
         else:
             try:
                 scheduler.pause_job("backup_job")
-                logger.info("Backup-job sat på pause")
             except Exception:
                 pass
     except Exception as e:

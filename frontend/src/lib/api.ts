@@ -409,6 +409,19 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+    restore: (filename: string, importUsers: boolean) =>
+      apiFetch<{ ok: boolean; stats: Record<string, number> }>(`/admin/backup/restore/${encodeURIComponent(filename)}`, {
+        method: "POST",
+        body: JSON.stringify({ import_users: importUsers }),
+      }),
+    uploadRestore: (file: File, importUsers: boolean) => {
+      const form = new FormData();
+      form.append("file", file);
+      return apiFetch<{ ok: boolean; stats: Record<string, number> }>(
+        `/admin/backup/upload-restore?import_users=${importUsers}`,
+        { method: "POST", body: form, headers: {} },
+      );
+    },
     deleteBackup: (filename: string) =>
       apiFetch<{ ok: boolean }>(`/admin/backup/${encodeURIComponent(filename)}`, { method: "DELETE" }),
     downloadUrl: (filename: string) => `/api/v1/admin/backup/download/${encodeURIComponent(filename)}`,

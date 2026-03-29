@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Check, CheckCircle2, Download, HardDrive, Loader2, RefreshCw, Trash2, X, XCircle } from "lucide-react";
+import { Brain, Check, CheckCircle2, Download, HardDrive, Loader2, RefreshCw, RotateCcw, Trash2, Upload, X, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Shop } from "@/types";
 import { cn } from "@/lib/utils";
@@ -255,10 +255,18 @@ function OllamaSection() {
 
 function BackupSection() {
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [editConfig, setEditConfig] = useState(false);
   const [cfgEnabled, setCfgEnabled] = useState(false);
   const [cfgHours, setCfgHours] = useState(24);
   const [cfgKeep, setCfgKeep] = useState(7);
+
+  // Restore confirm dialog state
+  const [restoreTarget, setRestoreTarget] = useState<string | null>(null); // filename or "upload"
+  const [importUsers, setImportUsers] = useState(true);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [restoreResult, setRestoreResult] = useState<Record<string, number> | null>(null);
 
   const { data: config, isLoading: configLoading } = useQuery({
     queryKey: ["backup-config"],
@@ -288,6 +296,18 @@ function BackupSection() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["backup-list"] }),
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: ({ filename, importUsers }: { filename: string; importUsers: boolean }) =>
+      filename === "__upload__" && uploadFile
+        ? api.backup.uploadRestore(uploadFile, importUsers)
+        : api.backup.restore(filename, importUsers),
+    onSuccess: (data) => {
+      setRestoreResult(data.stats);
+      setRestoreTarget(null);
+      setUploadFile(null);
+    },
+  });
+
   function openEdit() {
     setCfgEnabled(config?.enabled ?? false);
     setCfgHours(config?.interval_hours ?? 24);
@@ -302,26 +322,34 @@ function BackupSection() {
   }
 
   function formatDate(iso: string): string {
-    return new Date(iso).toLocaleString("da-DK", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    return new Date(iso).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" });
   }
+
+  const STAT_LABELS: Record<string, string> = {
+    products: "Produkter",
+    v1_watches: "Watches (v1)",
+    v1_price_history: "Prishistorik (v1)",
+    v2_watches: "Watches (v2)",
+    v2_watch_sources: "Watch Sources",
+    v2_price_events: "Prisændringer (v2)",
+    users: "Brugere",
+    smtp_restored: "SMTP-opsætning",
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card divide-y divide-border">
       {/* Header */}
-      <div className="px-6 py-4 flex items-center justify-between gap-4">
+      <div className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <HardDrive className="h-5 w-5 text-blue-500" />
           <div>
             <h2 className="text-base font-semibold">Backup</h2>
             <p className="text-xs text-muted-foreground">
-              Gemmes i <code className="bg-muted rounded px-1">/app/data/backup</code> (host: <code className="bg-muted rounded px-1">/mnt/user/appdata/pricepulse/backup</code>)
+              Gemmes i <code className="bg-muted rounded px-1">/app/data/backup</code> · host: <code className="bg-muted rounded px-1">/mnt/user/appdata/pricepulse/backup</code>
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => refetchList()}
             disabled={isRefetching}
@@ -330,16 +358,25 @@ function BackupSection() {
           >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
+          {/* Upload & restore (frisk install) */}
+          <button
+            onClick={() => {
+              setRestoreTarget("__upload__");
+              setImportUsers(true);
+              setUploadFile(null);
+              setRestoreResult(null);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Importer backup-fil
+          </button>
           <button
             onClick={() => runMutation.mutate()}
             disabled={runMutation.isPending}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm disabled:opacity-50"
           >
-            {runMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <HardDrive className="h-3.5 w-3.5" />
-            )}
+            {runMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
             Kør backup nu
           </button>
         </div>
@@ -357,6 +394,105 @@ function BackupSection() {
         </div>
       )}
 
+      {/* Restore result */}
+      {restoreResult && (
+        <div className="px-6 py-3 bg-green-500/10 border-b border-border">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
+              <Check className="h-4 w-4" /> Restore gennemført
+            </p>
+            <button onClick={() => setRestoreResult(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            {Object.entries(restoreResult).map(([k, v]) => (
+              <div key={k} className="flex justify-between text-xs">
+                <span className="text-muted-foreground">{STAT_LABELS[k] ?? k}</span>
+                <span className="font-mono font-medium">{v}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            ⚠ SMTP-kodeord gendannes ikke — genindtast det under Mail-indstillinger.
+          </p>
+        </div>
+      )}
+
+      {/* Restore confirm modal (fra liste) */}
+      {restoreTarget && restoreTarget !== "__upload__" && (
+        <div className="px-6 py-4 bg-amber-500/10 space-y-3">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            Gendan fra: <span className="font-mono">{restoreTarget}</span>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Data UPSERTS — eksisterende poster opdateres, manglende tilføjes. Intet slettes.
+          </p>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={importUsers} onChange={(e) => setImportUsers(e.target.checked)} className="rounded" />
+            Importer brugere (inkl. adgangskoder fra backup)
+          </label>
+          {restoreMutation.isError && (
+            <p className="text-xs text-destructive">{(restoreMutation.error as Error).message}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => restoreMutation.mutate({ filename: restoreTarget, importUsers })}
+              disabled={restoreMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              {restoreMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Gendan
+            </button>
+            <button onClick={() => setRestoreTarget(null)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+              Annuller
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload & restore modal */}
+      {restoreTarget === "__upload__" && (
+        <div className="px-6 py-4 bg-blue-500/10 space-y-3">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+            <Upload className="h-4 w-4" /> Importer backup-fil
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Upload en tidligere downloadet <code className="bg-muted rounded px-1">.json.gz</code> backup-fil. Bruges til genoprettelse på ny server.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json.gz,.gz"
+            onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+            className="block text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-muted file:px-3 file:py-1 file:text-sm file:cursor-pointer"
+          />
+          {uploadFile && (
+            <p className="text-xs text-muted-foreground">Valgt: <span className="font-mono">{uploadFile.name}</span> ({formatBytes(uploadFile.size)})</p>
+          )}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={importUsers} onChange={(e) => setImportUsers(e.target.checked)} className="rounded" />
+            Importer brugere (inkl. adgangskoder fra backup)
+          </label>
+          {restoreMutation.isError && (
+            <p className="text-xs text-destructive">{(restoreMutation.error as Error).message}</p>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => uploadFile && restoreMutation.mutate({ filename: "__upload__", importUsers })}
+              disabled={!uploadFile || restoreMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              {restoreMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+              Importer og gendan
+            </button>
+            <button onClick={() => { setRestoreTarget(null); setUploadFile(null); }} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+              Annuller
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Config */}
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-3">
@@ -365,7 +501,6 @@ function BackupSection() {
             <button onClick={openEdit} className="text-xs text-primary hover:underline">Redigér</button>
           )}
         </div>
-
         {configLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : editConfig ? (
@@ -374,50 +509,26 @@ function BackupSection() {
               <span className="text-xs text-muted-foreground w-32 shrink-0">Aktiveret</span>
               <button
                 onClick={() => setCfgEnabled((v) => !v)}
-                className={cn(
-                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                  cfgEnabled ? "bg-green-500" : "bg-muted-foreground/30"
-                )}
+                className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", cfgEnabled ? "bg-green-500" : "bg-muted-foreground/30")}
               >
-                <span className={cn(
-                  "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                  cfgEnabled ? "translate-x-6" : "translate-x-1"
-                )} />
+                <span className={cn("inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform", cfgEnabled ? "translate-x-6" : "translate-x-1")} />
               </button>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground w-32 shrink-0">Interval (timer)</span>
-              <input
-                type="number"
-                min={1}
-                max={8760}
-                value={cfgHours}
-                onChange={(e) => setCfgHours(Number(e.target.value))}
-                className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              <input type="number" min={1} max={8760} value={cfgHours} onChange={(e) => setCfgHours(Number(e.target.value))}
+                className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground w-32 shrink-0">Behold antal</span>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={cfgKeep}
-                onChange={(e) => setCfgKeep(Number(e.target.value))}
-                className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              <input type="number" min={1} max={365} value={cfgKeep} onChange={(e) => setCfgKeep(Number(e.target.value))}
+                className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => configMutation.mutate({ enabled: cfgEnabled, interval_hours: cfgHours, keep_count: cfgKeep })}
+              <button onClick={() => configMutation.mutate({ enabled: cfgEnabled, interval_hours: cfgHours, keep_count: cfgKeep })}
                 disabled={configMutation.isPending}
-                className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50"
-              >
-                Gem
-              </button>
-              <button onClick={() => setEditConfig(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">
-                Annuller
-              </button>
+                className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">Gem</button>
+              <button onClick={() => setEditConfig(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">Annuller</button>
             </div>
           </div>
         ) : (
@@ -438,9 +549,7 @@ function BackupSection() {
 
       {/* Backup list */}
       <div className="px-6 py-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-          Gemte backups
-        </p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Gemte backups</p>
         {listLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : !backups || backups.length === 0 ? (
@@ -451,10 +560,15 @@ function BackupSection() {
               <div key={b.filename} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-mono truncate">{b.filename}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatDate(b.created_at)} · {formatBytes(b.size_bytes)}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatDate(b.created_at)} · {formatBytes(b.size_bytes)}</p>
                 </div>
+                <button
+                  onClick={() => { setRestoreTarget(b.filename); setImportUsers(true); setRestoreResult(null); }}
+                  className="p-1.5 rounded hover:bg-amber-500/10 text-muted-foreground hover:text-amber-500 transition-colors"
+                  title="Gendan fra denne backup"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
                 <a
                   href={api.backup.downloadUrl(b.filename)}
                   download={b.filename}
