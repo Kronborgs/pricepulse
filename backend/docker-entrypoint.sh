@@ -29,6 +29,17 @@ for i in $(seq 1 30); do
     sleep 1
 done
 
+# ─── Extra: wait until the target database actually accepts connections ────────
+echo "[entrypoint] Verifying database connection..."
+for i in $(seq 1 20); do
+    if su -c "psql -U postgres -d postgres -c 'SELECT 1' -q > /dev/null 2>&1" postgres; then
+        echo "[entrypoint] Database connection verified."
+        break
+    fi
+    echo "[entrypoint] Database not accepting connections yet (attempt $i)..."
+    sleep 1
+done
+
 # ─── Create database user and database if they don't exist ────────────────────
 su -c "psql -U postgres -tc \"SELECT 1 FROM pg_roles WHERE rolname='$PGUSER'\" | grep -q 1 \
     || psql -U postgres -c \"CREATE USER $PGUSER WITH PASSWORD '$PGPASSWORD'\"" postgres
@@ -46,11 +57,15 @@ for i in $(seq 1 15); do
     sleep 1
 done
 
-# ─── Run Alembic migrations ───────────────────────────────────────────────────
+# ─── Run Alembic migrations (med retry ved connection-fejl) ──────────────────
 echo "[entrypoint] Running database migrations..."
 cd /app
-DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/${PGDB}" \
-    alembic upgrade head
+for i in $(seq 1 5); do
+    DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/${PGDB}" \
+        alembic upgrade head && break
+    echo "[entrypoint] Migration attempt $i failed, retrying in 3s..."
+    sleep 3
+done
 
 # ─── Start FastAPI via supervisord ────────────────────────────────────────────
 echo "[entrypoint] Starting API..."
