@@ -407,6 +407,8 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
             )
             await db.execute(stmt)
         stats["shops"] = len(shops_data)
+        # Set af kendte shop-IDs — bruges til at sætte shop_id=NULL hvis shop mangler i backup
+        known_shop_ids = {row["id"] for row in shops_data}
 
         # ── Products ──────────────────────────────────────────────────────────
         products_data = data.get("products", [])
@@ -433,10 +435,13 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
         # ── V1 Watches ────────────────────────────────────────────────────────
         v1_watches_data = data.get("v1_watches", data.get("watches", []))  # compat v1 format
         for row in v1_watches_data:
+            # Sæt shop_id=NULL hvis shop ikke er i backup (ældre backup-format eller shop slettet)
+            raw_shop_id = row.get("shop_id")
+            shop_id = raw_shop_id if (raw_shop_id and raw_shop_id in known_shop_ids) else None
             stmt = pg_insert(Watch).values(
                 id=row["id"],
                 product_id=row.get("product_id"),
-                shop_id=row.get("shop_id"),
+                shop_id=shop_id,
                 url=row["url"],
                 title=row.get("title"),
                 image_url=row.get("image_url"),
