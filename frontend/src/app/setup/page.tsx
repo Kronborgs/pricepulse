@@ -90,6 +90,9 @@ export default function SetupPage() {
               ) : null
             )}
           </div>
+          <p className="text-xs text-amber-400 text-center">
+            ⚠ SMTP er gendannet (deaktiveret) — genindtast kodeordet under Indstillinger → Mail.
+          </p>
           <p className="text-xs text-slate-500 text-center">
             Log ind med dine tidligere oplysninger.
           </p>

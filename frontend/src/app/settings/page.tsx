@@ -414,7 +414,7 @@ function BackupSection() {
             ))}
           </div>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-            ⚠ SMTP-kodeord gendannes ikke — genindtast det under Mail-indstillinger.
+            ⚠ SMTP-indstillinger gendannes (deaktiverede) — genindtast <strong>kodeordet</strong> under Mail-indstillinger for at aktivere.
           </p>
         </div>
       )}

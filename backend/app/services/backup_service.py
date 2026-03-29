@@ -589,7 +589,30 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
 
         # ── SMTP ──────────────────────────────────────────────────────────────
         smtp_data = data.get("smtp_settings", [])
-        # SMTP gendanes kun deskriptivt (ingen kodeord) — brugeren skal genindtaste adgangskode
+        for row in smtp_data:
+            stmt = pg_insert(SMTPSettings).values(
+                id=row["id"],
+                is_active=False,  # Deaktiveret indtil kodeord er genindtastet
+                host=row.get("host", ""),
+                port=row.get("port", 587),
+                use_tls=row.get("use_tls", True),
+                username=row.get("username", ""),
+                password_enc="",  # Kodeord kan ikke gendannes — skal genindtastes
+                from_email=row.get("from_email", ""),
+                from_name=row.get("from_name", "PricePulse"),
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "is_active": False,
+                    "host": row.get("host", ""),
+                    "port": row.get("port", 587),
+                    "use_tls": row.get("use_tls", True),
+                    "username": row.get("username", ""),
+                    "from_email": row.get("from_email", ""),
+                    "from_name": row.get("from_name", "PricePulse"),
+                },
+            )
+            await db.execute(stmt)
         stats["smtp_restored"] = len(smtp_data)
 
         await db.commit()
