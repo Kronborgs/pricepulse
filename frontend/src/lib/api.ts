@@ -61,7 +61,8 @@ async function apiFetch<T>(path: string, init?: RequestInit, _retried = false): 
     !_retried &&
     path !== "/auth/refresh" &&
     path !== "/auth/login" &&
-    path !== "/auth/setup"
+    path !== "/auth/setup" &&
+    path !== "/auth/setup-restore"
   ) {
     const refreshed = await _silentRefresh();
     if (refreshed) {
@@ -267,6 +268,15 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
+    setupRestore: (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      return apiFetch<{ ok: boolean; stats: Record<string, number> }>("/auth/setup-restore", {
+        method: "POST",
+        body: fd,
+        headers: {},
+      });
+    },
     login: (data: { email: string; password: string }) =>
       apiFetch<User>("/auth/login", {
         method: "POST",

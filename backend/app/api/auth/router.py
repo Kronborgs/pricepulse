@@ -4,11 +4,14 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 """
 from __future__ import annotations
 
+import shutil
+import tempfile
 import uuid
+from pathlib import Path
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -149,6 +152,42 @@ async def setup(
     _set_auth_cookies(response, access, refresh)
     logger.info("first_admin_created", user_id=str(user.id))
     return _user_to_read(user)
+
+
+@router.post("/setup-restore")
+async def setup_restore(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Gendan backup ved frisk installation.
+    Kun tilladt når systemet endnu ikke er sat op (ingen brugere).
+    Backup-filens brugere inkluderes altid, så gamle logins virker.
+    """
+    svc = AuthService(db)
+    if not await svc.setup_required():
+        raise HTTPException(status_code=400, detail="Systemet er allerede sat op")
+    if not file.filename or not file.filename.endswith(".json.gz"):
+        raise HTTPException(status_code=400, detail="Filen skal være en .json.gz backup-fil")
+
+    with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
+    try:
+        from app.services.backup_service import restore_from_backup
+        stats = await restore_from_backup(Path(tmp_path), import_users=True)
+        logger.info("setup_restore_complete", stats=stats)
+        return {"ok": True, "stats": stats}
+    except Exception as e:
+        logger.error("setup_restore_fejlede", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        import os
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 @router.post("/login", response_model=UserRead)
