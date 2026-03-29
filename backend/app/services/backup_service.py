@@ -105,6 +105,7 @@ async def create_backup() -> str:
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
     from app.models.product import Product
+    from app.models.shop import Shop
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
     from app.models.smtp_settings import SMTPSettings
@@ -113,6 +114,11 @@ async def create_backup() -> str:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
     async with AsyncSessionLocal() as db:
+        # ─── Shops ────────────────────────────────────────────────────────────
+        shops = list(
+            (await db.execute(select(Shop))).scalars().all()
+        )
+
         # ─── V1 Watches ───────────────────────────────────────────────────────
         v1_watches = list(
             (await db.execute(select(Watch))).scalars().all()
@@ -173,6 +179,21 @@ async def create_backup() -> str:
     payload: dict = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "version": 2,
+        "shops": [
+            {
+                "id": _s(s.id),
+                "name": s.name,
+                "domain": s.domain,
+                "logo_url": s.logo_url,
+                "default_provider": s.default_provider,
+                "default_price_selector": s.default_price_selector,
+                "default_title_selector": s.default_title_selector,
+                "default_stock_selector": s.default_stock_selector,
+                "is_active": s.is_active,
+                "created_at": _dt(s.created_at),
+            }
+            for s in shops
+        ],
         "products": [
             {
                 "id": _s(p.id),
@@ -344,6 +365,7 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
     from sqlalchemy import text as sa_text
 
     from app.models.product import Product
+    from app.models.shop import Shop
     from app.models.watch import Watch
     from app.models.price_history import PriceHistory
     from app.models.product_watch import ProductWatch
@@ -365,6 +387,26 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
             return None
 
     async with AsyncSessionLocal() as db:
+
+        # ── Shops (skal gendannes FØR watches pga. FK) ────────────────────────
+        shops_data = data.get("shops", [])
+        for row in shops_data:
+            stmt = pg_insert(Shop).values(
+                id=row["id"],
+                name=row["name"],
+                domain=row["domain"],
+                logo_url=row.get("logo_url"),
+                default_provider=row.get("default_provider", "http"),
+                default_price_selector=row.get("default_price_selector"),
+                default_title_selector=row.get("default_title_selector"),
+                default_stock_selector=row.get("default_stock_selector"),
+                is_active=row.get("is_active", True),
+            ).on_conflict_do_update(
+                index_elements=["id"],
+                set_={"name": row["name"], "logo_url": row.get("logo_url"), "is_active": row.get("is_active", True)},
+            )
+            await db.execute(stmt)
+        stats["shops"] = len(shops_data)
 
         # ── Products ──────────────────────────────────────────────────────────
         products_data = data.get("products", [])

@@ -59,6 +59,7 @@ export default function SetupPage() {
   // After restore succeeds, show a "go to login" screen
   if (restoreStats) {
     const statLabels: Record<string, string> = {
+      shops: "Butikker",
       products: "Produkter",
       v1_watches: "Watches (v1)",
       v1_price_history: "Prishistorik",
