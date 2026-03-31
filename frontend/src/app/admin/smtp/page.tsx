@@ -149,7 +149,7 @@ export default function SMTPPage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                placeholder={settings ? "(uændret)" : ""}
+                placeholder={settings ? "(lad stå tom for at beholde eksisterende)" : ""}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"

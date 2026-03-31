@@ -39,7 +39,7 @@ class SMTPSettingsWrite(BaseModel):
     port: int = 587
     use_tls: bool = True
     username: str
-    password: str  # plain — krypteres ved gemning
+    password: str = ""  # tom = behold eksisterende kodeord
     from_email: str
     from_name: str = "PricePulse"
 
@@ -80,6 +80,12 @@ async def get_smtp_settings(
     row = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active == True).limit(1))
     if not row:
         return {"configured": False}
+    # Verificér at kodeordet kan dekrypteres med den aktuelle nøgle
+    try:
+        decrypt_password(row.password_enc)
+    except Exception:
+        logger.warning("smtp.key_error", hint="FERNET_KEY har ændret sig — kodeord kan ikke dekrypteres")
+        return {"configured": False, "key_error": True}
     return {"configured": True, "settings": SMTPSettingsRead.model_validate(row)}
 
 
@@ -89,9 +95,21 @@ async def save_smtp_settings(
     db: AsyncSession = Depends(get_db),
     admin: AdminUser = None,
 ) -> dict:
-    # Deaktivér eksisterende
-    existing = await db.execute(select(SMTPSettings))
-    for row in existing.scalars().all():
+    # Hent eksisterende aktiv konfiguration (bevar kodeord hvis ikke ændret)
+    existing = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active == True).limit(1))
+
+    if not body.password.strip() and not existing:
+        raise HTTPException(status_code=400, detail="Adgangskode er påkrævet ved første opsætning")
+
+    # Brug nyt kodeord hvis angivet, ellers bevar det eksisterende
+    if body.password.strip():
+        new_password_enc = encrypt_password(body.password)
+    else:
+        new_password_enc = existing.password_enc  # type: ignore[union-attr]
+
+    # Deaktivér alle eksisterende rækker
+    all_rows = await db.execute(select(SMTPSettings))
+    for row in all_rows.scalars().all():
         row.is_active = False
 
     new_cfg = SMTPSettings(
@@ -100,7 +118,7 @@ async def save_smtp_settings(
         port=body.port,
         use_tls=body.use_tls,
         username=body.username,
-        password_enc=encrypt_password(body.password),
+        password_enc=new_password_enc,
         from_email=body.from_email,
         from_name=body.from_name,
         updated_by=str(admin.id) if admin else None,

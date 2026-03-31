@@ -165,11 +165,19 @@ Minimum du **skal** ændre:
 | Variabel | Eksempel | Beskrivelse |
 |---|---|---|
 | `SECRET_KEY` | `$(openssl rand -hex 32)` | Generes med kommandoen i parentes |
+| `FERNET_KEY` | Se nedenfor | **Vigtigt:** bevar denne på tværs af deployments, ellers mistes krypterede SMTP-adgangskoder |
 | `POSTGRES_PASSWORD` | `MitSterkePassword123` | Vælg selv |
 | `DATABASE_URL` | Se nedenfor | Skal matche POSTGRES_PASSWORD |
 | `NEXT_PUBLIC_API_URL` | `http://192.168.1.XX:8000` | Din Unraid-servers LAN-IP |
 | `CORS_ORIGINS` | `http://192.168.1.XX:3000` | Samme IP, port 3000 |
 | `TZ` | `Europe/Copenhagen` | Tidszone |
+
+**Generér `FERNET_KEY` én gang og gem den:**
+```bash
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+> Sæt den genererede nøgle i `.env` som `FERNET_KEY=...` og bevar den ved fremtidige opdateringer.
+> Hvis nøglen ændres eller fjernes, kan gemte SMTP-adgangskoder **ikke** longer dekrypteres.
 
 **DATABASE_URL skal matche dit password:**
 ```
