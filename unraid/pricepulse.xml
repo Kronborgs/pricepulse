@@ -22,6 +22,6 @@
   <DonateLink/>
   <Requires>pricepulse-backend</Requires>
   <Config Name="Frontend Port" Target="3000" Default="3000" Mode="tcp" Description="Porten som PricePulse UI er tilgængeligt på" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
-  <Config Name="Backend URL" Target="NEXT_PUBLIC_API_URL" Default="http://pricepulse-backend:8000" Mode="" Description="URL til backend API — brug containernavnet http://pricepulse-backend:8000 når begge containere er på dockernet. Ved Reverse Proxy med HTTPS: sæt til https://api.ditdomæne.dk eller https://ditdomæne.dk/api" Type="Variable" Display="always" Required="true" Mask="false">http://pricepulse-backend:8000</Config>
+  <Config Name="Backend URL" Target="NEXT_PUBLIC_API_URL" Default="http://pricepulse-backend:8000" Mode="" Description="URL browseren bruger til at nå backend API. Samme dockernet (LAN): http://pricepulse-backend:8000 — Cloudflare tunnel med separat backend-subdomain: https://api.ditdomæne.dk — Cloudflare tunnel kun til frontend (backend eksponeres ikke eksternt): http://pricepulse-backend:8000 (intern docker-adresse, kræver at browseren kan nå backend direkte via LAN)." Type="Variable" Display="always" Required="true" Mask="false">http://pricepulse-backend:8000</Config>
   <Config Name="Time Zone" Target="TZ" Default="Europe/Copenhagen" Mode="" Description="Find din tidszone her: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">Europe/Copenhagen</Config>
 </Container>
