@@ -220,15 +220,13 @@ async def send_test_notification(
     if not cfg:
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
-    # Find en tilfældig kilde der tilhører brugeren og har en rigtig pris
+    # Find en tilfældig kilde med en rigtig pris — ingen owner-filter da
+    # ældre watches har owner_id = NULL (sat før ejerskabsfeltet blev tilføjet)
     row = await db.execute(
         select(ProductWatch, WatchSource, Product)
         .join(Product, Product.id == ProductWatch.product_id)
         .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .where(
-            ProductWatch.owner_id == user.id,
-            WatchSource.last_price.isnot(None),
-        )
+        .where(WatchSource.last_price.isnot(None))
         .order_by(func.random())
         .limit(1)
     )
