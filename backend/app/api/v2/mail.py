@@ -205,14 +205,14 @@ async def send_test_notification(
     user: CurrentUser = None,
 ) -> dict:
     """
-    Send en eksempel-prisfald-e-mail til den loggede brugers email.
-    Bruges til at forhåndsvise, hvordan notifikations-e-mails ser ud.
+    Send en test-prisfald-e-mail direkte til den loggede brugers email.
+    Bruger et tilfældigt rigtigt produkt fra databasen.
     """
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
     from app.models.product import Product
+    from app.models.source_price_event import SourcePriceEvent
     from app.services.smtp_service import SMTPService, _render_template
-    from app.models.email_queue import EmailQueue
     from sqlalchemy import func
 
     svc = SMTPService()
@@ -220,57 +220,64 @@ async def send_test_notification(
     if not cfg:
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
-    # Find en tilfældig kilde med en rigtig pris — ingen owner-filter da
-    # ældre watches har owner_id = NULL (sat før ejerskabsfeltet blev tilføjet)
-    row = await db.execute(
-        select(ProductWatch, WatchSource, Product)
-        .join(Product, Product.id == ProductWatch.product_id)
-        .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .where(WatchSource.last_price.isnot(None))
-        .order_by(func.random())
+    # Prøv først sources med en pris — ellers tag hvad som helst
+    for price_filter in [WatchSource.last_price.isnot(None), True]:
+        row = await db.execute(
+            select(ProductWatch, WatchSource, Product)
+            .join(Product, Product.id == ProductWatch.product_id)
+            .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+            .where(price_filter)
+            .order_by(func.random())
+            .limit(1)
+        )
+        result = row.first()
+        if result:
+            break
+
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Ingen produkter fundet — tilføj et produkt og kør et prischeck først"
+        )
+
+    watch, source, product = result
+
+    # Seneste prisevent for denne kilde — giver os "gammel pris"
+    prev_event = await db.scalar(
+        select(SourcePriceEvent)
+        .where(
+            SourcePriceEvent.source_id == source.id,
+            SourcePriceEvent.old_price.isnot(None),
+        )
+        .order_by(SourcePriceEvent.created_at.desc())
         .limit(1)
     )
-    result = row.first()
 
-    if result:
-        watch, source, product = result
-        watch_name = watch.name or product.name
-        new_price = float(source.last_price)
-        old_price = new_price * 1.15  # simuleret "gammel pris" (+15%)
-        currency = source.last_currency or "DKK"
-        image_url = product.image_url
-        product_url = source.url
-        watch_id = watch.id
-        in_stock = (source.last_stock_status == "in_stock") if source.last_stock_status else True
-    else:
-        watch_name = "Eksempel produkt (ACME Widget Pro)"
-        old_price = 1299.0
-        new_price = 999.0
-        currency = "DKK"
-        image_url = None
-        product_url = None
-        watch_id = None
-        in_stock = True
+    new_price = float(source.last_price) if source.last_price else None
+    old_price = float(prev_event.old_price) if prev_event and prev_event.old_price else None
+    currency = source.last_currency or "DKK"
 
     html_body = _render_template("price_drop.html", {
-        "watch_name": watch_name,
-        "old_price": f"{old_price:,.0f}".replace(",", "."),
-        "new_price": f"{new_price:,.0f}".replace(",", "."),
+        "watch_name": watch.name or product.name,
+        "new_price": f"{new_price:,.0f}".replace(",", ".") if new_price is not None else "—",
+        "old_price": f"{old_price:,.0f}".replace(",", ".") if old_price is not None else None,
         "currency": currency,
-        "watch_url": f"{_app_url()}/watches/{watch_id}" if watch_id else _app_url(),
-        "product_url": product_url or _app_url(),
-        "image_url": image_url,
-        "in_stock": in_stock,
+        "watch_url": f"{_app_url()}/watches/{watch.id}",
+        "product_url": source.url,
+        "image_url": product.image_url,
+        "in_stock": (source.last_stock_status == "in_stock") if source.last_stock_status else True,
         "is_test": True,
     })
 
-    item = EmailQueue(
-        user_id=user.id,
-        email_type="test",
-        to_email=user.email,
-        subject="[TEST] Prisfald notifikation — PricePulse",
-        body_html=html_body,
-    )
-    db.add(item)
-    await db.commit()
+    # Send direkte — ikke via kø, så fejl er synlige med det samme
+    try:
+        await svc.send_email(
+            db,
+            to_email=user.email,
+            subject="[TEST] Prisfald notifikation — PricePulse",
+            body_html=html_body,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SMTP-fejl: {exc}") from exc
+
     return {"ok": True}

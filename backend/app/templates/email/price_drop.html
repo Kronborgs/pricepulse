@@ -55,7 +55,9 @@
     <table style="border-collapse:collapse;width:100%;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
       <tr style="background:#f8fafc">
         <td style="padding:12px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f1f5f9">Gammel pris</td>
-        <td style="padding:12px 16px;text-decoration:line-through;color:#9ca3af;font-size:14px;text-align:right;border-bottom:1px solid #f1f5f9">{{ old_price }} {{ currency }}</td>
+        <td style="padding:12px 16px;color:#9ca3af;font-size:14px;text-align:right;border-bottom:1px solid #f1f5f9;{% if old_price %}text-decoration:line-through;{% endif %}">
+          {% if old_price %}{{ old_price }} {{ currency }}{% else %}Ukendt{% endif %}
+        </td>
       </tr>
       <tr style="background:#f0fdf4">
         <td style="padding:14px 16px;color:#166534;font-size:14px;font-weight:600">Ny pris</td>
