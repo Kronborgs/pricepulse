@@ -162,6 +162,21 @@ async def update_report_status(
     return _serialize(report)
 
 
+# ── DELETE /reports/{id} — admin sletter rapport ─────────────────────────────
+
+@router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: User = Depends(require_role("admin", "superuser")),
+):
+    report = await db.get(ScraperReport, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Rapport ikke fundet")
+    await db.delete(report)
+    await db.commit()
+
+
 # ── GET /reports/unread-count — til dashboard badge ───────────────────────────
 
 @router.get("/unread-count")

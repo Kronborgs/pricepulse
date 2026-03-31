@@ -7,6 +7,7 @@ import {
   Flag,
   Loader2,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -43,6 +44,14 @@ export default function AdminReportsPage() {
   const markMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       api.reports.updateStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-reports"] });
+      qc.invalidateQueries({ queryKey: ["reports-unread"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.reports.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-reports"] });
       qc.invalidateQueries({ queryKey: ["reports-unread"] });
@@ -101,7 +110,13 @@ export default function AdminReportsPage() {
               key={report.id}
               report={report}
               onMark={(status) => markMutation.mutate({ id: report.id, status })}
+              onDelete={() => {
+                if (window.confirm("Slet denne rapport permanent?")) {
+                  deleteMutation.mutate(report.id);
+                }
+              }}
               isUpdating={markMutation.isPending && markMutation.variables?.id === report.id}
+              isDeleting={deleteMutation.isPending && deleteMutation.variables === report.id}
             />
           ))}
         </div>
@@ -113,16 +128,20 @@ export default function AdminReportsPage() {
 function ReportCard({
   report,
   onMark,
+  onDelete,
   isUpdating,
+  isDeleting,
 }: {
   report: ScraperReport;
   onMark: (status: string) => void;
+  onDelete: () => void;
   isUpdating: boolean;
+  isDeleting: boolean;
 }) {
   const badge = STATUS_BADGE[report.status] ?? STATUS_BADGE.new;
 
   return (
-    <div className={`rounded-lg border bg-card p-4 space-y-3 transition-opacity ${isUpdating ? "opacity-50" : ""} ${report.status === "new" ? "border-amber-500/30" : "border-border"}`}>
+    <div className={`rounded-lg border bg-card p-4 space-y-3 transition-opacity ${isUpdating || isDeleting ? "opacity-50" : ""} ${report.status === "new" ? "border-amber-500/30" : "border-border"}`}>
       {/* Top row */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="space-y-1 min-w-0">
@@ -190,6 +209,18 @@ function ReportCard({
               Genåbn
             </button>
           )}
+          <button
+            onClick={onDelete}
+            disabled={isUpdating || isDeleting}
+            title="Slet rapport"
+            className="rounded-md border border-red-500/30 bg-red-500/10 p-1.5 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
       </div>
 

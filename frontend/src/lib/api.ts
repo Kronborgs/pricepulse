@@ -466,5 +466,7 @@ export const api = {
         body: JSON.stringify({ status }),
       }),
     unreadCount: () => apiFetch<{ count: number }>("/reports/unread-count"),
+    delete: (id: string) =>
+      apiFetch<void>(`/reports/${id}`, { method: "DELETE" }),
   },
 };
