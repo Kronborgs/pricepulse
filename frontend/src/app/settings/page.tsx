@@ -2,12 +2,16 @@
 
 import { useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Check, CheckCircle2, Download, HardDrive, Info, KeyRound, Loader2, RefreshCw, RotateCcw, Trash2, Upload, X, XCircle } from "lucide-react";
+import { Brain, Check, CheckCircle2, Download, HardDrive, Info, KeyRound, Loader2, Lock, RefreshCw, RotateCcw, Trash2, Upload, X, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { Shop } from "@/types";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export default function SettingsPage() {
+  const { data: me } = useCurrentUser();
+  const readonly = me?.role === "user";
+
   return (
     <div className="space-y-8">
       <div>
@@ -18,9 +22,9 @@ export default function SettingsPage() {
       </div>
 
       <HealthCard />
-      <OllamaSection />
-      <BackupSection />
-      <ShopsSection />
+      <OllamaSection readonly={readonly} />
+      <BackupSection readonly={readonly} />
+      <ShopsSection readonly={readonly} />
     </div>
   );
 }
@@ -74,7 +78,7 @@ function HealthCard() {
 
 // ─── Ollama sektion ───────────────────────────────────────────────────────────
 
-function OllamaSection() {
+function OllamaSection({ readonly }: { readonly?: boolean }) {
   const qc = useQueryClient();
   const [editHost, setEditHost] = useState(false);
   const [hostValue, setHostValue] = useState("");
@@ -129,23 +133,33 @@ function OllamaSection() {
           >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
-          <button
-            onClick={() => patchMutation.mutate({ enabled: !status?.enabled })}
-            disabled={patchMutation.isPending}
-            className={cn(
-              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-              status?.enabled ? "bg-green-500" : "bg-muted-foreground/30"
-            )}
-            title={status?.enabled ? "Deaktivér Ollama" : "Aktivér Ollama"}
-          >
-            <span className={cn(
-              "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-              status?.enabled ? "translate-x-6" : "translate-x-1"
-            )} />
-          </button>
-          <span className="text-sm font-medium w-20">
-            {status?.enabled ? "Aktiveret" : "Deaktiveret"}
-          </span>
+          {readonly ? (
+            <span title="Kun læsning"><Lock className="h-4 w-4 text-muted-foreground" /></span>
+          ) : (
+            <button
+              onClick={() => patchMutation.mutate({ enabled: !status?.enabled })}
+              disabled={patchMutation.isPending}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                status?.enabled ? "bg-green-500" : "bg-muted-foreground/30"
+              )}
+              title={status?.enabled ? "Deaktivér Ollama" : "Aktivér Ollama"}
+            >
+              <span className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                status?.enabled ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+          )}
+          {readonly ? (
+            <span className={cn("text-sm font-medium w-20 text-muted-foreground", !status?.enabled && "opacity-60")}>
+              {status?.enabled ? "Aktiveret" : "Deaktiveret"}
+            </span>
+          ) : (
+            <span className="text-sm font-medium w-20">
+              {status?.enabled ? "Aktiveret" : "Deaktiveret"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -179,7 +193,7 @@ function OllamaSection() {
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Host</p>
-          {!editHost && (
+          {!editHost && !readonly && (
             <button onClick={() => { setHostValue(status?.host ?? ""); setEditHost(true); }} className="text-xs text-primary hover:underline">
               Redigér
             </button>
@@ -209,7 +223,7 @@ function OllamaSection() {
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Modeller</p>
-          {!editModels && (
+          {!editModels && !readonly && (
             <button onClick={() => { setParserModel(status?.parser_model ?? ""); setNormalizeModel(status?.normalize_model ?? ""); setEmbedModel(status?.embed_model ?? ""); setEditModels(true); }} className="text-xs text-primary hover:underline">
               Redigér
             </button>
@@ -253,7 +267,7 @@ function OllamaSection() {
   );
 }
 
-function BackupSection() {
+function BackupSection({ readonly }: { readonly?: boolean }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -337,7 +351,13 @@ function BackupSection() {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card divide-y divide-border">
+    <div className={cn("rounded-lg border border-border bg-card divide-y divide-border", readonly && "opacity-60 pointer-events-none select-none")}>
+      {readonly && (
+        <div className="px-5 py-2.5 flex items-center gap-2 bg-slate-800/60 rounded-t-lg border-b border-border">
+          <Lock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <span className="text-xs text-slate-400">Kun administratorer kan ændre backup-indstillinger</span>
+        </div>
+      )}
       {/* Header */}
       <div className="px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -614,7 +634,7 @@ function BackupSection() {
   );
 }
 
-function ShopsSection() {
+function ShopsSection({ readonly }: { readonly?: boolean }) {
   const queryClient = useQueryClient();
 
   const { data: shops, isLoading } = useQuery({
@@ -640,12 +660,22 @@ function ShopsSection() {
   const shopList: Shop[] = shops ?? [];
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className={cn("rounded-lg border border-border bg-card", readonly && "opacity-60 pointer-events-none select-none")}>
       <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-base font-semibold">Butikker</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Aktiver eller deaktiver butikker der scrapes
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold">Butikker</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Aktiver eller deaktiver butikker der scrapes
+            </p>
+          </div>
+          {readonly && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Lock className="h-3.5 w-3.5" />
+              Kun læsning
+            </div>
+          )}
+        </div>
       </div>
       <div className="divide-y divide-border">
         {shopList.map((shop) => (
@@ -656,6 +686,7 @@ function ShopsSection() {
               toggleMutation.mutate({ id: shop.id, is_active })
             }
             isPending={toggleMutation.isPending}
+            readonly={readonly}
           />
         ))}
         {shopList.length === 0 && (
@@ -672,10 +703,12 @@ function ShopRow({
   shop,
   onToggle,
   isPending,
+  readonly,
 }: {
   shop: Shop;
   onToggle: (is_active: boolean) => void;
   isPending: boolean;
+  readonly?: boolean;
 }) {
   return (
     <div className="flex items-center gap-4 px-5 py-4">
@@ -687,20 +720,32 @@ function ShopRow({
         </p>
       </div>
 
-      <button
-        onClick={() => onToggle(!shop.is_active)}
-        disabled={isPending}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
-          shop.is_active ? "bg-primary" : "bg-muted"
-        }`}
-        aria-label={shop.is_active ? "Deaktiver butik" : "Aktiver butik"}
-      >
-        <span
-          className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-            shop.is_active ? "translate-x-6" : "translate-x-1"
+      {readonly ? (
+        <span className={cn(
+          "text-xs px-2 py-0.5 rounded-full font-medium",
+          shop.is_active
+            ? "bg-green-500/15 text-green-400"
+            : "bg-slate-500/15 text-slate-400"
+        )}>
+          {shop.is_active ? "Aktiv" : "Inaktiv"}
+        </span>
+      ) : (
+        <button
+          onClick={() => onToggle(!shop.is_active)}
+          disabled={isPending}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
+            shop.is_active ? "bg-primary" : "bg-muted"
           }`}
-        />
-      </button>
+          aria-label={shop.is_active ? "Deaktiver butik" : "Aktiver butik"}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              shop.is_active ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      )}
     </div>
   );
 }
+
