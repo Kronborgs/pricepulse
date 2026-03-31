@@ -221,13 +221,14 @@ async def send_test_notification(
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
     # Find et tilfældigt watch der har en kilde med en rigtig prisevent
+    # Korrekt join: ProductWatch → WatchSource (watch_id) → SourcePriceEvent (source_id)
     row = await db.execute(
         select(ProductWatch, WatchSource, SourcePriceEvent)
         .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .join(SourcePriceEvent, SourcePriceEvent.watch_id == ProductWatch.id)
+        .join(SourcePriceEvent, SourcePriceEvent.source_id == WatchSource.id)
         .where(
             ProductWatch.owner_id == user.id,
-            SourcePriceEvent.price.isnot(None),
+            SourcePriceEvent.new_price.isnot(None),
         )
         .order_by(func.random())
         .limit(1)
@@ -237,35 +238,13 @@ async def send_test_notification(
     if result:
         watch, source, event = result
         watch_name = watch.title or source.url
-        # Hent den seneste prisevent for denne kilde for realistiske priser
-        latest_event = await db.scalar(
-            select(SourcePriceEvent)
-            .where(
-                SourcePriceEvent.watch_id == watch.id,
-                SourcePriceEvent.source_id == source.id,
-                SourcePriceEvent.price.isnot(None),
-            )
-            .order_by(SourcePriceEvent.recorded_at.desc())
-            .limit(1)
-        ) or event
-        prev_event = await db.scalar(
-            select(SourcePriceEvent)
-            .where(
-                SourcePriceEvent.watch_id == watch.id,
-                SourcePriceEvent.source_id == source.id,
-                SourcePriceEvent.price.isnot(None),
-                SourcePriceEvent.recorded_at < latest_event.recorded_at,
-            )
-            .order_by(SourcePriceEvent.recorded_at.desc())
-            .limit(1)
-        )
-        new_price = float(latest_event.price)
-        old_price = float(prev_event.price) if prev_event else new_price * 1.1
-        currency = latest_event.currency or "DKK"
+        new_price = float(event.new_price)
+        old_price = float(event.old_price) if event.old_price else new_price * 1.1
+        currency = source.last_currency or "DKK"
         image_url = watch.image_url
-        product_url = source.url          # den URL vi scraper fra
+        product_url = source.url
         watch_id = watch.id
-        in_stock = latest_event.stock_status == "in_stock"
+        in_stock = (source.last_stock_status == "in_stock") if source.last_stock_status else True
     else:
         watch_name = "Eksempel produkt (ACME Widget Pro)"
         old_price = 1299.0
@@ -276,7 +255,7 @@ async def send_test_notification(
         watch_id = None
         in_stock = True
 
-    body = _render_template("price_drop.html", {
+    html_body = _render_template("price_drop.html", {
         "watch_name": watch_name,
         "old_price": f"{old_price:,.0f}".replace(",", "."),
         "new_price": f"{new_price:,.0f}".replace(",", "."),
@@ -293,7 +272,7 @@ async def send_test_notification(
         email_type="test",
         to_email=user.email,
         subject="[TEST] Prisfald notifikation — PricePulse",
-        body_html=body,
+        body_html=html_body,
     )
     db.add(item)
     await db.commit()

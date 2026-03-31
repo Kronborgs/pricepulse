@@ -77,12 +77,18 @@ export default function SMTPPage() {
           <div className={`flex items-center gap-2 text-sm rounded-md px-3 py-2 ${
             data.configured
               ? "bg-green-500/10 border border-green-500/20 text-green-400"
-              : "bg-slate-500/10 border border-slate-700 text-slate-400"
+              : data.key_error
+                ? "bg-yellow-500/10 border border-yellow-500/20 text-yellow-400"
+                : "bg-slate-500/10 border border-slate-700 text-slate-400"
           }`}>
             {data.configured
               ? <CheckCircle className="h-4 w-4" />
               : <XCircle className="h-4 w-4" />}
-            {data.configured ? `Konfigureret — ${data.settings?.from_email}` : "Ikke konfigureret"}
+            {data.configured
+              ? `Konfigureret — ${data.settings?.from_email}`
+              : data.key_error
+                ? "Krypteringsnøglen (FERNET_KEY) er ændret — adgangskoden skal gemmes igen"
+                : "Ikke konfigureret"}
           </div>
         )}
 
