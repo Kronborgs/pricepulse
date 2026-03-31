@@ -8,9 +8,10 @@ Gmail-konfiguration:
   username: din@gmail.com
   password: app-specifik adgangskode (ikke Google-kodeord)
 
-Kodeord i DB er krypteret med Fernet. Fernet-nøglen kommer fra:
-  settings.fernet_key — sæt i .env fil
-  Fallback: base64 af settings.secret_key (kun til dev)
+Kodeord i DB er krypteret med Fernet. Fernet-nøglen kommer fra (prioriteret rækkefølge):
+  1. FERNET_KEY env-variabel
+  2. /app/data/.fernet.key — auto-genereres og gemmes ved første opstart
+  3. Fallback: base64 af SECRET_KEY (kun til dev, ustabil ved SECRET_KEY rotation)
 
 Design:
   - send_pending_emails() køres af APScheduler hvert 5. min
@@ -48,14 +49,37 @@ def _app_url() -> str:
     return ""
 
 
+_FERNET_KEY_FILE = Path("/app/data/.fernet.key")
+
+
 def _get_fernet() -> Any:
-    """Returner Fernet-instans til kryptering/dekryptering af SMTP-kodeord."""
+    """Returner Fernet-instans til kryptering/dekryptering af SMTP-kodeord.
+
+    Nøgle-prioritering:
+      1. FERNET_KEY env-variabel (eksplicit sat af bruger)
+      2. /app/data/.fernet.key (auto-genereret ved første opstart, stabil)
+      3. Fallback til SECRET_KEY (ustabil — ændres nøglen, mistes SMTP)
+    """
     from cryptography.fernet import Fernet
+
     key = settings.fernet_key
-    if not key:
-        # Fallback: brug secret_key paddet til 32 bytes → base64url
-        raw = settings.secret_key.encode()[:32].ljust(32, b"0")
-        key = base64.urlsafe_b64encode(raw).decode()
+    if key:
+        return Fernet(key.encode() if isinstance(key, str) else key)
+
+    # Auto-generér og gem en stabil nøgle ved første opstart
+    if _FERNET_KEY_FILE.exists():
+        key = _FERNET_KEY_FILE.read_text().strip()
+        logger.debug("fernet.loaded_from_file")
+    else:
+        key = Fernet.generate_key().decode()
+        try:
+            _FERNET_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _FERNET_KEY_FILE.write_text(key)
+            logger.info("fernet.generated_and_saved", path=str(_FERNET_KEY_FILE))
+        except OSError:
+            # Kan ikke skrive (f.eks. i test-miljø) — brug midlertidigt
+            logger.warning("fernet.could_not_save_key")
+
     return Fernet(key.encode() if isinstance(key, str) else key)
 
 
