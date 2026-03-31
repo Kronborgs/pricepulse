@@ -422,6 +422,7 @@ export interface SMTPSettings {
 
 export interface SMTPStatus {
   configured: boolean;
+  key_error?: boolean;
   settings?: SMTPSettings;
 }
 
