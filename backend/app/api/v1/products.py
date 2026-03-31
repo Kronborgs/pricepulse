@@ -106,7 +106,17 @@ async def get_product(
     product = (await db.execute(stmt)).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
-    _assert_ownership(product, user)
+    if not _is_privileged(user) and product.owner_id != user.id:
+        # Allow access if the user has a watch linked to this product
+        has_watch = (
+            await db.execute(
+                select(Watch.id)
+                .where(Watch.product_id == product_id, Watch.owner_id == user.id)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if not has_watch:
+            raise HTTPException(status_code=403, detail="Ikke tilstrækkelige rettigheder")
     return product
 
 
