@@ -195,38 +195,59 @@ async def send_test_notification(
     from app.models.source_price_event import SourcePriceEvent
     from app.services.smtp_service import SMTPService, _render_template
     from app.models.email_queue import EmailQueue
+    from sqlalchemy import func
 
     svc = SMTPService()
     cfg = await svc._get_active_config(db)
     if not cfg:
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
-    # Forsøg at finde et rigtigt watch til brugeren som eksempel
-    watch = await db.scalar(
-        select(ProductWatch)
-        .where(ProductWatch.owner_id == user.id)
+    # Find et tilfældigt watch der har en kilde med en rigtig prisevent
+    row = await db.execute(
+        select(ProductWatch, WatchSource, SourcePriceEvent)
+        .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+        .join(SourcePriceEvent, SourcePriceEvent.watch_id == ProductWatch.id)
+        .where(
+            ProductWatch.owner_id == user.id,
+            SourcePriceEvent.price.isnot(None),
+        )
+        .order_by(func.random())
         .limit(1)
     )
+    result = row.first()
 
-    if watch:
-        source = await db.scalar(
-            select(WatchSource).where(WatchSource.watch_id == watch.id).limit(1)
-        )
-        event = await db.scalar(
+    if result:
+        watch, source, event = result
+        watch_name = watch.title or source.url
+        # Hent den seneste prisevent for denne kilde for realistiske priser
+        latest_event = await db.scalar(
             select(SourcePriceEvent)
-            .where(SourcePriceEvent.watch_id == watch.id)
+            .where(
+                SourcePriceEvent.watch_id == watch.id,
+                SourcePriceEvent.source_id == source.id,
+                SourcePriceEvent.price.isnot(None),
+            )
             .order_by(SourcePriceEvent.recorded_at.desc())
             .limit(1)
-        ) if source else None
-
-        watch_name = watch.title or (source.url if source else "Eksempel produkt")
-        old_price = float(event.price) * 1.1 if event and event.price else 999.0
-        new_price = float(event.price) if event and event.price else 899.0
-        currency = event.currency if event and event.currency else "DKK"
+        ) or event
+        prev_event = await db.scalar(
+            select(SourcePriceEvent)
+            .where(
+                SourcePriceEvent.watch_id == watch.id,
+                SourcePriceEvent.source_id == source.id,
+                SourcePriceEvent.price.isnot(None),
+                SourcePriceEvent.recorded_at < latest_event.recorded_at,
+            )
+            .order_by(SourcePriceEvent.recorded_at.desc())
+            .limit(1)
+        )
+        new_price = float(latest_event.price)
+        old_price = float(prev_event.price) if prev_event else new_price * 1.1
+        currency = latest_event.currency or "DKK"
         image_url = watch.image_url
-        product_url = source.url if source else None
+        product_url = source.url          # den URL vi scraper fra
         watch_id = watch.id
-        in_stock = event.stock_status == "in_stock" if event else True
+        in_stock = latest_event.stock_status == "in_stock"
     else:
         watch_name = "Eksempel produkt (ACME Widget Pro)"
         old_price = 1299.0
