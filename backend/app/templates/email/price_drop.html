@@ -65,17 +65,10 @@
 
     <!-- Knapper -->
     <p style="margin:24px 0 8px 0">
-      <a href="{{ watch_url }}"
+      <a href="{{ product_url or watch_url }}"
          style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">
-        Se i PricePulse
+        G&#229; til butikken
       </a>
-      {% if product_url %}
-      &nbsp;&nbsp;
-      <a href="{{ product_url }}"
-         style="display:inline-block;background:#f1f5f9;color:#374151;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;border:1px solid #e2e8f0">
-        K&#248;b nu
-      </a>
-      {% endif %}
     </p>
 
     <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
