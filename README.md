@@ -170,7 +170,45 @@ https://raw.githubusercontent.com/Kronborgs/pricepulse/main/assets/icon.png
 
 ---
 
-### Opdatering
+### Unraid Docker-templates (enkelt-container opsætning)
+
+Foretrækker du at køre PricePulse som **individuelle Docker-containere** i stedet for Compose Manager, kan du bruge de færdige Unraid-templates fra mappen `unraid/`.
+
+#### Metode 1 — Gem lokalt på Unraid (anbefalet)
+
+SSH ind på din Unraid-server og kør:
+
+```bash
+mkdir -p /boot/config/plugins/dockerMan/templates-user
+wget -O /boot/config/plugins/dockerMan/templates-user/pricepulse-backend.xml \
+  https://raw.githubusercontent.com/Kronborgs/pricepulse/main/unraid/pricepulse-backend.xml
+wget -O /boot/config/plugins/dockerMan/templates-user/pricepulse.xml \
+  https://raw.githubusercontent.com/Kronborgs/pricepulse/main/unraid/pricepulse.xml
+```
+
+Herefter vises de under **Docker → Add Container** i Unraid-menuen.
+
+#### Metode 2 — Manuelt
+
+1. Download `unraid/pricepulse-backend.xml` og `unraid/pricepulse.xml` fra dette repo
+2. Kopier begge filer til `/boot/config/plugins/dockerMan/templates-user/` på din Unraid-server (via SMB: `\\UNRAID\flash\config\plugins\dockerMan\templates-user\`)
+3. Åbn **Docker → Add Container** — templatene dukker nu op under "User Templates"
+
+#### Rækkefølge og vigtige variabler
+
+Start **pricepulse-backend** først og vent til den er oppe, før du starter **pricepulse** (frontend).
+
+| Container | Variabel | LAN (plain HTTP) | Cloudflare tunnel / HTTPS |
+|---|---|---|---|
+| `pricepulse-backend` | `CORS_ORIGINS` | `http://192.168.1.50:3000` | `https://prisen.ditdomæne.dk` |
+| `pricepulse-backend` | `FRONTEND_URL` | `http://192.168.1.50:3000` | `https://prisen.ditdomæne.dk` |
+| `pricepulse-backend` | `COOKIE_SECURE` | `false` | `true` |
+| `pricepulse` | `NEXT_PUBLIC_API_URL` | `http://pricepulse-backend:8000` | `http://pricepulse-backend:8000` |
+
+> `FRONTEND_URL` styrer hvilken URL der indsættes i e-mails (notifikationer, glemt kodeord, afmeld-links). Sæt den til den adresse **brugeren** åbner PricePulse med.
+
+---
+
 
 ```bash
 cd /mnt/user/appdata/pricepulse
