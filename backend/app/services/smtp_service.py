@@ -203,13 +203,19 @@ class SMTPService:
         self, db: AsyncSession, user_id: uuid.UUID, to_email: str,
         watch_name: str, old_price: float, new_price: float,
         currency: str, watch_id: uuid.UUID, source_id: uuid.UUID | None = None,
+        image_url: str | None = None, product_url: str | None = None,
+        in_stock: bool = True,
     ) -> None:
         body = _render_template("price_drop.html", {
             "watch_name": watch_name,
-            "old_price": old_price,
-            "new_price": new_price,
+            "old_price": f"{old_price:,.0f}".replace(",", "."),
+            "new_price": f"{new_price:,.0f}".replace(",", "."),
             "currency": currency,
             "watch_url": f"{settings.cors_origins.split(',')[0]}/watches/{watch_id}",
+            "product_url": product_url,
+            "image_url": image_url,
+            "in_stock": in_stock,
+            "is_test": False,
         })
         await self._enqueue(
             db, user_id, to_email, "price_drop",

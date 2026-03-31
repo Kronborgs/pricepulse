@@ -136,3 +136,39 @@ async def delete_email_queue(
     await db.commit()
     logger.info("admin_delete_email_queue")
     return {"ok": True, "deleted": "email-queue"}
+
+
+@router.post("/admin/data/claim-orphaned")
+async def claim_orphaned_resources(
+    db: AsyncSession = Depends(get_db),
+    admin: AdminUser = None,
+) -> dict:
+    """
+    Tildel alle watches og produkter med owner_id=NULL til den aktuelle admin.
+    Bruges til at overtage ejerskab af 'System'-ressourcer.
+    """
+    from app.models.product_watch import ProductWatch
+    from app.models.product import Product
+    from sqlalchemy import update
+
+    watches_result = await db.execute(
+        update(ProductWatch)
+        .where(ProductWatch.owner_id == None)
+        .values(owner_id=admin.id)
+    )
+    products_result = await db.execute(
+        update(Product)
+        .where(Product.owner_id == None)
+        .values(owner_id=admin.id)
+    )
+    await db.commit()
+
+    watches_updated = watches_result.rowcount
+    products_updated = products_result.rowcount
+    logger.info(
+        "admin_claim_orphaned",
+        admin_id=str(admin.id),
+        watches=watches_updated,
+        products=products_updated,
+    )
+    return {"ok": True, "watches": watches_updated, "products": products_updated}

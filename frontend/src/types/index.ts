@@ -402,8 +402,9 @@ export interface EmailPreferences {
   notify_price_drop: boolean;
   notify_back_in_stock: boolean;
   notify_new_error: boolean;
+  notify_on_change: boolean;
   digest_enabled: boolean;
-  digest_frequency: "daily" | "weekly" | "monthly";
+  digest_frequency: "hourly" | "daily" | "weekly" | "monthly";
   digest_day_of_week: number;
 }
 

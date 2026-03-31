@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AdminUser, CurrentUser
 from app.database import get_db
 from app.models.smtp_settings import SMTPSettings
-from app.services.smtp_service import SMTPService, encrypt_password, decrypt_password
+from app.services.smtp_service import SMTPService, encrypt_password, decrypt_password, _app_url
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -52,6 +52,7 @@ class EmailPrefRead(BaseModel):
     notify_price_drop: bool
     notify_back_in_stock: bool
     notify_new_error: bool
+    notify_on_change: bool
     digest_enabled: bool
     digest_frequency: str
     digest_day_of_week: int
@@ -63,6 +64,7 @@ class EmailPrefWrite(BaseModel):
     notify_price_drop: bool | None = None
     notify_back_in_stock: bool | None = None
     notify_new_error: bool | None = None
+    notify_on_change: bool | None = None
     digest_enabled: bool | None = None
     digest_frequency: str | None = None
     digest_day_of_week: int | None = None
@@ -147,6 +149,7 @@ async def get_email_preferences(
             notify_price_drop=True,
             notify_back_in_stock=True,
             notify_new_error=False,
+            notify_on_change=False,
             digest_enabled=False,
             digest_frequency="weekly",
             digest_day_of_week=0,
@@ -172,5 +175,87 @@ async def update_email_preferences(
     for k, v in data.items():
         setattr(pref, k, v)
 
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Test notification email (current user) ────────────────────────────────────
+
+@router.post("/me/email-preferences/test")
+async def send_test_notification(
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = None,
+) -> dict:
+    """
+    Send en eksempel-prisfald-e-mail til den loggede brugers email.
+    Bruges til at forhåndsvise, hvordan notifikations-e-mails ser ud.
+    """
+    from app.models.product_watch import ProductWatch
+    from app.models.watch_source import WatchSource
+    from app.models.source_price_event import SourcePriceEvent
+    from app.services.smtp_service import SMTPService, _render_template
+    from app.models.email_queue import EmailQueue
+
+    svc = SMTPService()
+    cfg = await svc._get_active_config(db)
+    if not cfg:
+        raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
+
+    # Forsøg at finde et rigtigt watch til brugeren som eksempel
+    watch = await db.scalar(
+        select(ProductWatch)
+        .where(ProductWatch.owner_id == user.id)
+        .limit(1)
+    )
+
+    if watch:
+        source = await db.scalar(
+            select(WatchSource).where(WatchSource.watch_id == watch.id).limit(1)
+        )
+        event = await db.scalar(
+            select(SourcePriceEvent)
+            .where(SourcePriceEvent.watch_id == watch.id)
+            .order_by(SourcePriceEvent.recorded_at.desc())
+            .limit(1)
+        ) if source else None
+
+        watch_name = watch.title or (source.url if source else "Eksempel produkt")
+        old_price = float(event.price) * 1.1 if event and event.price else 999.0
+        new_price = float(event.price) if event and event.price else 899.0
+        currency = event.currency if event and event.currency else "DKK"
+        image_url = watch.image_url
+        product_url = source.url if source else None
+        watch_id = watch.id
+        in_stock = event.stock_status == "in_stock" if event else True
+    else:
+        watch_name = "Eksempel produkt (ACME Widget Pro)"
+        old_price = 1299.0
+        new_price = 999.0
+        currency = "DKK"
+        image_url = None
+        product_url = None
+        watch_id = None
+        in_stock = True
+
+    body = _render_template("price_drop.html", {
+        "watch_name": watch_name,
+        "old_price": f"{old_price:,.0f}".replace(",", "."),
+        "new_price": f"{new_price:,.0f}".replace(",", "."),
+        "currency": currency,
+        "watch_url": f"{_app_url()}/watches/{watch_id}" if watch_id else _app_url(),
+        "product_url": product_url or _app_url(),
+        "image_url": image_url,
+        "in_stock": in_stock,
+        "is_test": True,
+    })
+
+    item = EmailQueue(
+        user_id=user.id,
+        email_type="test",
+        to_email=user.email,
+        subject="[TEST] Prisfald notifikation — PricePulse",
+        body_html=body,
+    )
+    db.add(item)
     await db.commit()
     return {"ok": True}

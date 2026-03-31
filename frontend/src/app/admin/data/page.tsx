@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AuthGuard } from "@/components/layout/auth-guard";
-import { Loader2, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, RefreshCw, UserCheck } from "lucide-react";
 
 interface StatRow {
   label: string;
@@ -83,6 +84,7 @@ const rows: StatRow[] = [
 
 export default function AdminDataPage() {
   const queryClient = useQueryClient();
+  const [claimResult, setClaimResult] = useState<{ watches: number; products: number } | null>(null);
 
   const { data: stats, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin", "data", "stats"],
@@ -105,6 +107,16 @@ export default function AdminDataPage() {
   const deletePriceHistory = makeMutation(() => api.adminData.deletePriceHistory());
   const deleteAiJobs = makeMutation(() => api.adminData.deleteAiJobs());
   const deleteEmailQueue = makeMutation(() => api.adminData.deleteEmailQueue());
+
+  const claimOrphaned = useMutation({
+    mutationFn: () => api.adminData.claimOrphaned(),
+    onSuccess: (result) => {
+      setClaimResult({ watches: result.watches, products: result.products });
+      queryClient.invalidateQueries({ queryKey: ["watches"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      setTimeout(() => setClaimResult(null), 6000);
+    },
+  });
 
   const mutations: Record<string, ReturnType<typeof makeMutation>> = {
     deleteWatches,
@@ -195,6 +207,42 @@ export default function AdminDataPage() {
         <div className="rounded-lg border border-slate-700 bg-amber-950/20 border-amber-800/30 p-4 text-sm text-amber-400">
           <strong>Bemærk:</strong> Sletning af watches inkluderer automatisk al tilhørende prishistorik (v1 + v2).
           Brug kun sletning til at rydde op — handlingerne kan ikke fortrydes.
+        </div>
+
+        {/* Overtag System-ejerskab */}
+        <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-200">Overtag ejerskab af systemressourcer</h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Watches og produkter der vises som &quot;System&quot;-ejede (owner_id = NULL) tildeles din bruger.
+              Dette gælder fx data importeret eller oprettet uden en ejer.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (!window.confirm("Tildel alle System-ejede watches og produkter til din bruger?")) return;
+                claimOrphaned.mutate();
+              }}
+              disabled={claimOrphaned.isPending}
+              className="inline-flex items-center gap-2 rounded-md bg-blue-700/60 border border-blue-600/60 px-3 py-1.5 text-sm font-semibold text-blue-200 hover:bg-blue-600/80 hover:text-white disabled:opacity-40"
+            >
+              {claimOrphaned.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserCheck className="h-4 w-4" />
+              )}
+              Overtag systemressourcer
+            </button>
+            {claimResult && (
+              <span className="text-xs text-green-400">
+                Opdateret: {claimResult.watches} watches + {claimResult.products} produkter overtaget
+              </span>
+            )}
+            {claimOrphaned.isError && (
+              <span className="text-xs text-red-400">Fejl ved opdatering</span>
+            )}
+          </div>
         </div>
       </div>
     </AuthGuard>

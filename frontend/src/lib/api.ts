@@ -387,6 +387,8 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+    sendTest: () =>
+      apiFetch<{ ok: boolean }>("/me/email-preferences/test", { method: "POST" }),
   },
 
   // ─── Admin: Data management ───────────────────────────────────────────────
@@ -412,6 +414,8 @@ export const api = {
       apiFetch<{ ok: boolean }>("/admin/data/ai-jobs", { method: "DELETE" }),
     deleteEmailQueue: () =>
       apiFetch<{ ok: boolean }>("/admin/data/email-queue", { method: "DELETE" }),
+    claimOrphaned: () =>
+      apiFetch<{ ok: boolean; watches: number; products: number }>("/admin/data/claim-orphaned", { method: "POST" }),
   },
 
   // ─── Admin: Backup ────────────────────────────────────────────────────────

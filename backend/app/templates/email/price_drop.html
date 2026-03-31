@@ -1,33 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="da">
 <head><meta charset="UTF-8"><title>Prisfald</title></head>
 <body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
   <!-- Header -->
-  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px;">
-    <span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-family:sans-serif;font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
+    {% if logo_url %}
+    <img src="{{ logo_url }}" alt="PricePulse" style="height:32px;width:auto" />
+    {% else %}
+    <span style="font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
+    {% endif %}
   </div>
+
+  {% if is_test %}
+  <!-- Test-banner -->
+  <div style="background:#92400e;color:#fef3c7;padding:8px 20px;font-size:12px;text-align:center">
+    &#9888; Dette er en test-e-mail &mdash; ikke en rigtig notifikation
+  </div>
+  {% endif %}
+
   <!-- Body -->
   <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
-    <h1 style="color:#8DC63F;margin-top:0">Prisfald registreret</h1>
-    <p style="font-size:1.1em"><strong>{{ watch_name }}</strong></p>
-    <table style="border-collapse:collapse;margin:16px 0;width:100%">
-      <tr style="background:#f8f8f8">
-        <td style="padding:10px 14px;color:#666;border-radius:6px 0 0 0">Gammel pris</td>
-        <td style="padding:10px 14px;text-decoration:line-through;color:#999">{{ old_price }} {{ currency }}</td>
-      </tr>
+    <h1 style="color:#8DC63F;margin-top:0;font-size:20px">Prisfald registreret</h1>
+
+    <!-- Produktsektion -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
       <tr>
-        <td style="padding:10px 14px;color:#666">Ny pris</td>
-        <td style="padding:10px 14px;color:#8DC63F;font-weight:bold;font-size:1.3em">{{ new_price }} {{ currency }}</td>
+        {% if image_url %}
+        <td style="width:100px;padding-right:16px;vertical-align:top">
+          <img src="{{ image_url }}" alt="{{ watch_name }}"
+               style="width:96px;height:96px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb" />
+        </td>
+        {% endif %}
+        <td style="vertical-align:top">
+          <p style="margin:0 0 4px 0;font-size:1.0em;font-weight:bold;color:#1a1a1a">{{ watch_name }}</p>
+          {% if product_url %}
+          <a href="{{ product_url }}" style="font-size:12px;color:#29ABE2;text-decoration:none">&#8594; G&#229; til butikken</a>
+          {% endif %}
+          <div style="margin-top:8px">
+            {% if in_stock %}
+            <span style="display:inline-block;background:#dcfce7;color:#166534;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              P&#229; lager
+            </span>
+            {% else %}
+            <span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              Ikke p&#229; lager
+            </span>
+            {% endif %}
+          </div>
+        </td>
       </tr>
     </table>
-    <p style="margin:24px 0">
+
+    <!-- Prissammenligning -->
+    <table style="border-collapse:collapse;width:100%;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <tr style="background:#f8fafc">
+        <td style="padding:12px 16px;color:#6b7280;font-size:14px;border-bottom:1px solid #f1f5f9">Gammel pris</td>
+        <td style="padding:12px 16px;text-decoration:line-through;color:#9ca3af;font-size:14px;text-align:right;border-bottom:1px solid #f1f5f9">{{ old_price }} {{ currency }}</td>
+      </tr>
+      <tr style="background:#f0fdf4">
+        <td style="padding:14px 16px;color:#166534;font-size:14px;font-weight:600">Ny pris</td>
+        <td style="padding:14px 16px;color:#16a34a;font-weight:bold;font-size:1.4em;text-align:right">{{ new_price }} {{ currency }}</td>
+      </tr>
+    </table>
+
+    <!-- Knapper -->
+    <p style="margin:24px 0 8px 0">
       <a href="{{ watch_url }}"
-         style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
-        Se produkt
+         style="display:inline-block;background:#29ABE2;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px">
+        Se i PricePulse
       </a>
+      {% if product_url %}
+      &nbsp;&nbsp;
+      <a href="{{ product_url }}"
+         style="display:inline-block;background:#f1f5f9;color:#374151;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;border:1px solid #e2e8f0">
+        K&#248;b nu
+      </a>
+      {% endif %}
     </p>
+
     <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
-    <p style="color:#999;font-size:12px;margin:0">PricePulse — automatisk prisovervågning</p>
+    <p style="color:#9ca3af;font-size:11px;margin:0">
+      PricePulse &mdash; automatisk prisoversv&#229;gning &nbsp;|&nbsp;
+      <a href="{{ app_url }}/me/preferences" style="color:#9ca3af">Afmeld notifikationer</a>
+    </p>
   </div>
 </body>
 </html>

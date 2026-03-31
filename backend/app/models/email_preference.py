@@ -33,8 +33,10 @@ class EmailPreference(Base, TimestampMixin):
     notify_price_drop: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notify_back_in_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     notify_new_error: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    notify_on_change: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Digest
+    # digest_frequency: 'hourly' | 'daily' | 'weekly' | 'monthly'
     digest_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     digest_frequency: Mapped[str] = mapped_column(
         String(20), default="weekly", nullable=False
