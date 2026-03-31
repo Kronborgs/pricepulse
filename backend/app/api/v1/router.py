@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import watches, products, shops, history, dashboard, sources, ollama
+from app.api.v1 import watches, products, shops, history, dashboard, sources, ollama, reports
 from app.api.auth.router import router as auth_router
 from app.api.v2.ai import router as ai_router
 from app.api.v2.admin_data import router as admin_data_router
@@ -21,6 +21,7 @@ api_router.include_router(watches.router, prefix="/watches", tags=["watches"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(shops.router, prefix="/shops", tags=["shops"])
 api_router.include_router(history.router, prefix="/history", tags=["history"])
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 
 # ── v2 ────────────────────────────────────────────────────────────────────────
 api_router.include_router(sources.router, prefix="", tags=["v2-sources"])

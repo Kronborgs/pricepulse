@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
   Eye,
+  Flag,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 const mainNavItems = [
@@ -32,6 +33,7 @@ const adminNavItems = [
   { href: "/admin/users", label: "Brugere", icon: Users },
   { href: "/admin/smtp", label: "SMTP", icon: Mail, adminOnly: true },
   { href: "/admin/data", label: "Data", icon: Database },
+  { href: "/admin/reports", label: "Rapporter", icon: Flag },
 ];
 
 export function Sidebar() {
@@ -47,6 +49,16 @@ export function Sidebar() {
       router.push("/login");
     },
   });
+
+  const isPrivileged = user?.role === "admin" || user?.role === "superuser";
+
+  const { data: unreadData } = useQuery({
+    queryKey: ["reports-unread"],
+    queryFn: () => api.reports.unreadCount(),
+    enabled: isPrivileged,
+    refetchInterval: 60_000,
+  });
+  const unreadCount = unreadData?.count ?? 0;
 
   return (
     <aside className="hidden md:flex w-60 flex-shrink-0 flex-col bg-slate-950 border-r border-slate-800">
@@ -99,6 +111,7 @@ export function Sidebar() {
               .filter((item) => !item.adminOnly || user?.role === "admin")
               .map(({ href, label, icon: Icon }) => {
               const active = pathname.startsWith(href);
+              const isReports = href === "/admin/reports";
               return (
                 <Link
                   key={href}
@@ -112,6 +125,11 @@ export function Sidebar() {
                 >
                   <Icon className={cn("h-4 w-4", active ? "text-purple-400" : "text-slate-500")} />
                   {label}
+                  {isReports && unreadCount > 0 && (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

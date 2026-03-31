@@ -27,6 +27,9 @@ from app.models.smtp_settings import SMTPSettings
 from app.models.email_preference import EmailPreference
 from app.models.email_queue import EmailQueue
 
+# Scraper reports
+from app.models.scraper_report import ScraperReport
+
 __all__ = [
     # base
     "Base",
@@ -54,4 +57,6 @@ __all__ = [
     "SMTPSettings",
     "EmailPreference",
     "EmailQueue",
+    # scraper reports
+    "ScraperReport",
 ]

@@ -424,3 +424,22 @@ export interface SMTPStatus {
   settings?: SMTPSettings;
 }
 
+// ─── Scraper Reports ──────────────────────────────────────────────────────────
+export type ReportStatus = "new" | "read" | "resolved";
+
+export interface ScraperReport {
+  id: string;
+  watch_id: string;
+  comment: string | null;
+  status: ReportStatus;
+  created_at: string;
+  reporter: { id: string; email: string; display_name: string | null };
+  watch: { id: string; url: string; title: string | null };
+}
+
+export interface ScraperReportList {
+  items: ScraperReport[];
+  total: number;
+  unread: number;
+}
+

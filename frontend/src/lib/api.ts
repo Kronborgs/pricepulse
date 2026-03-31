@@ -14,6 +14,8 @@ import {
   ProductWatch,
   ProductWatchCreate,
   ProductWatchList,
+  ScraperReport,
+  ScraperReportList,
   SetupStatus,
   Shop,
   SMTPStatus,
@@ -438,5 +440,27 @@ export const api = {
     deleteBackup: (filename: string) =>
       apiFetch<{ ok: boolean }>(`/admin/backup/${encodeURIComponent(filename)}`, { method: "DELETE" }),
     downloadUrl: (filename: string) => `/api/v1/admin/backup/download/${encodeURIComponent(filename)}`,
+  },
+
+  // ─── Scraper Reports ──────────────────────────────────────────────────────
+  reports: {
+    create: (watchId: string, comment?: string) =>
+      apiFetch<ScraperReport>("/reports", {
+        method: "POST",
+        body: JSON.stringify({ watch_id: watchId, comment: comment ?? null }),
+      }),
+    list: (params?: { status?: string; skip?: number; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (params?.status) qs.set("status", params.status);
+      if (params?.skip != null) qs.set("skip", String(params.skip));
+      if (params?.limit != null) qs.set("limit", String(params.limit));
+      return apiFetch<ScraperReportList>(`/reports?${qs}`);
+    },
+    updateStatus: (id: string, status: string) =>
+      apiFetch<ScraperReport>(`/reports/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }),
+    unreadCount: () => apiFetch<{ count: number }>("/reports/unread-count"),
   },
 };

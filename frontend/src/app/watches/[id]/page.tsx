@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Check,
   ExternalLink,
+  Flag,
   Loader2,
   RefreshCw,
   Trash2,
@@ -16,6 +17,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { PriceChart } from "@/components/watches/price-chart";
 import { StatusBadge } from "@/components/watches/status-badge";
+import { ReportIssueDialog } from "@/components/watches/report-issue-dialog";
 import { formatPrice, formatRelative } from "@/lib/utils";
 import { PriceEvent, ERROR_TYPE_LABELS, WatchDiagnostic } from "@/types";
 
@@ -28,6 +30,7 @@ export default function WatchDetailPage({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const { data: watch, isLoading } = useQuery({
     queryKey: ["watch", id],
@@ -112,6 +115,14 @@ export default function WatchDetailPage({
             <ExternalLink className="h-3.5 w-3.5" />
             Butik
           </a>
+          <button
+            onClick={() => setShowReport(true)}
+            className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 px-3 py-1.5 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors"
+            title="Rapportér problem med scraper"
+          >
+            <Flag className="h-3.5 w-3.5" />
+            Rapportér
+          </button>
           <button
             onClick={() => checkMutation.mutate()}
             disabled={checkMutation.isPending}
@@ -267,6 +278,14 @@ export default function WatchDetailPage({
         </div>
       )}
     </div>
+
+    {showReport && (
+      <ReportIssueDialog
+        watchId={watch.id}
+        watchTitle={watch.title ?? watch.url}
+        onClose={() => setShowReport(false)}
+      />
+    )}
   );
 }
 

@@ -1,14 +1,18 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Flag, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { StatsRow } from "@/components/dashboard/stats-row";
 import { RecentChanges } from "@/components/dashboard/recent-changes";
 import { StatusBadge } from "@/components/watches/status-badge";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export default function DashboardPage() {
+  const { data: me } = useCurrentUser();
+  const isPrivileged = me?.role === "admin" || me?.role === "superuser";
+
   const { data: watches } = useQuery({
     queryKey: ["watches-errors"],
     queryFn: () =>
@@ -16,7 +20,15 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
 
+  const { data: unreadData } = useQuery({
+    queryKey: ["reports-unread"],
+    queryFn: () => api.reports.unreadCount(),
+    enabled: isPrivileged,
+    refetchInterval: 60_000,
+  });
+
   const errorWatches = watches?.items ?? [];
+  const unreadReports = unreadData?.count ?? 0;
 
   return (
     <div className="space-y-6">
@@ -53,6 +65,19 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {isPrivileged && unreadReports > 0 && (
+        <Link
+          href="/admin/reports"
+          className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 hover:bg-amber-500/15 transition-colors"
+        >
+          <Flag className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="text-sm text-amber-300">
+            <span className="font-semibold">{unreadReports} ny{unreadReports !== 1 ? "e" : ""} scraper-rapport{unreadReports !== 1 ? "er" : ""}</span>
+            {" "}fra brugere — klik for at se
+          </span>
+        </Link>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

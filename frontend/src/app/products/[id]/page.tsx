@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, Plus, Merge, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Loader2, Plus, Merge, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { StoreComparison } from "@/components/products/store-comparison";
 import { MultiPriceChart } from "@/components/products/multi-price-chart";
+import { ReportIssueDialog } from "@/components/watches/report-issue-dialog";
 import { Product, Watch } from "@/types";
 import { formatPrice } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export default function ProductDetailPage({
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSearch, setMergeSearch] = useState("");
   const [mergeTarget, setMergeTarget] = useState<Product | null>(null);
+  const [showReport, setShowReport] = useState(false);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -202,6 +204,16 @@ export default function ProductDetailPage({
               <Merge className="h-3.5 w-3.5" />
               Sammenflet
             </button>
+            {watches.length > 0 && (
+              <button
+                onClick={() => setShowReport(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/50 px-3 py-1.5 text-sm text-amber-400 hover:bg-amber-500/10 transition-colors"
+                title="Rapportér problem med scraper"
+              >
+                <Flag className="h-3.5 w-3.5" />
+                Rapportér
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -344,6 +356,13 @@ export default function ProductDetailPage({
         <h2 className="text-base font-semibold mb-3">Prissammenligning</h2>
         <StoreComparison productId={id} watches={watches} />
       </div>
+
+      {showReport && (
+        <ReportIssueDialog
+          watches={watches.map((w) => ({ id: w.id, title: w.title ?? null, url: w.url }))}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }
