@@ -428,10 +428,12 @@ async def update_user(
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
+    caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     """
     Slet bruger permanent inkl. alle tokens.
+    - admin kan slette alle brugere
+    - superuser kan kun slette brugere med rollen 'user'
     Hvis ingen brugere er tilbage, returnerer /setup-status setup_required=True igen.
     """
     from sqlalchemy import delete as sa_delete
@@ -440,6 +442,10 @@ async def delete_user(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+
+    # Superuser må ikke slette admin-brugere
+    if caller.role == "superuser" and user.role != "user":
+        raise HTTPException(status_code=403, detail="Superuser kan kun slette brugere med rollen 'user'")
 
     # Slet tokens først (FK constraint)
     await db.execute(sa_delete(AuthToken).where(AuthToken.user_id == user_id))

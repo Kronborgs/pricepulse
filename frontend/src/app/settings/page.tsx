@@ -11,6 +11,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 export default function SettingsPage() {
   const { data: me } = useCurrentUser();
   const readonly = me?.role === "user";
+  const superuserReadonly = me?.role === "user" || me?.role === "superuser";
 
   return (
     <div className="space-y-8">
@@ -23,8 +24,8 @@ export default function SettingsPage() {
 
       <HealthCard />
       <OllamaSection readonly={readonly} />
-      <BackupSection readonly={readonly} />
-      <ShopsSection readonly={readonly} />
+      <BackupSection readonly={superuserReadonly} />
+      <ShopsSection readonly={superuserReadonly} />
     </div>
   );
 }

@@ -32,7 +32,7 @@ const adminNavItems = [
   { href: "/admin/ai-log", label: "AI Job Log", icon: Bot },
   { href: "/admin/users", label: "Brugere", icon: Users },
   { href: "/admin/smtp", label: "SMTP", icon: Mail, adminOnly: true },
-  { href: "/admin/data", label: "Data", icon: Database },
+  { href: "/admin/data", label: "Data", icon: Database, adminOnly: true },
   { href: "/admin/reports", label: "Rapporter", icon: Flag },
 ];
 

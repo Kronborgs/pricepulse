@@ -133,7 +133,7 @@ export default function AdminDataPage() {
   }
 
   return (
-    <AuthGuard adminOnly superuserAllowed>
+    <AuthGuard adminOnly>
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center justify-between">
           <div>

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AdminUser
 from app.database import get_db
 from app.models.shop import Shop
 from app.models.watch import Watch
@@ -45,6 +46,7 @@ async def update_shop(
     shop_id: uuid.UUID,
     body: ShopUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: AdminUser = None,
 ) -> Shop:
     shop = (await db.execute(select(Shop).where(Shop.id == shop_id))).scalar_one_or_none()
     if not shop:

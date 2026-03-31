@@ -260,6 +260,8 @@ export default function UsersPage() {
                           >
                             {user.is_active ? "Deaktiver" : "Aktiver"}
                           </button>
+                          {/* Superuser må ikke slette admin-brugere */}
+                          {!(meData?.role === "superuser" && user.role !== "user") && (
                           <button
                             onClick={() => handleDeleteUser(user)}
                             disabled={deleteMutation.isPending}
@@ -268,6 +270,7 @@ export default function UsersPage() {
                             <Trash2 className="h-3 w-3" />
                             Slet
                           </button>
+                          )}
                         </div>
                       </td>
                     </tr>
