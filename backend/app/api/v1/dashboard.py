@@ -9,67 +9,82 @@ from sqlalchemy import func, select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.price_event import PriceEvent
 from app.models.price_history import PriceHistory
+from app.models.user import User
 from app.models.watch import Watch
 from app.schemas.shop import DashboardStats, PriceEventRead
 
 router = APIRouter()
 
 
+def _is_privileged(user: User) -> bool:
+    return user.role in ("admin", "superuser")
+
+
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> DashboardStats:
     today_start = datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
 
+    # Brugere (user-rolle) ser kun egne watches
+    owner_filter = [] if _is_privileged(user) else [Watch.owner_id == user.id]
+
     # Watch counts
-    total = (await db.execute(select(func.count(Watch.id)))).scalar_one()
+    total = (await db.execute(select(func.count(Watch.id)).where(*owner_filter))).scalar_one()
     active = (
-        await db.execute(select(func.count(Watch.id)).where(Watch.status == "active"))
+        await db.execute(select(func.count(Watch.id)).where(Watch.status == "active", *owner_filter))
     ).scalar_one()
     errors = (
-        await db.execute(select(func.count(Watch.id)).where(Watch.status == "error"))
+        await db.execute(select(func.count(Watch.id)).where(Watch.status == "error", *owner_filter))
     ).scalar_one()
     blocked = (
-        await db.execute(select(func.count(Watch.id)).where(Watch.status == "blocked"))
+        await db.execute(select(func.count(Watch.id)).where(Watch.status == "blocked", *owner_filter))
     ).scalar_one()
 
-    # Prisændringer i dag
+    # Prisændringer i dag — kun egne events for user-rolle
+    watch_id_subq = (
+        select(Watch.id).where(*owner_filter).scalar_subquery()
+        if owner_filter
+        else None
+    )
+
+    def _event_filters(*extra):
+        fs = [
+            PriceEvent.event_type == "price_change",
+            PriceEvent.occurred_at >= today_start,
+        ]
+        if watch_id_subq is not None:
+            fs.append(PriceEvent.watch_id.in_(watch_id_subq))
+        fs.extend(extra)
+        return and_(*fs)
+
     drops = (
         await db.execute(
-            select(func.count(PriceEvent.id)).where(
-                and_(
-                    PriceEvent.event_type == "price_change",
-                    PriceEvent.occurred_at >= today_start,
-                    PriceEvent.price_delta < 0,
-                )
-            )
+            select(func.count(PriceEvent.id)).where(_event_filters(PriceEvent.price_delta < 0))
         )
     ).scalar_one()
 
     increases = (
         await db.execute(
-            select(func.count(PriceEvent.id)).where(
-                and_(
-                    PriceEvent.event_type == "price_change",
-                    PriceEvent.occurred_at >= today_start,
-                    PriceEvent.price_delta > 0,
-                )
-            )
+            select(func.count(PriceEvent.id)).where(_event_filters(PriceEvent.price_delta > 0))
         )
     ).scalar_one()
 
-    checks_today = (
-        await db.execute(
-            select(func.count(PriceHistory.id)).where(
-                PriceHistory.recorded_at >= today_start
-            )
+    checks_stmt = select(func.count(PriceHistory.id)).where(
+        PriceHistory.recorded_at >= today_start
+    )
+    if owner_filter:
+        checks_stmt = checks_stmt.where(
+            PriceHistory.watch_id.in_(select(Watch.id).where(*owner_filter).scalar_subquery())
         )
-    ).scalar_one()
+    checks_today = (await db.execute(checks_stmt)).scalar_one()
 
     return DashboardStats(
         total_watches=total,
@@ -87,6 +102,7 @@ async def get_dashboard_stats(
 async def get_recent_events(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
 ) -> list[PriceEventRead]:
     stmt = (
         select(PriceEvent)
@@ -97,6 +113,11 @@ async def get_recent_events(
         .order_by(PriceEvent.occurred_at.desc())
         .limit(limit)
     )
+    # Brugere (user-rolle) ser kun events fra egne watches
+    if not _is_privileged(user):
+        stmt = stmt.join(Watch, PriceEvent.watch_id == Watch.id).where(
+            Watch.owner_id == user.id
+        )
     result = await db.execute(stmt)
     events = list(result.unique().scalars().all())
 

@@ -19,24 +19,21 @@ const STATUS_OPTIONS = [
   { value: "blocked", label: "Blokeret" },
 ];
 
-// "" = alle, "user" = bruger-ejede, "system" = systemoprettede
-const OWNER_OPTIONS = [
-  { value: "", label: "Alle ejere" },
-  { value: "user", label: "Bruger-ejede" },
-  { value: "system", label: "Systemoprettede" },
-];
-
 export default function WatchesPage() {
   const { data: me } = useCurrentUser();
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState(""); // "" = alle, else user UUID
   const [page, setPage] = useState(1);
 
-  const hasOwnerParam =
-    ownerFilter === "user" ? true : ownerFilter === "system" ? false : undefined;
+  // Hent brugerliste til filterdropdown (kun for admin/superuser)
+  const { data: usersData } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => api.adminUsers.list({ limit: 100 }),
+    enabled: isPrivileged,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["watches", { search, status, page, ownerFilter }],
@@ -46,7 +43,7 @@ export default function WatchesPage() {
         status: status || undefined,
         skip: (page - 1) * 25,
         limit: 25,
-        has_owner: hasOwnerParam,
+        owner_id: ownerFilter || undefined,
       }),
     refetchInterval: 30_000,
   });
@@ -110,8 +107,11 @@ export default function WatchesPage() {
               onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
               className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {OWNER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option value="">Alle brugere</option>
+              {usersData?.items.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name ?? u.email}
+                </option>
               ))}
             </select>
           </div>

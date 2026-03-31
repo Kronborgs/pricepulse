@@ -97,7 +97,7 @@ export const api = {
       shop_id?: string;
       product_id?: string;
       search?: string;
-      has_owner?: boolean;
+      owner_id?: string;
     }) => {
       const qs = new URLSearchParams();
       if (params?.skip != null) qs.set("skip", String(params.skip));
@@ -106,7 +106,7 @@ export const api = {
       if (params?.shop_id) qs.set("shop_id", params.shop_id);
       if (params?.product_id) qs.set("product_id", params.product_id);
       if (params?.search) qs.set("search", params.search);
-      if (params?.has_owner != null) qs.set("has_owner", String(params.has_owner));
+      if (params?.owner_id) qs.set("owner_id", params.owner_id);
       return apiFetch<WatchList>(`/watches?${qs}`);
     },
     get: (id: string) => apiFetch<Watch>(`/watches/${id}`),
@@ -149,12 +149,12 @@ export const api = {
 
   // ─── Products ────────────────────────────────────────────────────────────────
   products: {
-    list: (params?: { skip?: number; limit?: number; search?: string; has_owner?: boolean }) => {
+    list: (params?: { skip?: number; limit?: number; search?: string; owner_id?: string }) => {
       const qs = new URLSearchParams();
       if (params?.skip != null) qs.set("skip", String(params.skip));
       if (params?.limit != null) qs.set("limit", String(params.limit));
       if (params?.search) qs.set("search", params.search);
-      if (params?.has_owner != null) qs.set("has_owner", String(params.has_owner));
+      if (params?.owner_id) qs.set("owner_id", params.owner_id);
       return apiFetch<ProductList>(`/products?${qs}`);
     },
     get: (id: string) => apiFetch<Product>(`/products/${id}`),

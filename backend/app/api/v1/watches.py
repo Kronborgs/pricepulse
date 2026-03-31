@@ -48,7 +48,7 @@ async def list_watches(
     shop_id: uuid.UUID | None = Query(None),
     product_id: uuid.UUID | None = Query(None),
     search: str | None = Query(None),
-    has_owner: bool | None = Query(None),
+    owner_id: uuid.UUID | None = Query(None),
 ) -> WatchList:
     stmt = (
         select(Watch)
@@ -59,12 +59,9 @@ async def list_watches(
     # Brugere (user-rolle) ser kun egne watches
     if not _is_privileged(user):
         stmt = stmt.where(Watch.owner_id == user.id)
-    elif has_owner is not None:
-        # Admin/superuser kan filtrere på om watch har en ejer
-        if has_owner:
-            stmt = stmt.where(Watch.owner_id.isnot(None))
-        else:
-            stmt = stmt.where(Watch.owner_id.is_(None))
+    elif owner_id is not None:
+        # Admin/superuser kan filtrere på specifik ejer
+        stmt = stmt.where(Watch.owner_id == owner_id)
 
     if status:
         stmt = stmt.where(Watch.status == status)

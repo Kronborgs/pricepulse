@@ -35,19 +35,16 @@ async def list_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
-    has_owner: bool | None = Query(None),
+    owner_id: uuid.UUID | None = Query(None),
 ) -> ProductList:
     stmt = select(Product).options(selectinload(Product.owner)).order_by(Product.name)
 
     # Brugere (user-rolle) ser kun egne produkter
     if not _is_privileged(user):
         stmt = stmt.where(Product.owner_id == user.id)
-    elif has_owner is not None:
-        # Admin/superuser kan filtrere på om produkt har en ejer
-        if has_owner:
-            stmt = stmt.where(Product.owner_id.isnot(None))
-        else:
-            stmt = stmt.where(Product.owner_id.is_(None))
+    elif owner_id is not None:
+        # Admin/superuser kan filtrere på specifik ejer
+        stmt = stmt.where(Product.owner_id == owner_id)
 
     if search:
         stmt = stmt.where(Product.name.ilike(f"%{search}%"))

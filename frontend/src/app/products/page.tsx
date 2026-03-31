@@ -35,8 +35,15 @@ export default function ProductsPage() {
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
   const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState(""); // "" = alle, else user UUID
   const [page, setPage] = useState(1);
+
+  // Hent brugerliste til filterdropdown (kun for admin/superuser)
+  const { data: usersData } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => api.adminUsers.list({ limit: 100 }),
+    enabled: isPrivileged,
+  });
 
   const hasOwnerParam =
     ownerFilter === "user" ? true : ownerFilter === "system" ? false : undefined;
@@ -54,7 +61,7 @@ export default function ProductsPage() {
         search: search || undefined,
         skip: (page - 1) * 24,
         limit: 24,
-        has_owner: hasOwnerParam,
+        owner_id: ownerFilter || undefined,
       }),
   });
 
@@ -84,9 +91,12 @@ export default function ProductsPage() {
               onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
               className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Alle ejere</option>
-              <option value="user">Bruger-ejede</option>
-              <option value="system">Systemoprettede</option>
+              <option value="">Alle brugere</option>
+              {usersData?.items.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name ?? u.email}
+                </option>
+              ))}
             </select>
           </div>
         )}
