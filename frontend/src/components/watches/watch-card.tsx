@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Watch, ProductWatch } from "@/types";
@@ -32,15 +31,25 @@ export function WatchCard({ watch }: V1Props) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
           {watch.image_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={watch.image_url}
               alt={watch.title ?? "Produktbillede"}
               width={48}
               height={48}
-              className="rounded-md object-contain flex-shrink-0 bg-secondary"
+              className="h-12 w-12 rounded-md object-contain flex-shrink-0 bg-secondary"
+              onError={(e) => {
+                const el = e.currentTarget as HTMLImageElement;
+                el.onerror = null;
+                el.src = "/logo.png";
+                el.className = "h-12 w-12 rounded-md object-contain flex-shrink-0 bg-secondary p-1.5 opacity-60";
+              }}
             />
           ) : (
-            <div className="h-12 w-12 flex-shrink-0 rounded-md bg-secondary" />
+            <div className="h-12 w-12 flex-shrink-0 rounded-md bg-secondary flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="PricePulse" className="h-8 w-8 object-contain opacity-60" />
+            </div>
           )}
           <div className="min-w-0">
             <Link

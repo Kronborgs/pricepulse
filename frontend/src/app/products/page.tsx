@@ -200,6 +200,11 @@ function ProductCard({ product, showOwner }: { product: Product; showOwner?: boo
             src={product.image_url}
             alt={product.name}
             className="h-full w-full object-contain p-3 group-hover:scale-105 transition-transform"
+            onError={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              el.src = "/logo.png";
+              el.className = "h-24 w-24 object-contain opacity-60";
+            }}
           />
         ) : (
           <img src="/logo.png" alt="PricePulse" className="h-24 w-24 object-contain opacity-60" />

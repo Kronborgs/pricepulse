@@ -61,7 +61,12 @@ function EventRow({ event }: { event: PriceEvent }) {
             alt={displayName}
             className="w-full h-full object-contain"
             loading="lazy"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            onError={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              el.onerror = null;
+              el.src = "/logo.png";
+              el.className = "w-full h-full object-contain p-1 opacity-60";
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

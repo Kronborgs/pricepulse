@@ -165,6 +165,12 @@ export default function ProductDetailPage({
               src={product.image_url}
               alt={product.name}
               className="h-20 w-20 rounded-lg border border-border object-contain bg-muted/20 p-1 shrink-0"
+              onError={(e) => {
+                const el = e.currentTarget as HTMLImageElement;
+                el.onerror = null;
+                el.src = "/logo.png";
+                el.className = "h-20 w-20 rounded-lg border border-border bg-muted/20 p-2.5 shrink-0 opacity-60";
+              }}
             />
           ) : (
             <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center shrink-0">
