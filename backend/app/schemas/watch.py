@@ -72,6 +72,8 @@ class WatchRead(BaseModel):
     is_active: bool
     shop: WatchShopSummary | None = None
     product_id: uuid.UUID | None = None
+    owner_id: uuid.UUID | None = None
+    owner_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

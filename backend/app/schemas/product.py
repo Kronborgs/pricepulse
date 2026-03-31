@@ -33,6 +33,8 @@ class ProductRead(BaseModel):
     is_active: bool
     watch_count: int = 0
     lowest_price: float | None = None
+    owner_id: uuid.UUID | None = None
+    owner_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

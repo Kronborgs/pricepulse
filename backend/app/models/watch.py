@@ -72,6 +72,12 @@ class Watch(Base, TimestampMixin):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    @property
+    def owner_name(self) -> str | None:
+        if self.owner:
+            return self.owner.display_name or self.owner.email
+        return None
+
     # Relations
     owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
     product: Mapped["Product | None"] = relationship(back_populates="watches")

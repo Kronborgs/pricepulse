@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { WatchTable } from "@/components/watches/watch-table";
 import { AddWatchDialog } from "@/components/watches/add-watch-dialog";
 import { Watch } from "@/types";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Alle" },
@@ -18,19 +19,34 @@ const STATUS_OPTIONS = [
   { value: "blocked", label: "Blokeret" },
 ];
 
+// "" = alle, "user" = bruger-ejede, "system" = systemoprettede
+const OWNER_OPTIONS = [
+  { value: "", label: "Alle ejere" },
+  { value: "user", label: "Bruger-ejede" },
+  { value: "system", label: "Systemoprettede" },
+];
+
 export default function WatchesPage() {
+  const { data: me } = useCurrentUser();
+  const isPrivileged = me?.role === "admin" || me?.role === "superuser";
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("");
   const [page, setPage] = useState(1);
 
+  const hasOwnerParam =
+    ownerFilter === "user" ? true : ownerFilter === "system" ? false : undefined;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["watches", { search, status, page }],
+    queryKey: ["watches", { search, status, page, ownerFilter }],
     queryFn: () =>
       api.watches.list({
         search: search || undefined,
         status: status || undefined,
         skip: (page - 1) * 25,
         limit: 25,
+        has_owner: hasOwnerParam,
       }),
     refetchInterval: 30_000,
   });
@@ -85,11 +101,27 @@ export default function WatchesPage() {
             </button>
           ))}
         </div>
+
+        {isPrivileged && (
+          <div className="flex items-center gap-1.5 ml-auto">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={ownerFilter}
+              onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
+              className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {OWNER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <WatchTable
         watches={watches}
         isLoading={isLoading}
+        showOwner={isPrivileged}
       />
 
       {/* Pagination */}

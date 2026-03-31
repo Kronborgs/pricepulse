@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { ExternalLink, RefreshCw, Trash2, User } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Watch } from "@/types";
@@ -12,6 +12,7 @@ import { api } from "@/lib/api";
 interface Props {
   watches: Watch[];
   isLoading: boolean;
+  showOwner?: boolean;
 }
 
 function ConfirmDeleteDialog({
@@ -62,7 +63,7 @@ function ConfirmDeleteDialog({
   );
 }
 
-export function WatchTable({ watches, isLoading }: Props) {
+export function WatchTable({ watches, isLoading, showOwner }: Props) {
   const qc = useQueryClient();
   const [deleteTarget, setDeleteTarget] = useState<Watch | null>(null);
 
@@ -109,6 +110,7 @@ export function WatchTable({ watches, isLoading }: Props) {
             <th className="text-right px-4 py-3 font-medium text-muted-foreground">Pris</th>
             <th className="text-left px-4 py-3 font-medium text-muted-foreground">Lager</th>
             <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+            {showOwner && <th className="text-left px-4 py-3 font-medium text-muted-foreground">Ejer</th>}
             <th className="text-left px-4 py-3 font-medium text-muted-foreground">Sidst tjekket</th>
             <th className="px-4 py-3" />
           </tr>
@@ -150,6 +152,17 @@ export function WatchTable({ watches, isLoading }: Props) {
               <td className="px-4 py-3">
                 <StatusBadge status={watch.status} />
               </td>
+              {showOwner && (
+                <td className="px-4 py-3">
+                  {watch.owner_name ? (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400">
+                      <User className="h-3 w-3" />{watch.owner_name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">System</span>
+                  )}
+                </td>
+              )}
               <td className="px-4 py-3 text-muted-foreground text-xs">
                 {formatRelative(watch.last_checked_at)}
               </td>

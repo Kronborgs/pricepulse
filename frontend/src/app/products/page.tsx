@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Package2, Search } from "lucide-react";
+import { Package2, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 function wordSimilarity(a: string, b: string): number {
   const words = (s: string) =>
@@ -30,8 +31,15 @@ function findDuplicatePairs(products: Product[]): [Product, Product][] {
 }
 
 export default function ProductsPage() {
+  const { data: me } = useCurrentUser();
+  const isPrivileged = me?.role === "admin" || me?.role === "superuser";
+
   const [search, setSearch] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState("");
   const [page, setPage] = useState(1);
+
+  const hasOwnerParam =
+    ownerFilter === "user" ? true : ownerFilter === "system" ? false : undefined;
 
   // For duplicate detection we always load all products (no pagination filter)
   const { data: allData } = useQuery({
@@ -40,12 +48,13 @@ export default function ProductsPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["products", { search, page }],
+    queryKey: ["products", { search, page, ownerFilter }],
     queryFn: () =>
       api.products.list({
         search: search || undefined,
         skip: (page - 1) * 24,
         limit: 24,
+        has_owner: hasOwnerParam,
       }),
   });
 
@@ -67,6 +76,20 @@ export default function ProductsPage() {
             {total} produkter i databasen
           </p>
         </div>
+        {isPrivileged && (
+          <div className="flex items-center gap-1.5">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={ownerFilter}
+              onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
+              className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Alle ejere</option>
+              <option value="user">Bruger-ejede</option>
+              <option value="system">Systemoprettede</option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Duplicate suggestions */}
@@ -129,7 +152,7 @@ export default function ProductsPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product.id} product={product} showOwner={isPrivileged} />
           ))}
         </div>
       )}
@@ -160,12 +183,19 @@ export default function ProductsPage() {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, showOwner }: { product: Product; showOwner?: boolean }) {
   return (
     <Link
       href={`/products/${product.id}`}
       className="group rounded-lg border border-border bg-card overflow-hidden hover:shadow-md transition-shadow"
     >
+      {showOwner && product.owner_name && (
+        <div className="px-3 pt-2.5 pb-0">
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400">
+            <Users className="h-3 w-3" />{product.owner_name}
+          </span>
+        </div>
+      )}
       <div className="aspect-square bg-muted/20 flex items-center justify-center overflow-hidden">
         {product.image_url ? (
           <img

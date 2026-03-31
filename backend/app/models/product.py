@@ -57,6 +57,12 @@ class Product(Base, TimestampMixin):
     # Ejerskab
     owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
 
+    @property
+    def owner_name(self) -> str | None:
+        if self.owner:
+            return self.owner.display_name or self.owner.email
+        return None
+
     # Relations — v1 legacy
     watches: Mapped[list["Watch"]] = relationship(
         back_populates="product",

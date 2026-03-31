@@ -22,6 +22,8 @@ export interface Product {
   is_active: boolean;
   watch_count: number;
   lowest_price: number | null;
+  owner_id: string | null;
+  owner_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -108,6 +110,8 @@ export interface Watch {
   is_active: boolean;
   shop: WatchShopSummary | null;
   product_id: string | null;
+  owner_id: string | null;
+  owner_name: string | null;
   created_at: string;
   updated_at: string;
 }
