@@ -399,11 +399,14 @@ async def update_user(
     user_id: uuid.UUID,
     body: UpdateUserRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
+    caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+    # Superuser må kun ændre brugere med rollen 'user'
+    if caller.role == "superuser" and user.role != "user":
+        raise HTTPException(status_code=403, detail="Superuser kan kun ændre brugere med rollen 'user'")
     if body.display_name is not None:
         user.display_name = body.display_name
     if body.role is not None:

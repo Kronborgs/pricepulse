@@ -254,12 +254,15 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          {/* Superuser må ikke deaktivere admin/superuser-brugere */}
+                          {!(meData?.role === "superuser" && user.role !== "user") && (
                           <button
                             onClick={() => toggleActive.mutate({ id: user.id, is_active: !user.is_active })}
                             className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-2 py-1"
                           >
                             {user.is_active ? "Deaktiver" : "Aktiver"}
                           </button>
+                          )}
                           {/* Superuser må ikke slette admin-brugere */}
                           {!(meData?.role === "superuser" && user.role !== "user") && (
                           <button

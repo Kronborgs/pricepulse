@@ -24,35 +24,47 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 ### Dashboard
 ![Dashboard](assets/screenshots/dashboard.png)
-> **Tag screenshot af:** Hele dashboard-siden  stats-rækken øverst (antal watches, aktive, fejl, prisfald i dag), seneste prisændringer i midten, og evt. fejl-banneret i bunden.
+> **Tag screenshot af:** Hele dashboard-siden — stats-rækken øverst (antal watches, aktive, fejl, prisfald i dag), seneste prisændringer i midten, og evt. fejl-banneret i bunden.
 
-### Watches  oversigt
+### Watches — oversigt
 ![Watches](assets/screenshots/watches.png)
-> **Tag screenshot af:** Watch-listen med statusfiltre øverst (Alle / Aktiv / Afventer / AI / Pause / Fejl / Blokeret), sogefelt, og et par rækker watches med statusbadges og priser.
+> **Tag screenshot af:** Watch-listen med statusfiltre øverst (Alle / Aktiv / Afventer / AI / Pause / Fejl / Blokeret), søgefelt, og et par rækker watches med statusbadges og priser.
 
-### Watch  detalje & prisgraf
+### Watch — detalje & prisgraf
 ![Watch detalje](assets/screenshots/watch-detail.png)
-> **Tag screenshot af:** En enkelt watch åbnet  prisgrafen i toppen, kilde-listen nedenunder med butikslogoer og priser side om side.
+> **Tag screenshot af:** En enkelt watch åbnet — prisgrafen i toppen, kilde-listen nedenunder med butikslogoer og priser side om side, og "Rapportér fejl"-knappen.
 
 ### Produkter
 ![Produkter](assets/screenshots/products.png)
-> **Tag screenshot af:** Produktoversigten med sogefelt, et par produktkort med billede og bedste pris, og gerne duplikat-advarslen overst hvis der er nogen.
+> **Tag screenshot af:** Produktoversigten med søgefelt, et par produktkort med billede og bedste pris, og gerne duplikat-advarslen øverst hvis der er nogen.
 
-### Indstillinger  Backup
+### Notifikationspræferencer
+![Notifikationer](assets/screenshots/notifications.png)
+> **Tag screenshot af:** Siden `/me/preferences` — Hændelsesnotifikationer (Prisfald, Tilbage på lager, Enhver ændring, Fejl), Digest-e-mail med frekvens- og dagvælger, og “Send test-e-mail”-knappen.
+
+### Indstillinger — Backup
 ![Backup](assets/screenshots/backup.png)
-> **Tag screenshot af:** Settings-siden åben på Backup-sektionen  vis automatisk backup-konfiguration, SMTP-info-noten, og backup-listen med en eller flere filer.
+> **Tag screenshot af:** Settings-siden åben på Backup-sektionen — vis automatisk backup-konfiguration, SMTP-info-noten, og backup-listen med en eller flere filer.
 
 ### Første opsætning
 ![Setup](assets/screenshots/setup.png)
-> **Tag screenshot af:** Setup-guiden (åbnes automatisk ved ny installation)  vis de to faner "Ny konto" og "Gendan backup".
+> **Tag screenshot af:** Setup-guiden (åbnes automatisk ved ny installation) — vis de to faner "Ny konto" og "Gendan backup".
 
-### Admin  SMTP
+### Admin — Brugere
+![Brugere](assets/screenshots/admin-users.png)
+> **Tag screenshot af:** Admin → Brugere — brugertabellen med rolle-badges (admin/superuser/user), status, session-timeout og Deaktiver/Slet-knapper. Gerne med mindst to brugere synlige.
+
+### Admin — SMTP
 ![SMTP](assets/screenshots/smtp.png)
-> **Tag screenshot af:** Admin -> SMTP-siden med konfigurationsformularen udfyldt. Vis at status står "Konfigureret".
+> **Tag screenshot af:** Admin → SMTP-siden med konfigurationsformularen udfyldt. Vis at status står "Konfigureret".
+
+### Admin — Scraper-rapporter
+![Rapporter](assets/screenshots/admin-reports.png)
+> **Tag screenshot af:** Admin → Rapporter — vis fanerne (Alle/Nye/Læst/Løst), et par rapportkort med statusbadge, bruger-navn, watch-link og action-knapper (Markér læst / Løst / Slet).
 
 ### Global SMTP-advarsel
 ![SMTP banner](assets/screenshots/smtp-banner.png)
-> **Tag screenshot af:** En hvilken som helst side (f.eks. dashboard) hvor SMTP-banneret vises øverst  det amber-farvede banner med "SMTP ikke konfigureret" og knappen "Opsæt SMTP".
+> **Tag screenshot af:** En hvilken som helst side (f.eks. dashboard) hvor SMTP-banneret vises øverst — det amber-farvede banner med "SMTP ikke konfigureret" og knappen "Opsæt SMTP".
 
 ---
 
@@ -60,13 +72,15 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 | Område | Hvad det gør |
 |--------|-------------|
-| **Prisovervågning** | Følger en eller flere butikskilder pr. produkt og registrerer hvert prisfald og lageraeandring |
-| **Multi-kilde sammenligning** | Viser alle butikspriser pa samme produkt side om side med prisgraf pr. kilde |
+| **Prisovervågning** | Følger en eller flere butikskilder pr. produkt og registrerer hvert prisfald og lagerændring |
+| **Multi-kilde sammenligning** | Viser alle butikspriser på samme produkt side om side med prisgraf pr. kilde |
 | **Produktkatalog** | Samler watch-kilder under ét produkt og foreslår automatisk mulige dubletter |
-| **E-mail notifikationer** | Sender besked ved prisfald, vare tilbage pa lager eller ny fejl  konfigurerbart pr. bruger |
-| **AI-assistent (Ollama)** | Analyserer sider der fejler og foreslar CSS-selectors, Playwright-behov og bot-beskyttelse |
-| **Automatisk backup** | Tidsplanlagt backup af hele databasen til disk  download, gendan eller importer til ny server |
-| **Brugeradministration** | Fler-bruger support med roller (admin/bruger), invitation via e-mail, session-timeout |
+| **E-mail notifikationer** | Prisfald, lager, enhver ændring eller fejl — konfigurerbart pr. bruger med valg af frekvens (straks/daglig/ugentlig/månedlig) |
+| **Digest-e-mail** | Periodisk oversigt over alle ændringer — daglig, ugentlig eller månedlig med valgfri dag |
+| **AI-assistent (Ollama)** | Analyserer sider der fejler og foreslår CSS-selectors, Playwright-behov og bot-beskyttelse |
+| **Automatisk backup** | Tidsplanlagt backup af hele databasen til disk — download, gendan eller importer til ny server |
+| **Brugeradministration** | Fler-bruger support med roller (admin/superuser/bruger), invitation via e-mail, session-timeout |
+| **Scraper-rapporter** | Brugere kan rapportere fejl på en kilde direkte fra UI — admin/superuser håndterer og løser rapporter |
 | **Scraper-engine** | HTTP (httpx) og JavaScript-rendering (Playwright), pluggable parsers: CSS, JSON-LD, inline JSON |
 | **Fejlklassificering** | Kategoriserer fejl: parser-mismatch, JS-render krævet, bot-beskyttelse, timeout, HTTP-fejl |
 
