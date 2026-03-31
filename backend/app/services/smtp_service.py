@@ -142,14 +142,14 @@ class SMTPService:
         subject: str,
         body_html: str,
     ):
-        """Byg email.message.EmailMessage med HTML body."""
-        from email.message import EmailMessage
-        msg = EmailMessage()
+        """Byg MIMEMultipart-email med HTML body."""
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        msg = MIMEMultipart("alternative")
         msg["From"] = f"{from_name} <{from_email}>"
         msg["To"] = to_email
         msg["Subject"] = subject
-        msg.set_type("text/html")
-        msg.set_payload(body_html, charset="utf-8")
+        msg.attach(MIMEText(body_html, "html", "utf-8"))
         return msg
 
     async def test_connection(self, db: AsyncSession) -> dict:
@@ -277,9 +277,19 @@ class SMTPService:
                     await self.send_email(db, item.to_email, item.subject or "", item.body_html or "")
                     item.status = "sent"
                     item.sent_at = datetime.now(timezone.utc)
-                except Exception:
+                    logger.info("email_sendt_fra_koe", to=item.to_email, type=item.email_type)
+                except Exception as exc:
+                    err = str(exc)
+                    item.last_error = err
                     if item.attempts >= _MAX_ATTEMPTS:
                         item.status = "failed"
+                    logger.error(
+                        "email_koe_fejl",
+                        to=item.to_email,
+                        type=item.email_type,
+                        attempt=item.attempts,
+                        error=err,
+                    )
                 await db.commit()
 
 
