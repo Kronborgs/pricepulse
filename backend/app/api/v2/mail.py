@@ -210,7 +210,7 @@ async def send_test_notification(
     """
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
-    from app.models.source_price_event import SourcePriceEvent
+    from app.models.product import Product
     from app.services.smtp_service import SMTPService, _render_template
     from app.models.email_queue import EmailQueue
     from sqlalchemy import func
@@ -220,15 +220,14 @@ async def send_test_notification(
     if not cfg:
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
-    # Find et tilfældigt watch der har en kilde med en rigtig prisevent
-    # Korrekt join: ProductWatch → WatchSource (watch_id) → SourcePriceEvent (source_id)
+    # Find en tilfældig kilde der tilhører brugeren og har en rigtig pris
     row = await db.execute(
-        select(ProductWatch, WatchSource, SourcePriceEvent)
+        select(ProductWatch, WatchSource, Product)
+        .join(Product, Product.id == ProductWatch.product_id)
         .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .join(SourcePriceEvent, SourcePriceEvent.source_id == WatchSource.id)
         .where(
             ProductWatch.owner_id == user.id,
-            SourcePriceEvent.new_price.isnot(None),
+            WatchSource.last_price.isnot(None),
         )
         .order_by(func.random())
         .limit(1)
@@ -236,12 +235,12 @@ async def send_test_notification(
     result = row.first()
 
     if result:
-        watch, source, event = result
-        watch_name = watch.title or source.url
-        new_price = float(event.new_price)
-        old_price = float(event.old_price) if event.old_price else new_price * 1.1
+        watch, source, product = result
+        watch_name = watch.name or product.name
+        new_price = float(source.last_price)
+        old_price = new_price * 1.15  # simuleret "gammel pris" (+15%)
         currency = source.last_currency or "DKK"
-        image_url = watch.image_url
+        image_url = product.image_url
         product_url = source.url
         watch_id = watch.id
         in_stock = (source.last_stock_status == "in_stock") if source.last_stock_status else True
