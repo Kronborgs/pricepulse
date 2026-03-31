@@ -1,11 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { WatchTable } from "@/components/watches/watch-table";
 import { AddWatchDialog } from "@/components/watches/add-watch-dialog";
+import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
 import { Watch } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -25,7 +26,7 @@ export default function WatchesPage() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState(""); // "" = alle, else user UUID
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
   // Hent brugerliste til filterdropdown (kun for admin/superuser)
@@ -43,7 +44,7 @@ export default function WatchesPage() {
         status: status || undefined,
         skip: (page - 1) * 25,
         limit: 25,
-        owner_id: ownerFilter || undefined,
+        owner_ids: ownerFilter.length ? ownerFilter : undefined,
       }),
     refetchInterval: 30_000,
   });
@@ -100,20 +101,12 @@ export default function WatchesPage() {
         </div>
 
         {isPrivileged && (
-          <div className="flex items-center gap-1.5 ml-auto">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={ownerFilter}
-              onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
-              className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Alle brugere</option>
-              {usersData?.items.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.display_name ?? u.email}
-                </option>
-              ))}
-            </select>
+          <div className="ml-auto">
+            <UserFilterDropdown
+              users={usersData?.items ?? []}
+              selected={ownerFilter}
+              onChange={(ids) => { setOwnerFilter(ids); setPage(1); }}
+            />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select, update
@@ -35,7 +35,7 @@ async def list_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
-    owner_id: uuid.UUID | None = Query(None),
+    owner_ids: List[uuid.UUID] = Query(default=[]),
 ) -> ProductList:
     stmt = select(Product).options(selectinload(Product.owner)).order_by(Product.name)
 
@@ -51,9 +51,9 @@ async def list_products(
                 Product.id.in_(watch_product_ids),
             )
         )
-    elif owner_id is not None:
-        # Admin/superuser kan filtrere på specifik ejer
-        stmt = stmt.where(Product.owner_id == owner_id)
+    elif owner_ids:
+        # Admin/superuser kan filtrere på én eller flere ejere
+        stmt = stmt.where(Product.owner_id.in_(owner_ids))
 
     if search:
         stmt = stmt.where(Product.name.ilike(f"%{search}%"))

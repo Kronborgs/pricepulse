@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, List
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -48,7 +48,7 @@ async def list_watches(
     shop_id: uuid.UUID | None = Query(None),
     product_id: uuid.UUID | None = Query(None),
     search: str | None = Query(None),
-    owner_id: uuid.UUID | None = Query(None),
+    owner_ids: List[uuid.UUID] = Query(default=[]),
 ) -> WatchList:
     stmt = (
         select(Watch)
@@ -59,9 +59,9 @@ async def list_watches(
     # Brugere (user-rolle) ser kun egne watches
     if not _is_privileged(user):
         stmt = stmt.where(Watch.owner_id == user.id)
-    elif owner_id is not None:
-        # Admin/superuser kan filtrere på specifik ejer
-        stmt = stmt.where(Watch.owner_id == owner_id)
+    elif owner_ids:
+        # Admin/superuser kan filtrere på én eller flere ejere
+        stmt = stmt.where(Watch.owner_id.in_(owner_ids))
 
     if status:
         stmt = stmt.where(Watch.status == status)

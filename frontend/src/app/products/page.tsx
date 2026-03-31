@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
 
 function wordSimilarity(a: string, b: string): number {
   const words = (s: string) =>
@@ -35,7 +36,7 @@ export default function ProductsPage() {
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
   const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState(""); // "" = alle, else user UUID
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
   // Hent brugerliste til filterdropdown (kun for admin/superuser)
@@ -44,9 +45,6 @@ export default function ProductsPage() {
     queryFn: () => api.adminUsers.list({ limit: 100 }),
     enabled: isPrivileged,
   });
-
-  const hasOwnerParam =
-    ownerFilter === "user" ? true : ownerFilter === "system" ? false : undefined;
 
   // For duplicate detection we always load all products (no pagination filter)
   const { data: allData } = useQuery({
@@ -61,7 +59,7 @@ export default function ProductsPage() {
         search: search || undefined,
         skip: (page - 1) * 24,
         limit: 24,
-        owner_id: ownerFilter || undefined,
+        owner_ids: ownerFilter.length ? ownerFilter : undefined,
       }),
   });
 
@@ -84,21 +82,11 @@ export default function ProductsPage() {
           </p>
         </div>
         {isPrivileged && (
-          <div className="flex items-center gap-1.5">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={ownerFilter}
-              onChange={(e) => { setOwnerFilter(e.target.value); setPage(1); }}
-              className="h-9 rounded-md border border-input bg-background px-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Alle brugere</option>
-              {usersData?.items.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.display_name ?? u.email}
-                </option>
-              ))}
-            </select>
-          </div>
+          <UserFilterDropdown
+            users={usersData?.items ?? []}
+            selected={ownerFilter}
+            onChange={(ids) => { setOwnerFilter(ids); setPage(1); }}
+          />
         )}
       </div>
 
