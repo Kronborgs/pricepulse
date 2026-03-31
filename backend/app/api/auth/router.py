@@ -299,7 +299,7 @@ async def forgot_password(
             )
             logger.info("password_reset_mail_sendt", email=body.email)
         except Exception as exc:
-            logger.warning("forgot_password_mail_fejl", email=body.email, error=str(exc))
+            logger.warning("forgot_password_mail_fejl", email=body.email, error=repr(exc))
     return {"ok": True}
 
 
@@ -389,7 +389,7 @@ async def create_user(
         )
         logger.info("invitation_mail_sendt", user_id=str(user.id))
     except Exception as exc:
-        logger.warning("invitation_mail_fejl", user_id=str(user.id), error=str(exc))
+        logger.warning("invitation_mail_fejl", user_id=str(user.id), error=repr(exc))
 
     return _user_to_read(user)
 

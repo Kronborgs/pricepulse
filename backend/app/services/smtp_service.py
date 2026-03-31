@@ -108,7 +108,7 @@ class SMTPService:
         config = await self._get_active_config(db)
         if not config:
             logger.warning("smtp_ingen_konfiguration")
-            return False
+            raise RuntimeError("Ingen aktiv SMTP-konfiguration")
 
         try:
             import aiosmtplib
@@ -131,7 +131,7 @@ class SMTPService:
             logger.info("mail_sendt", to=to_email, subject=subject)
             return True
         except Exception as exc:
-            logger.error("mail_fejl", to=to_email, error=str(exc))
+            logger.error("mail_fejl", to=to_email, error=repr(exc))
             raise
 
     def _build_message(
