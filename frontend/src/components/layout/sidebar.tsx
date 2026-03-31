@@ -22,7 +22,7 @@ import { api } from "@/lib/api";
 
 const mainNavItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/watches", label: "Watches", icon: Eye },
+  { href: "/watches", label: "Data webscraper", icon: Eye },
   { href: "/products", label: "Produkter", icon: Package },
   { href: "/settings", label: "Indstillinger", icon: Settings },
 ];

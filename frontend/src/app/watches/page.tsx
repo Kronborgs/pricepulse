@@ -56,7 +56,7 @@ export default function WatchesPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Watches</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Data webscraper</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {total} overvågede priser
           </p>
