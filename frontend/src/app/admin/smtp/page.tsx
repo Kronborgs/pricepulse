@@ -137,7 +137,8 @@ export default function SMTPPage() {
               <label className="text-xs text-slate-400">Brugernavn / e-mail</label>
               <input
                 type="text"
-                placeholder={settings?.username ?? "din@gmail.com"}
+                autoComplete="off"
+                placeholder={settings?.username ?? "bruger@example.com"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
@@ -147,6 +148,7 @@ export default function SMTPPage() {
               <label className="text-xs text-slate-400">Adgangskode / app-token</label>
               <input
                 type="password"
+                autoComplete="new-password"
                 placeholder={settings ? "(uændret)" : ""}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -156,7 +158,8 @@ export default function SMTPPage() {
             <div className="space-y-1">
               <label className="text-xs text-slate-400">Afsender-e-mail</label>
               <input
-                type="email"
+                type="text"
+                autoComplete="off"
                 placeholder={settings?.from_email ?? "noreply@example.com"}
                 value={fromEmail}
                 onChange={(e) => setFromEmail(e.target.value)}
