@@ -72,6 +72,32 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 ---
 
+## Roller og rettigheder
+
+PricePulse har tre brugerroller. Den første konto der oprettes ved opsætning er altid **admin**.
+
+| Funktion | Bruger | Superuser | Admin |
+|---|:---:|:---:|:---:|
+| Dashboard, watches, produkter (egne) | ✅ | ✅ | ✅ |
+| Se alle brugeres watches og produkter | ❌ | ✅ | ✅ |
+| Opret og rediger watches/produkter | ✅ | ✅ | ✅ |
+| Indstil notifikationspræferencer | ✅ | ✅ | ✅ |
+| **Admin: Brugeroversigt** | ❌ | ✅ | ✅ |
+| Opret nye brugere (invitation) | ❌ | ✅ | ✅ |
+| Slet brugere med rollen 'bruger' | ❌ | ✅ | ✅ |
+| Slet brugere med rollen 'superuser' eller 'admin' | ❌ | ❌ | ✅ |
+| **Admin: Scraper-rapporter** | ❌ | ✅ | ✅ |
+| **Admin: AI Job Log** | ❌ | ✅ | ✅ |
+| **Admin: SMTP-konfiguration** | ❌ | ❌ | ✅ |
+| **Admin: Datahåndtering** (slet data, overtag ressourcer) | ❌ | ❌ | ✅ |
+| **Indstillinger: Butikker** (aktivér/deaktivér, rediger) | ❌ (skrivebeskyttet) | ❌ (skrivebeskyttet) | ✅ |
+| **Indstillinger: Backup** (start, download, gendan, konfigurér) | ❌ (skrivebeskyttet) | ❌ (skrivebeskyttet) | ✅ |
+| **Indstillinger: Ollama** (AI-host, modeller) | ❌ (skrivebeskyttet) | ✅ | ✅ |
+
+> **Første opsætning:** Opsætnings-wizarden opretter automatisk systemets første admin-konto. Efterfølgende brugere inviteres via Admin → Brugere og modtager et link til at oprette deres kodeord.
+
+---
+
 ## Quick Start
 
 ```bash
