@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -39,9 +39,18 @@ async def list_products(
 ) -> ProductList:
     stmt = select(Product).options(selectinload(Product.owner)).order_by(Product.name)
 
-    # Brugere (user-rolle) ser kun egne produkter
+    # Brugere (user-rolle) ser produkter de ejer ELLER har en watch tilknyttet
     if not _is_privileged(user):
-        stmt = stmt.where(Product.owner_id == user.id)
+        watch_product_ids = select(Watch.product_id).where(
+            Watch.owner_id == user.id,
+            Watch.product_id.isnot(None),
+        )
+        stmt = stmt.where(
+            or_(
+                Product.owner_id == user.id,
+                Product.id.in_(watch_product_ids),
+            )
+        )
     elif owner_id is not None:
         # Admin/superuser kan filtrere på specifik ejer
         stmt = stmt.where(Product.owner_id == owner_id)
