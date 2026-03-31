@@ -34,6 +34,6 @@
   <Config Name="Log Level" Target="LOG_LEVEL" Default="INFO" Mode="" Description="DEBUG, INFO, WARNING eller ERROR" Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
   <Config Name="Scraper Domain Delay" Target="SCRAPER_DOMAIN_DELAY" Default="5" Mode="" Description="Sekunder mellem requests til samme domæne (rate limiting)" Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
   <Config Name="Max Concurrent Scrapers" Target="SCRAPER_MAX_CONCURRENT" Default="4" Mode="" Description="Max antal parallelle scraper-requests" Type="Variable" Display="advanced" Required="false" Mask="false">4</Config>
-  <Config Name="Playwright Enabled" Target="PLAYWRIGHT_ENABLED" Default="false" Mode="" Description="Aktiver headless browser til Cloudflare-beskyttede sider (kræver mere RAM)" Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
+  <Config Name="Playwright Enabled" Target="PLAYWRIGHT_ENABLED" Default="true" Mode="" Description="Aktiver headless browser til Cloudflare-beskyttede sider (kræver mere RAM)" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
   <Config Name="Time Zone" Target="TZ" Default="Europe/Copenhagen" Mode="" Description="Find din tidszone her: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones" Type="Variable" Display="always" Required="false" Mask="false">Europe/Copenhagen</Config>
 </Container>
