@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +13,7 @@ from app.models.base import TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.product_watch import ProductWatch
+    from app.models.user import User
     from app.models.watch import Watch
 
 
@@ -25,6 +26,12 @@ class Product(Base, TimestampMixin):
     __tablename__ = "products"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+
+    # Ejerskab (hvem oprettede produktet)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     brand: Mapped[str | None] = mapped_column(String(200))
     model: Mapped[str | None] = mapped_column(String(300))
@@ -47,6 +54,9 @@ class Product(Base, TimestampMixin):
         back_populates="product",
         lazy="select",
     )
+    # Ejerskab
+    owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
+
     # Relations — v1 legacy
     watches: Mapped[list["Watch"]] = relationship(
         back_populates="product",

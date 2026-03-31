@@ -337,7 +337,7 @@ export interface NormalizedProduct {
 }
 
 // ─── Auth / Users ─────────────────────────────────────────────────────────────
-export type UserRole = "admin" | "superuser";
+export type UserRole = "admin" | "superuser" | "user";
 
 export interface User {
   id: string;

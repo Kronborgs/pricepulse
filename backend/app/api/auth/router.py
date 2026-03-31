@@ -325,7 +325,7 @@ async def list_users(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
+    _caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     from sqlalchemy import select, func
     result = await db.execute(select(User).offset(skip).limit(limit))
@@ -341,7 +341,7 @@ async def list_users(
 async def create_user(
     body: CreateUserRequest,
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin")),
+    _caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     svc = AuthService(db)
     try:
@@ -407,7 +407,7 @@ async def update_user(
     if body.display_name is not None:
         user.display_name = body.display_name
     if body.role is not None:
-        if body.role not in ("admin", "superuser"):
+        if body.role not in ("admin", "superuser", "user"):
             raise HTTPException(status_code=400, detail="Ugyldig rolle")
         user.role = body.role
     if body.is_active is not None:

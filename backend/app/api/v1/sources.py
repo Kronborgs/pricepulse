@@ -14,10 +14,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.product_watch import ProductWatch
 from app.models.source_check import SourceCheck
 from app.models.source_price_event import SourcePriceEvent
+from app.models.user import User
 from app.models.watch_source import WatchSource
 from app.models.watch_timeline_event import WatchTimelineEvent
 from app.schemas.v2 import (
@@ -53,6 +55,12 @@ async def _get_watch_or_404(watch_id: uuid.UUID, db: AsyncSession) -> ProductWat
     return watch
 
 
+def _assert_watch_ownership(watch: ProductWatch, user: User) -> None:
+    """Kaster 403 hvis bruger (user-rolle) ikke ejer watch'en."""
+    if user.role not in ("admin", "superuser") and watch.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Ikke tilstrækkelige rettigheder")
+
+
 async def _get_source_or_404(source_id: uuid.UUID, db: AsyncSession) -> WatchSource:
     stmt = (
         select(WatchSource)
@@ -70,6 +78,7 @@ async def _get_source_or_404(source_id: uuid.UUID, db: AsyncSession) -> WatchSou
 @router.get("/product-watches", response_model=ProductWatchList, tags=["product-watches"])
 async def list_product_watches(
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     status: str | None = Query(None),
@@ -79,6 +88,9 @@ async def list_product_watches(
         .options(selectinload(ProductWatch.sources))
         .order_by(ProductWatch.created_at.desc())
     )
+    # Brugere (user-rolle) ser kun egne watches
+    if user.role not in ("admin", "superuser"):
+        stmt = stmt.where(ProductWatch.owner_id == user.id)
     if status:
         stmt = stmt.where(ProductWatch.status == status)
 
@@ -93,16 +105,21 @@ async def list_product_watches(
 async def get_product_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> ProductWatch:
-    return await _get_watch_or_404(watch_id, db)
+    watch = await _get_watch_or_404(watch_id, db)
+    _assert_watch_ownership(watch, user)
+    return watch
 
 
 @router.post("/product-watches/{watch_id}/pause", response_model=ProductWatchRead, tags=["product-watches"])
 async def pause_product_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> ProductWatch:
     watch = await _get_watch_or_404(watch_id, db)
+    _assert_watch_ownership(watch, user)
     svc = SourceService(db)
     return await svc.pause_watch(watch)
 
@@ -111,8 +128,10 @@ async def pause_product_watch(
 async def resume_product_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> ProductWatch:
     watch = await _get_watch_or_404(watch_id, db)
+    _assert_watch_ownership(watch, user)
     svc = SourceService(db)
     return await svc.resume_watch(watch)
 
@@ -122,8 +141,10 @@ async def update_product_watch(
     watch_id: uuid.UUID,
     body: ProductWatchUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> ProductWatch:
     watch = await _get_watch_or_404(watch_id, db)
+    _assert_watch_ownership(watch, user)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(watch, field, value)
     await db.commit()

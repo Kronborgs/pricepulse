@@ -30,7 +30,7 @@ const mainNavItems = [
 const adminNavItems = [
   { href: "/admin/ai-log", label: "AI Job Log", icon: Bot },
   { href: "/admin/users", label: "Brugere", icon: Users },
-  { href: "/admin/smtp", label: "SMTP", icon: Mail },
+  { href: "/admin/smtp", label: "SMTP", icon: Mail, adminOnly: true },
   { href: "/admin/data", label: "Data", icon: Database },
 ];
 
@@ -87,15 +87,17 @@ export function Sidebar() {
           );
         })}
 
-        {/* Admin section — visible to admins only */}
-        {user?.role === "admin" && (
+        {/* Admin section — visible to admin and superuser */}
+        {(user?.role === "admin" || user?.role === "superuser") && (
           <>
             <div className="pt-4 pb-1 px-3">
               <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                 <ShieldAlert className="h-3 w-3" /> Admin
               </p>
             </div>
-            {adminNavItems.map(({ href, label, icon: Icon }) => {
+            {adminNavItems
+              .filter((item) => !item.adminOnly || user?.role === "admin")
+              .map(({ href, label, icon: Icon }) => {
               const active = pathname.startsWith(href);
               return (
                 <Link

@@ -59,7 +59,7 @@ export default function AILogPage() {
   const jobs = data?.items ?? [];
 
   return (
-    <AuthGuard adminOnly>
+    <AuthGuard adminOnly superuserAllowed>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>

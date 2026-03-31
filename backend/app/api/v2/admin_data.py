@@ -1,6 +1,7 @@
 """
 Admin Data API — statistik og bulk-sletning af systemdata.
-Kun tilgængelig for admin-brugere.
+Stats er tilgængelige for admin + superuser.
+Bulk-sletning er kun for admin.
 """
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import AdminUser
+from app.api.deps import AdminUser, SuperOrAdmin
 from app.database import get_db
 
 logger = structlog.get_logger(__name__)
@@ -24,9 +25,9 @@ async def _count(db: AsyncSession, model) -> int:
 @router.get("/admin/data/stats")
 async def data_stats(
     db: AsyncSession = Depends(get_db),
-    _user: AdminUser = None,
+    _user: SuperOrAdmin = None,
 ) -> dict:
-    """Returner antal poster i de vigtigste tabeller."""
+    """Returner antal poster i de vigtigste tabeller. Tilgængelig for admin + superuser."""
     from app.models.watch import Watch
     from app.models.product_watch import ProductWatch
     from app.models.product import Product

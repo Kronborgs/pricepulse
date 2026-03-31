@@ -22,7 +22,7 @@ class WatchService:
         self.db = db
         self.price_service = PriceService(db)
 
-    async def create_watch(self, data: WatchCreate) -> Watch:
+    async def create_watch(self, data: WatchCreate, owner_id=None) -> Watch:
         """Opret en ny Watch og knyt til shop automatisk."""
         shop = await self._find_or_detect_shop(data.url)
 
@@ -40,6 +40,7 @@ class WatchService:
             provider=provider,
             scraper_config=data.scraper_config,
             status="pending",
+            owner_id=owner_id,
         )
 
         # Arv shop-selectors hvis watch ikke har egne

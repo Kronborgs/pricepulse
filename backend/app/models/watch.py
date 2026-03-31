@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.price_history import PriceHistory
     from app.models.product import Product
     from app.models.shop import Shop
+    from app.models.user import User
 
 
 class Watch(Base, TimestampMixin):
@@ -27,6 +28,11 @@ class Watch(Base, TimestampMixin):
     __tablename__ = "watches"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+
+    # Ejerskab
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Valgfri grupperinger
     product_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -67,6 +73,7 @@ class Watch(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relations
+    owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
     product: Mapped["Product | None"] = relationship(back_populates="watches")
     shop: Mapped["Shop | None"] = relationship(back_populates="watches")
     price_history: Mapped[list["PriceHistory"]] = relationship(

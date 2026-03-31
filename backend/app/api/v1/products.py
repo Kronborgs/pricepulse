@@ -8,23 +8,40 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.deps import SuperOrAdmin, get_current_user
 from app.database import get_db
 from app.models.product import Product
 from app.models.product_watch import ProductWatch
+from app.models.user import User
 from app.models.watch import Watch
 from app.schemas.product import MergeProductRequest, ProductCreate, ProductList, ProductRead, ProductUpdate
 
 router = APIRouter()
 
 
+def _is_privileged(user: User) -> bool:
+    return user.role in ("admin", "superuser")
+
+
+def _assert_ownership(product: Product, user: User) -> None:
+    if not _is_privileged(user) and product.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Ikke tilstrækkelige rettigheder")
+
+
 @router.get("", response_model=ProductList)
 async def list_products(
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
 ) -> ProductList:
     stmt = select(Product).order_by(Product.name)
+
+    # Brugere (user-rolle) ser kun egne produkter
+    if not _is_privileged(user):
+        stmt = stmt.where(Product.owner_id == user.id)
+
     if search:
         stmt = stmt.where(Product.name.ilike(f"%{search}%"))
 
@@ -66,6 +83,7 @@ async def list_products(
 async def get_product(
     product_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Product:
     stmt = (
         select(Product)
@@ -75,6 +93,7 @@ async def get_product(
     product = (await db.execute(stmt)).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+    _assert_ownership(product, user)
     return product
 
 
@@ -82,8 +101,9 @@ async def get_product(
 async def create_product(
     body: ProductCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Product:
-    product = Product(**body.model_dump())
+    product = Product(**body.model_dump(), owner_id=user.id)
     db.add(product)
     await db.commit()
     await db.refresh(product)
@@ -95,12 +115,14 @@ async def update_product(
     product_id: uuid.UUID,
     body: ProductUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Product:
     product = (
         await db.execute(select(Product).where(Product.id == product_id))
     ).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+    _assert_ownership(product, user)
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
@@ -115,6 +137,7 @@ async def merge_products(
     product_id: uuid.UUID,
     body: MergeProductRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    _user: User = Depends(SuperOrAdmin),
 ) -> ProductRead:
     """Sammenflet kilde-produktets watches ind i dette produkt og slet kilde-produktet."""
     if product_id == body.source_product_id:
@@ -167,11 +190,13 @@ async def merge_products(
 async def delete_product(
     product_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> None:
     product = (
         await db.execute(select(Product).where(Product.id == product_id))
     ).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+    _assert_ownership(product, user)
     await db.delete(product)
     await db.commit()

@@ -3,6 +3,7 @@ import httpx
 import re
 import json
 import sys
+from bs4 import BeautifulSoup
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -98,6 +99,15 @@ def check_site(name, url):
     else:
         print("No Danish prices in first 5000 chars of text")
     print("First 300 chars of text:", clean[:300])
+
+    # Check og:price:amount / product:price:amount (Strategy 0 i BiltemaParser)
+    soup = BeautifulSoup(html, "html.parser")
+    for prop in ("product:price:amount", "og:price:amount", "product:price:currency"):
+        tag = soup.find("meta", property=prop)
+        if tag:
+            print(f"Meta {prop} = {tag.get('content')}")
+        else:
+            print(f"Meta {prop} = NOT FOUND")
 
 
 for name, url in URLS.items():

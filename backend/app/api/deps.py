@@ -98,7 +98,22 @@ def require_role(*roles: str):
 
 
 # ── Typed aliases ─────────────────────────────────────────────────────────────
+# Rollestrenge der bruges på tværs af backend
+ROLE_ADMIN = "admin"
+ROLE_SUPERUSER = "superuser"
+ROLE_USER = "user"
+
+ALL_ROLES = (ROLE_ADMIN, ROLE_SUPERUSER, ROLE_USER)
+
+# Dependency-aliaser
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
+# Enhver autentificeret bruger (admin, superuser eller user)
+AnyUser = Annotated[User, Depends(get_current_user)]
+# Kun admin
 AdminUser = Annotated[User, Depends(require_role("admin"))]
+# Admin eller superuser (kan se alle data)
 SuperOrAdmin = Annotated[User, Depends(require_role("admin", "superuser"))]
+# Admin eller superuser (administration af brugere)
+SuperOrAdminUser = Annotated[User, Depends(require_role("admin", "superuser"))]
+

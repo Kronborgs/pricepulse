@@ -14,7 +14,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<"admin" | "superuser">("superuser");
+  const [role, setRole] = useState<"admin" | "superuser" | "user">("superuser");
   const [error, setError] = useState<string | null>(null);
   const [inviteSent, setInviteSent] = useState<string | null>(null);
   // Per-row editing state: userId → pending timeout value (string for input)
@@ -79,7 +79,7 @@ export default function UsersPage() {
   }
 
   return (
-    <AuthGuard adminOnly>
+    <AuthGuard adminOnly superuserAllowed>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -132,9 +132,10 @@ export default function UsersPage() {
               />
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as "admin" | "superuser")}
+                onChange={(e) => setRole(e.target.value as "admin" | "superuser" | "user")}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               >
+                <option value="user">Bruger</option>
                 <option value="superuser">Superuser</option>
                 <option value="admin">Admin</option>
               </select>
@@ -200,7 +201,9 @@ export default function UsersPage() {
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                           user.role === "admin"
                             ? "bg-purple-500/20 text-purple-400"
-                            : "bg-blue-500/20 text-blue-400"
+                            : user.role === "superuser"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-slate-500/20 text-slate-400"
                         }`}>
                           {user.role}
                         </span>

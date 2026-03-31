@@ -9,7 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.deps import AnyUser, SuperOrAdmin, get_current_user
 from app.database import get_db
+from app.models.user import User
 from app.models.watch import Watch
 from app.models.shop import Shop
 from app.schemas.watch import (
@@ -25,9 +27,21 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _is_privileged(user: User) -> bool:
+    """Administrator og superuser kan se alle watches."""
+    return user.role in ("admin", "superuser")
+
+
+def _assert_ownership(watch: Watch, user: User) -> None:
+    """Kaster 403 hvis en bruger (user-rolle) forsøger at tilgå en watch de ikke ejer."""
+    if not _is_privileged(user) and watch.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Ikke tilstrækkelige rettigheder")
+
+
 @router.get("", response_model=WatchList)
 async def list_watches(
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     status: str | None = Query(None),
@@ -40,6 +54,10 @@ async def list_watches(
         .options(selectinload(Watch.shop))
         .order_by(Watch.created_at.desc())
     )
+
+    # Brugere (user-rolle) ser kun egne watches
+    if not _is_privileged(user):
+        stmt = stmt.where(Watch.owner_id == user.id)
 
     if status:
         stmt = stmt.where(Watch.status == status)
@@ -66,6 +84,7 @@ async def list_watches(
 async def get_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Watch:
     stmt = (
         select(Watch)
@@ -75,6 +94,7 @@ async def get_watch(
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")
+    _assert_ownership(watch, user)
     return watch
 
 
@@ -83,9 +103,10 @@ async def create_watch(
     body: WatchCreate,
     background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Watch:
     service = WatchService(db)
-    watch = await service.create_watch(body)
+    watch = await service.create_watch(body, owner_id=user.id)
 
     # Kør første scrape i baggrunden
     background_tasks.add_task(service.trigger_scrape, watch.id)
@@ -103,6 +124,7 @@ async def update_watch(
     watch_id: uuid.UUID,
     body: WatchUpdate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Watch:
     stmt = (
         select(Watch)
@@ -112,6 +134,7 @@ async def update_watch(
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")
+    _assert_ownership(watch, user)
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(watch, field, value)
@@ -125,11 +148,13 @@ async def update_watch(
 async def delete_watch(
     watch_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> None:
     stmt = select(Watch).where(Watch.id == watch_id)
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")
+    _assert_ownership(watch, user)
     await db.delete(watch)
     await db.commit()
 
@@ -139,6 +164,7 @@ async def trigger_check(
     watch_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> Watch:
     """Manuelt trigger et check for én watch."""
     stmt = (
@@ -149,6 +175,7 @@ async def trigger_check(
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
         raise HTTPException(status_code=404, detail="Watch ikke fundet")
+    _assert_ownership(watch, user)
 
     service = WatchService(db)
     background_tasks.add_task(service.trigger_scrape, watch_id)
@@ -161,6 +188,7 @@ async def trigger_check(
 async def detect_watch(
     body: WatchCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
 ) -> WatchDetectResult:
     """
     Forsøger at auto-detektere pris og titel fra en URL
