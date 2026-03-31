@@ -1,7 +1,7 @@
-"""Tilføj owner_id til watches og products + user-rolle support
+"""Tilføj owner_id til watches og products
 
-Revision ID: 0006
-Revises: 0005
+Revision ID: 0012
+Revises: 0011
 Create Date: 2026-03-31 00:00:00.000000
 
 Ændringer:
@@ -9,7 +9,7 @@ Create Date: 2026-03-31 00:00:00.000000
   2. products.owner_id — FK til users.id (SET NULL), nullable
 
 Eksisterende rækker får owner_id = NULL (de tilhører "systemet").
-product_watches.owner_id eksisterer allerede (fra 0003).
+product_watches.owner_id eksisterer allerede (fra 0009).
 
 Rolle-systemet (admin / superuser / user) kræver ingen DB-migration
 da 'role' er en VARCHAR(50) kolonne uden constraint.
@@ -22,8 +22,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0006"
-down_revision: Union[str, None] = "0005"
+revision: str = "0012"
+down_revision: Union[str, None] = "0011"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
