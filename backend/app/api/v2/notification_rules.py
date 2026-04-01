@@ -176,7 +176,7 @@ async def update_notification_rule(
     return _serialize_rule(rule)
 
 
-@router.delete("/me/notification-rules/{rule_id}", status_code=204)
+@router.delete("/me/notification-rules/{rule_id}", status_code=204, response_model=None)
 async def delete_notification_rule(
     rule_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
