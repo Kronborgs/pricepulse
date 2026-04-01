@@ -24,31 +24,45 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "email_preferences",
-        sa.Column(
-            "notify_filter_mode",
-            sa.String(20),
-            nullable=False,
-            server_default="all",
-        ),
-    )
-    op.add_column(
-        "email_preferences",
-        sa.Column(
-            "notify_tags",
-            postgresql.ARRAY(sa.String(100)),
-            nullable=True,
-        ),
-    )
-    op.add_column(
-        "email_preferences",
-        sa.Column(
-            "notify_product_ids",
-            postgresql.ARRAY(postgresql.UUID(as_uuid=True)),
-            nullable=True,
-        ),
-    )
+    # Idempotent: skip columns that already exist (from a previous partial run)
+    conn = op.get_bind()
+    existing = {
+        row[0]
+        for row in conn.execute(
+            sa.text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name='email_preferences'"
+            )
+        )
+    }
+    if "notify_filter_mode" not in existing:
+        op.add_column(
+            "email_preferences",
+            sa.Column(
+                "notify_filter_mode",
+                sa.String(20),
+                nullable=False,
+                server_default="all",
+            ),
+        )
+    if "notify_tags" not in existing:
+        op.add_column(
+            "email_preferences",
+            sa.Column(
+                "notify_tags",
+                postgresql.ARRAY(sa.String(100)),
+                nullable=True,
+            ),
+        )
+    if "notify_product_ids" not in existing:
+        op.add_column(
+            "email_preferences",
+            sa.Column(
+                "notify_product_ids",
+                postgresql.ARRAY(postgresql.UUID(as_uuid=True)),
+                nullable=True,
+            ),
+        )
 
 
 def downgrade() -> None:

@@ -23,6 +23,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Drop partial state from any previous failed attempt
+    op.execute("DROP TABLE IF EXISTS notification_rules CASCADE")
     op.create_table(
         "notification_rules",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
