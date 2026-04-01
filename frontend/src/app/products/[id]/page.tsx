@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, KeyboardEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Loader2, Plus, Merge, Search, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Loader2, Plus, Merge, Search, Tag, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -51,6 +51,10 @@ export default function ProductDetailPage({
   const [mergeSearch, setMergeSearch] = useState("");
   const [mergeTarget, setMergeTarget] = useState<Product | null>(null);
   const [showReport, setShowReport] = useState(false);
+
+  // Tags
+  const [tagInput, setTagInput] = useState("");
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -120,6 +124,38 @@ export default function ProductDetailPage({
       setMergeTarget(null);
     },
   });
+
+  const tagMutation = useMutation({
+    mutationFn: (tags: string[]) => api.products.patch(id, { tags }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+      queryClient.invalidateQueries({ queryKey: ["products-all-for-dups"] });
+    },
+  });
+
+  function addTag(raw: string) {
+    const tag = raw.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!tag) return;
+    const current = product?.tags ?? [];
+    if (current.includes(tag)) { setTagInput(""); return; }
+    tagMutation.mutate([...current, tag]);
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    const current = product?.tags ?? [];
+    tagMutation.mutate(current.filter((t) => t !== tag));
+  }
+
+  function handleTagKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(tagInput);
+    }
+    if (e.key === "Backspace" && !tagInput && (product?.tags?.length ?? 0) > 0) {
+      removeTag(product!.tags![product!.tags!.length - 1]);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -199,6 +235,37 @@ export default function ProductDetailPage({
             {product.ean && (
               <p className="text-xs text-muted-foreground mt-1">EAN: {product.ean}</p>
             )}
+            {/* ── Tag editor ── */}
+            <div
+              className="mt-2.5 flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed border-white/10 px-2.5 py-1.5 min-h-[34px] cursor-text"
+              onClick={() => tagInputRef.current?.focus()}
+            >
+              <Tag className="h-3 w-3 text-slate-500 shrink-0" />
+              {(product.tags ?? []).map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/8 border border-white/10 px-2 py-0.5 text-xs text-slate-300"
+                >
+                  {tag}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeTag(tag); }}
+                    className="text-slate-500 hover:text-slate-200 transition-colors ml-0.5"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              ))}
+              <input
+                ref={tagInputRef}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
+                placeholder={(product.tags?.length ?? 0) === 0 ? "Tilføj tags… (Enter eller komma)" : ""}
+                className="flex-1 min-w-[120px] bg-transparent text-xs text-slate-300 placeholder:text-slate-600 outline-none"
+              />
+              {tagMutation.isPending && <Loader2 className="h-3 w-3 animate-spin text-slate-500 shrink-0" />}
+            </div>
           </div>
           {/* Action buttons */}
           <div className="flex items-center gap-2 shrink-0">

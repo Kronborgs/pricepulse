@@ -20,6 +20,7 @@ export interface Product {
   image_url: string | null;
   ean: string | null;
   is_active: boolean;
+  tags: string[] | null;
   watch_count: number;
   lowest_price: number | null;
   owner_id: string | null;

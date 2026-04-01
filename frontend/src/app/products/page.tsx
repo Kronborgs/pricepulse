@@ -1,11 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Package2, Search, Users } from "lucide-react";
+import { Package2, Search, Tag, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 const OWNER_FILTER_KEY = "products_owner_filter";
+const TAG_FILTER_KEY = "products_tag_filter";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
@@ -47,6 +48,15 @@ export default function ProductsPage() {
       return [];
     }
   });
+  const [tagFilter, setTagFilter] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(TAG_FILTER_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -59,6 +69,16 @@ export default function ProductsPage() {
     } catch { /* ignore */ }
   }, [ownerFilter]);
 
+  useEffect(() => {
+    try {
+      if (tagFilter.length > 0) {
+        localStorage.setItem(TAG_FILTER_KEY, JSON.stringify(tagFilter));
+      } else {
+        localStorage.removeItem(TAG_FILTER_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [tagFilter]);
+
   // Hent brugerliste til filterdropdown (kun for admin/superuser)
   const { data: usersData } = useQuery({
     queryKey: ["admin", "users"],
@@ -66,20 +86,35 @@ export default function ProductsPage() {
     enabled: isPrivileged,
   });
 
-  // For duplicate detection we always load all products (no pagination filter)
+  // For duplicate detection and tag aggregation, always load all products
   const { data: allData } = useQuery({
     queryKey: ["products-all-for-dups"],
     queryFn: () => api.products.list({ limit: 200 }),
   });
 
+  // Collect all unique tags across all loaded products
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    (allData?.items ?? []).forEach((p) => (p.tags ?? []).forEach((t) => set.add(t)));
+    return Array.from(set).sort();
+  }, [allData]);
+
+  const toggleTag = (tag: string) => {
+    setTagFilter((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+    setPage(1);
+  };
+
   const { data, isLoading } = useQuery({
-    queryKey: ["products", { search, page, ownerFilter }],
+    queryKey: ["products", { search, page, ownerFilter, tagFilter }],
     queryFn: () =>
       api.products.list({
         search: search || undefined,
         skip: (page - 1) * 24,
         limit: 24,
         owner_ids: ownerFilter.length ? ownerFilter : undefined,
+        tags: tagFilter.length ? tagFilter : undefined,
       }),
   });
 
@@ -138,19 +173,51 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative w-72">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="search"
-          placeholder="Søg på navn eller brand…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+      {/* Search + Tag filter */}
+      <div className="space-y-2">
+        <div className="relative w-72">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="Søg på navn eller brand…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Tag className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+            {allTags.map((tag) => {
+              const active = tagFilter.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs border transition-colors ${
+                    active
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/30 text-muted-foreground border-white/10 hover:border-white/25 hover:text-foreground"
+                  }`}
+                >
+                  {tag}
+                  {active && <X className="h-3 w-3" />}
+                </button>
+              );
+            })}
+            {tagFilter.length > 0 && (
+              <button
+                onClick={() => { setTagFilter([]); setPage(1); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-1 underline underline-offset-2"
+              >
+                Ryd filter
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -247,6 +314,21 @@ function ProductCard({ product, showOwner }: { product: Product; showOwner?: boo
             {product.watch_count} butik
             {product.watch_count !== 1 ? "ker" : ""}
           </p>
+        )}
+        {product.tags && product.tags.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {product.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="inline-block rounded-full bg-muted/40 border border-white/8 px-2 py-0.5 text-[10px] text-muted-foreground"
+              >
+                {tag}
+              </span>
+            ))}
+            {product.tags.length > 3 && (
+              <span className="text-[10px] text-muted-foreground">+{product.tags.length - 3}</span>
+            )}
+          </div>
         )}
       </div>
     </Link>

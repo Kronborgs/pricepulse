@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -43,6 +43,9 @@ class Product(Base, TimestampMixin):
     # active | paused | archived
     status: Mapped[str] = mapped_column(String(50), default="active", nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Bruger-definerede tags (fx "lego", "akvarie", "cpu")
+    tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(100)), nullable=True)
 
     # Ollama normalisering
     ollama_normalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

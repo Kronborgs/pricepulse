@@ -28,6 +28,18 @@ def _assert_ownership(product: Product, user: User) -> None:
         raise HTTPException(status_code=403, detail="Ikke tilstrækkelige rettigheder")
 
 
+async def _user_can_access_product(db: AsyncSession, product: Product, user: User) -> bool:
+    """Tjekker om brugeren ejer produktet eller har en watch knyttet til det."""
+    if _is_privileged(user):
+        return True
+    if product.owner_id == user.id:
+        return True
+    watch = (await db.execute(
+        select(Watch.id).where(Watch.product_id == product.id, Watch.owner_id == user.id).limit(1)
+    )).scalar_one_or_none()
+    return watch is not None
+
+
 @router.get("", response_model=ProductList)
 async def list_products(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -36,6 +48,7 @@ async def list_products(
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
     owner_ids: List[uuid.UUID] = Query(default=[]),
+    tags: List[str] = Query(default=[]),
 ) -> ProductList:
     stmt = select(Product).options(selectinload(Product.owner)).order_by(Product.name)
 
@@ -66,6 +79,10 @@ async def list_products(
 
     if search:
         stmt = stmt.where(Product.name.ilike(f"%{search}%"))
+
+    if tags:
+        # Filtrer på produkter der har MINDST ét af de valgte tags (overlap)
+        stmt = stmt.where(Product.tags.overlap(tags))
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total = (await db.execute(count_stmt)).scalar_one()
@@ -169,9 +186,10 @@ async def merge_products(
     product_id: uuid.UUID,
     body: MergeProductRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _user: SuperOrAdmin,
+    user: User = Depends(get_current_user),
 ) -> ProductRead:
-    """Sammenflet kilde-produktets watches ind i dette produkt og slet kilde-produktet."""
+    """Sammenflet kilde-produktets watches ind i dette produkt og slet kilde-produktet.
+    Alle brugere kan flette produkter de har adgang til (ejer eller har watch på)."""
     if product_id == body.source_product_id:
         raise HTTPException(status_code=400, detail="Kan ikke sammenflet et produkt med sig selv")
 
@@ -182,6 +200,12 @@ async def merge_products(
     source = (await db.execute(select(Product).where(Product.id == body.source_product_id))).scalar_one_or_none()
     if not source:
         raise HTTPException(status_code=404, detail="Kilde-produkt ikke fundet")
+
+    # Brugere må kun flette produkter de har adgang til
+    if not await _user_can_access_product(db, target, user):
+        raise HTTPException(status_code=403, detail="Ikke adgang til dette produkt")
+    if not await _user_can_access_product(db, source, user):
+        raise HTTPException(status_code=403, detail="Ikke adgang til kilde-produktet")
 
     # Flyt V1 watches
     await db.execute(

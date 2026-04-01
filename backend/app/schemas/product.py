@@ -21,6 +21,7 @@ class ProductUpdate(BaseModel):
     image_url: str | None = None
     ean: str | None = None
     is_active: bool | None = None
+    tags: list[str] | None = None
 
 
 class ProductRead(BaseModel):
@@ -31,6 +32,7 @@ class ProductRead(BaseModel):
     image_url: str | None = None
     ean: str | None = None
     is_active: bool
+    tags: list[str] | None = None
     watch_count: int = 0
     lowest_price: float | None = None
     owner_id: uuid.UUID | None = None

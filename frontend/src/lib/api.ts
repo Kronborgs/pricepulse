@@ -162,15 +162,21 @@ export const api = {
 
   // ─── Products ────────────────────────────────────────────────────────────────
   products: {
-    list: (params?: { skip?: number; limit?: number; search?: string; owner_ids?: string[] }) => {
+    list: (params?: { skip?: number; limit?: number; search?: string; owner_ids?: string[]; tags?: string[] }) => {
       const qs = new URLSearchParams();
       if (params?.skip != null) qs.set("skip", String(params.skip));
       if (params?.limit != null) qs.set("limit", String(params.limit));
       if (params?.search) qs.set("search", params.search);
       params?.owner_ids?.forEach((id) => qs.append("owner_ids", id));
+      params?.tags?.forEach((t) => qs.append("tags", t));
       return apiFetch<ProductList>(`/products?${qs}`);
     },
     get: (id: string) => apiFetch<Product>(`/products/${id}`),
+    patch: (id: string, data: { tags?: string[] | null }) =>
+      apiFetch<Product>(`/products/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
     merge: (targetId: string, sourceProductId: string) =>
       apiFetch<Product>(`/products/${targetId}/merge`, {
         method: "POST",
