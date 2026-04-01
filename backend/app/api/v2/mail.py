@@ -229,12 +229,15 @@ async def send_test_notification(
     product_url: str
     watch_id: object
 
-    # ── Forsøg 1: v2 ProductWatch + WatchSource ────────────────────────────
+    # ── Forsøg 1: v2 ProductWatch ejet af brugeren ────────────────────────
     row = await db.execute(
         select(ProductWatch, WatchSource, Product)
         .join(Product, Product.id == ProductWatch.product_id)
         .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .where(WatchSource.last_price.isnot(None))
+        .where(
+            ProductWatch.owner_id == user.id,
+            WatchSource.last_price.isnot(None),
+        )
         .order_by(func.random())
         .limit(1)
     )
@@ -260,10 +263,13 @@ async def send_test_notification(
         watch_id = pw.id
 
     else:
-        # ── Forsøg 2: v1 Watch-tabel ──────────────────────────────────────
+        # ── Forsøg 2: v1 Watch ejet af brugeren ──────────────────────────
         v1_row = await db.scalar(
             select(Watch)
-            .where(Watch.current_price.isnot(None))
+            .where(
+                Watch.owner_id == user.id,
+                Watch.current_price.isnot(None),
+            )
             .order_by(func.random())
             .limit(1)
         )
@@ -276,7 +282,7 @@ async def send_test_notification(
             product_url = v1_row.url
             watch_id = v1_row.id
         else:
-            # ── Fallback: fiktiv data (nye brugere uden produkter) ────────
+            # ── Fallback: fiktiv data (ingen produkter for denne bruger) ──
             watch_name = "Philips Sonicare DiamondClean 9000"
             new_price = 999.0
             old_price = 1299.0
