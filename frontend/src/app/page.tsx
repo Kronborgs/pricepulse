@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Flag, RefreshCw } from "lucide-react";
 import Link from "next/link";
@@ -7,16 +8,54 @@ import { api } from "@/lib/api";
 import { StatsRow } from "@/components/dashboard/stats-row";
 import { RecentChanges } from "@/components/dashboard/recent-changes";
 import { StatusBadge } from "@/components/watches/status-badge";
+import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+
+const LS_KEY = "dashboard_owner_filter";
 
 export default function DashboardPage() {
   const { data: me } = useCurrentUser();
+  const isAdmin = me?.role === "admin";
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
+  // Admin can pick which user's data to view (single-select, persisted)
+  const [ownerFilter, setOwnerFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!me || !isAdmin) return;
+    const saved = localStorage.getItem(LS_KEY);
+    setOwnerFilter(saved ?? me.id);
+  }, [me, isAdmin]);
+
+  const { data: usersData } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => api.adminUsers.list({ limit: 200 }),
+    enabled: isAdmin,
+  });
+
+  // The user whose data is being shown
+  const viewingUserId: string | undefined = isAdmin
+    ? (ownerFilter ?? me?.id)
+    : me?.id;
+
+  // Only pass owner_id to stats/recent-events when admin views another user
+  // (backend always defaults to self for non-admin and admin without param)
+  const apiOwnerId =
+    isAdmin && viewingUserId && viewingUserId !== me?.id
+      ? viewingUserId
+      : undefined;
+
   const { data: watches } = useQuery({
-    queryKey: ["watches-errors"],
+    queryKey: ["watches-errors", viewingUserId],
     queryFn: () =>
-      api.watches.list({ status: "error", skip: 0, limit: 10 }),
+      api.watches.list({
+        status: "error",
+        skip: 0,
+        limit: 10,
+        // Explicit filter needed for privileged roles since backend shows all otherwise
+        owner_ids: isPrivileged && viewingUserId ? [viewingUserId] : undefined,
+      }),
+    enabled: !!me,
     refetchInterval: 60_000,
   });
 
@@ -30,16 +69,39 @@ export default function DashboardPage() {
   const errorWatches = watches?.items ?? [];
   const unreadReports = unreadData?.count ?? 0;
 
+  function handleOwnerChange(ids: string[]) {
+    const current = ownerFilter ? [ownerFilter] : [];
+    const newId = ids.find((id) => !current.includes(id));
+    const next = newId ?? ids[0] ?? me?.id ?? null;
+    setOwnerFilter(next ?? null);
+    if (next && next !== me?.id) {
+      localStorage.setItem(LS_KEY, next);
+    } else {
+      localStorage.removeItem(LS_KEY);
+    }
+  }
+
+  const selectedIds = ownerFilter ? [ownerFilter] : [];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Overblik over dine prisovervågninger
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Overblik over dine prisovervågninger
+          </p>
+        </div>
+        {isAdmin && (usersData?.items ?? []).length > 0 && (
+          <UserFilterDropdown
+            users={usersData?.items ?? []}
+            selected={selectedIds}
+            onChange={handleOwnerChange}
+          />
+        )}
       </div>
 
-      <StatsRow />
+      <StatsRow ownerId={apiOwnerId} />
 
       {errorWatches.length > 0 && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
@@ -82,20 +144,20 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <RecentChanges />
+          <RecentChanges ownerId={apiOwnerId} />
         </div>
         <div>
-          <QuickStats />
+          <QuickStats ownerId={apiOwnerId} />
         </div>
       </div>
     </div>
   );
 }
 
-function QuickStats() {
+function QuickStats({ ownerId }: { ownerId?: string }) {
   const { data } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: api.dashboard.stats,
+    queryKey: ["dashboard-stats", ownerId],
+    queryFn: () => api.dashboard.stats(ownerId),
     refetchInterval: 30_000,
   });
 
@@ -139,3 +201,4 @@ function QuickStats() {
     </div>
   );
 }
+

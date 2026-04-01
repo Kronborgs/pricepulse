@@ -7,10 +7,10 @@ import { api } from "@/lib/api";
 import { formatPrice, formatRelative } from "@/lib/utils";
 import { PriceEvent } from "@/types";
 
-export function RecentChanges() {
+export function RecentChanges({ ownerId }: { ownerId?: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["recent-events"],
-    queryFn: () => api.dashboard.recentEvents(20),
+    queryKey: ["recent-events", ownerId],
+    queryFn: () => api.dashboard.recentEvents(20, ownerId),
     refetchInterval: 30_000,
   });
 

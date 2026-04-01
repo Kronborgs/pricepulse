@@ -90,9 +90,15 @@ async function apiFetch<T>(path: string, init?: RequestInit, _retried = false): 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export const api = {
   dashboard: {
-    stats: () => apiFetch<DashboardStats>("/dashboard/stats"),
-    recentEvents: (limit = 20) =>
-      apiFetch<PriceEvent[]>(`/dashboard/recent-events?limit=${limit}`),
+    stats: (ownerId?: string) => {
+      const qs = ownerId ? `?owner_id=${ownerId}` : "";
+      return apiFetch<DashboardStats>(`/dashboard/stats${qs}`);
+    },
+    recentEvents: (limit = 20, ownerId?: string) => {
+      const qs = new URLSearchParams({ limit: String(limit) });
+      if (ownerId) qs.set("owner_id", ownerId);
+      return apiFetch<PriceEvent[]>(`/dashboard/recent-events?${qs}`);
+    },
   },
 
   // ─── Watches ────────────────────────────────────────────────────────────────

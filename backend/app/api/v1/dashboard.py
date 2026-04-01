@@ -20,21 +20,28 @@ from app.schemas.shop import DashboardStats, PriceEventRead
 router = APIRouter()
 
 
-def _is_privileged(user: User) -> bool:
-    return user.role in ("admin", "superuser")
+def _get_owner_filter(user: User, owner_id: uuid.UUID | None) -> list:
+    """Return SQLAlchemy filter list scoped to the correct owner.
+
+    - user / superuser: always own data (owner_id param is ignored)
+    - admin: own data unless owner_id is supplied, then that user's data
+    """
+    if user.role == "admin" and owner_id is not None:
+        return [Watch.owner_id == owner_id]
+    return [Watch.owner_id == user.id]
 
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
     user: User = Depends(get_current_user),
+    owner_id: uuid.UUID | None = Query(None),
 ) -> DashboardStats:
     today_start = datetime.now(timezone.utc).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    # Brugere (user-rolle) ser kun egne watches
-    owner_filter = [] if _is_privileged(user) else [Watch.owner_id == user.id]
+    owner_filter = _get_owner_filter(user, owner_id)
 
     # Watch counts
     total = (await db.execute(select(func.count(Watch.id)).where(*owner_filter))).scalar_one()
@@ -103,7 +110,9 @@ async def get_recent_events(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(20, ge=1, le=100),
     user: User = Depends(get_current_user),
+    owner_id: uuid.UUID | None = Query(None),
 ) -> list[PriceEventRead]:
+    owner_filter = _get_owner_filter(user, owner_id)
     stmt = (
         select(PriceEvent)
         .options(
@@ -113,11 +122,7 @@ async def get_recent_events(
         .order_by(PriceEvent.occurred_at.desc())
         .limit(limit)
     )
-    # Brugere (user-rolle) ser kun events fra egne watches
-    if not _is_privileged(user):
-        stmt = stmt.join(Watch, PriceEvent.watch_id == Watch.id).where(
-            Watch.owner_id == user.id
-        )
+    stmt = stmt.join(Watch, PriceEvent.watch_id == Watch.id).where(*owner_filter)
     result = await db.execute(stmt)
     events = list(result.unique().scalars().all())
 

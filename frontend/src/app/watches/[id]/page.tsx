@@ -33,6 +33,8 @@ export default function WatchDetailPage({
   const [showReport, setShowReport] = useState(false);
 
   const [isPolling, setIsPolling] = useState(false);
+  const [editingInterval, setEditingInterval] = useState(false);
+  const [intervalValue, setIntervalValue] = useState<number>(360);
 
   const { data: watch, isLoading } = useQuery({
     queryKey: ["watch", id],
@@ -54,6 +56,14 @@ export default function WatchDetailPage({
       // Poll hurtigt i 30 sek. så resultatet vises med det samme
       setIsPolling(true);
       setTimeout(() => setIsPolling(false), 30_000);
+    },
+  });
+
+  const intervalMutation = useMutation({
+    mutationFn: (minutes: number) => api.watches.update(id, { check_interval: minutes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watch", id] });
+      setEditingInterval(false);
     },
   });
 
@@ -177,11 +187,49 @@ export default function WatchDetailPage({
         <StatCard label="Lager">
           {watch.current_stock_status ?? "—"}
         </StatCard>
-        <StatCard label="Tjekinterval">
-          {watch.check_interval
-            ? `${watch.check_interval} min`
-            : "—"}
-        </StatCard>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground mb-1">Tjekinterval</p>
+          {editingInterval ? (
+            <div className="flex items-center gap-1.5 mt-1">
+              <select
+                value={intervalValue}
+                onChange={(e) => setIntervalValue(Number(e.target.value))}
+                className="flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value={15}>15 min</option>
+                <option value={30}>30 min</option>
+                <option value={60}>1 time</option>
+                <option value={360}>6 timer</option>
+                <option value={720}>12 timer</option>
+                <option value={1440}>Dagligt</option>
+              </select>
+              <button
+                onClick={() => intervalMutation.mutate(intervalValue)}
+                disabled={intervalMutation.isPending}
+                className="rounded-md bg-[#29ABE2] px-2 py-1 text-xs font-medium text-white hover:bg-[#29ABE2]/85 disabled:opacity-50"
+              >
+                Gem
+              </button>
+              <button
+                onClick={() => setEditingInterval(false)}
+                className="rounded-md border px-2 py-1 text-xs hover:bg-muted"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                setIntervalValue(watch.check_interval ?? 360);
+                setEditingInterval(true);
+              }}
+              className="text-lg font-semibold hover:text-[#29ABE2] transition-colors text-left"
+              title="Klik for at ændre interval"
+            >
+              {watch.check_interval ? `${watch.check_interval} min` : "—"}
+            </button>
+          )}
+        </div>
         <StatCard label="Fejl">
           {watch.error_count ?? 0}
         </StatCard>

@@ -51,10 +51,10 @@ const statCards = (stats: DashboardStats | undefined) => [
   },
 ];
 
-export function StatsRow() {
+export function StatsRow({ ownerId }: { ownerId?: string }) {
   const { data: stats, isLoading } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: api.dashboard.stats,
+    queryKey: ["dashboard-stats", ownerId],
+    queryFn: () => api.dashboard.stats(ownerId),
     refetchInterval: 30_000,
   });
 
