@@ -138,7 +138,7 @@ export function WatchTable({ watches, isLoading, showOwner }: Props) {
                 {watch.shop?.name ?? "—"}
               </td>
               <td className="px-4 py-3 text-right font-mono font-medium tabular-nums">
-                {formatPrice(watch.current_price, watch.current_currency)}
+                {formatPrice(watch.current_price)}
               </td>
               <td className="px-4 py-3">
                 {watch.current_stock_status === "in_stock" ? (

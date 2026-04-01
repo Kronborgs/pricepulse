@@ -19,6 +19,7 @@ import { PriceChart } from "@/components/watches/price-chart";
 import { StatusBadge } from "@/components/watches/status-badge";
 import { ReportIssueDialog } from "@/components/watches/report-issue-dialog";
 import { formatPrice, formatRelative } from "@/lib/utils";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
 import { PriceEvent, ERROR_TYPE_LABELS, WatchDiagnostic } from "@/types";
 
 export default function WatchDetailPage({
@@ -41,6 +42,8 @@ export default function WatchDetailPage({
     queryFn: () => api.watches.get(id),
     refetchInterval: isPolling ? 3_000 : 30_000,
   });
+
+  const { data: fxData } = useExchangeRates();
 
   const { data: events } = useQuery({
     queryKey: ["watch-events", id],
@@ -180,9 +183,19 @@ export default function WatchDetailPage({
       {/* Price summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="Aktuel pris">
-          {watch.current_price != null
-            ? formatPrice(watch.current_price)
-            : "—"}
+          {watch.current_price != null ? (
+            <>
+              <span>{formatPrice(watch.current_price)}</span>
+              {watch.current_currency !== "DKK" && watch.current_price_raw != null && (
+                <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                  {formatPrice(watch.current_price_raw, watch.current_currency)}
+                  {fxData?.rates[watch.current_currency] && (
+                    <> &middot; 1 {watch.current_currency} = {fxData.rates[watch.current_currency].toFixed(2)} kr</>
+                  )}
+                </span>
+              )}
+            </>
+          ) : "—"}
         </StatCard>
         <StatCard label="Lager">
           {watch.current_stock_status ?? "—"}

@@ -97,7 +97,9 @@ export interface Watch {
   title: string | null;
   image_url: string | null;
   current_price: number | null;
+  current_price_raw: number | null;
   current_currency: string;
+  currency_hint: string | null;
   current_stock_status: string | null;
   status: WatchStatus;
   last_checked_at: string | null;

@@ -60,7 +60,9 @@ class WatchRead(BaseModel):
     title: str | None = None
     image_url: str | None = None
     current_price: float | None = None
+    current_price_raw: float | None = None
     current_currency: str = "DKK"
+    currency_hint: str | None = None
     current_stock_status: str | None = None
     status: str
     last_checked_at: datetime | None = None
