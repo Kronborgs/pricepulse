@@ -6,13 +6,43 @@ import structlog
 from bs4 import BeautifulSoup
 
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
-from app.scraper.parsers.inline_json_parser import _clean_price
+from app.scraper.parsers.inline_json_parser import _clean_price, _detect_currency
 from app.scraper.providers.base import ParseResult, PriceParser
 
 logger = structlog.get_logger()
 
 # ASIN fra URL: /dp/B0BVTSVQVQ eller /gp/product/B0BVTSVQVQ
 _ASIN_RE = re.compile(r"/(?:dp|gp/product)/([A-Z0-9]{10})")
+
+# Amazon domæne → valutakode
+_DOMAIN_CURRENCY: dict[str, str] = {
+    "amazon.nl": "EUR",
+    "amazon.de": "EUR",
+    "amazon.fr": "EUR",
+    "amazon.es": "EUR",
+    "amazon.it": "EUR",
+    "amazon.at": "EUR",
+    "amazon.be": "EUR",
+    "amazon.pl": "PLN",
+    "amazon.se": "SEK",
+    "amazon.co.uk": "GBP",
+    "amazon.co.jp": "JPY",
+    "amazon.ca": "CAD",
+    "amazon.com.au": "AUD",
+    "amazon.com.br": "BRL",
+    "amazon.com.mx": "MXN",
+    "amazon.com": "USD",
+    "amazon.in": "INR",
+}
+
+
+def _currency_from_url(url: str) -> str:
+    """Udled valutakode fra Amazon-domæne (f.eks. amazon.nl → EUR)."""
+    url_lower = url.lower()
+    for domain, code in _DOMAIN_CURRENCY.items():
+        if domain in url_lower:
+            return code
+    return "DKK"
 
 
 class AmazonParser(PriceParser):
@@ -57,18 +87,20 @@ class AmazonParser(PriceParser):
         result = self._css_primary.parse(content, url)
         if result.success and result.price and result.price > 1:
             result.parser_used = self.parser_name
-            logger.debug("amazon: pris fundet via CSS (Playwright)", price=result.price, url=url)
+            # CSS-resultatet har pris-tekst med valutasymbol — opdatér currency
+            result.currency = _currency_from_url(url)
+            logger.debug("amazon: pris fundet via CSS (Playwright)", price=result.price, currency=result.currency, url=url)
             return result
 
         # Strategi 3: Manuel scan af a-offscreen i buy-box containere
-        price = self._scan_offscreen_spans(soup)
+        price, currency = self._scan_offscreen_spans(soup, url)
         if price and price > 1:
             title_tag = soup.select_one("#productTitle")
             stock_tag = soup.select_one("#availability span, #availability")
             img_tag = soup.select_one("#landingImage")
             return ParseResult(
                 price=price,
-                currency="DKK",
+                currency=currency,
                 title=title_tag.get_text(strip=True) if title_tag else None,
                 stock_status=stock_tag.get_text(strip=True) if stock_tag else None,
                 image_url=img_tag.get("src") if img_tag else None,
@@ -116,6 +148,10 @@ class AmazonParser(PriceParser):
         if not price or price <= 1:
             return None
 
+        # Forsøg at finde currencyCode i samme vindue — ellers udled fra domæne
+        currency_match = re.search(r'"currencyCode"\s*:\s*"([A-Z]{3})"', window)
+        currency = currency_match.group(1) if currency_match else _currency_from_url(url)
+
         # Titel og billede fra statisk HTML (er til stede uden Playwright)
         title_tag = soup.select_one("#productTitle")
         img_tag = soup.select_one("#landingImage, #imgTagWrappingDiv img")
@@ -132,16 +168,16 @@ class AmazonParser(PriceParser):
         if variants:
             logger.debug("amazon: variant-priser fundet", variants=variants, watching=asin, url=url)
 
-        logger.info("amazon: twister-data pris fundet", asin=asin, price=price, url=url)
+        logger.info("amazon: twister-data pris fundet", asin=asin, price=price, currency=currency, url=url)
         return ParseResult(
             price=price,
-            currency="DKK",
+            currency=currency,
             title=title_tag.get_text(strip=True) if title_tag else None,
             image_url=img_tag.get("src") if img_tag else None,
             parser_used=self.parser_name,
         )
 
-    def _scan_offscreen_spans(self, soup: BeautifulSoup) -> float | None:
+    def _scan_offscreen_spans(self, soup: BeautifulSoup, url: str) -> tuple[float | None, str]:
         """Scan .a-offscreen spans i buy-box containere — fallback til Playwright."""
         containers = soup.select(
             "#buybox, #centerCol, #apex_desktop, #corePriceDisplay_desktop_feature_div"
@@ -151,6 +187,7 @@ class AmazonParser(PriceParser):
             raw = span.get_text(strip=True)
             price = _clean_price(raw)
             if price and price > 1:
-                return price
-        return None
+                currency = _detect_currency(raw) if any(s in raw for s in ("€", "$", "£", "¥")) else _currency_from_url(url)
+                return price, currency
+        return None, _currency_from_url(url)
 

@@ -19,7 +19,10 @@ def _clean_price(v: Any) -> float | None:
     if isinstance(v, (int, float)):
         return float(v) if v > 1 else None
     if isinstance(v, str):
-        v = v.replace("\xa0", "").replace(" ", "").replace("kr", "").replace("DKK", "").strip()
+        # Strip valutasymboler og koder
+        for sym in ("€", "$", "£", "¥", "₩", "kr.", "kr", "DKK", "EUR", "USD", "GBP", "SEK", "NOK", "CHF", "CAD", "AUD", "JPY"):
+            v = v.replace(sym, "")
+        v = v.replace("\xa0", "").replace(" ", "").strip()
         # Dansk ,-  suffix = ingen decimaler (f.eks. "949,-" → "949")
         if v.endswith(",-"):
             v = v[:-2]
@@ -48,7 +51,36 @@ def _clean_price(v: Any) -> float | None:
     return None
 
 
-def _deep_find(obj: Any, keys: frozenset[str], max_depth: int = 8, _d: int = 0) -> list[Any]:
+# Valutasymbol → ISO 4217 kode
+_SYMBOL_TO_CURRENCY: dict[str, str] = {
+    "€": "EUR",
+    "$": "USD",
+    "£": "GBP",
+    "¥": "JPY",
+    "₩": "KRW",
+}
+
+_CODE_TO_CURRENCY: list[str] = [
+    "EUR", "USD", "GBP", "SEK", "NOK", "CHF", "DKK",
+    "CAD", "AUD", "JPY", "CNY", "PLN", "CZK", "HUF",
+]
+
+
+def _detect_currency(text: str) -> str:
+    """
+    Forsøger at genkende valutaen fra en pristreng.
+    Eksempel: "€ 26,76" → "EUR",  "£12.99" → "GBP",  "749 kr." → "DKK"
+    """
+    for sym, code in _SYMBOL_TO_CURRENCY.items():
+        if sym in text:
+            return code
+    upper = text.upper()
+    for code in _CODE_TO_CURRENCY:
+        if code in upper:
+            return code
+    if "KR" in upper:
+        return "DKK"
+    return "DKK"
     """Find alle værdier for de givne (lowercase) nøgler i en nested JSON-struktur."""
     if _d > max_depth:
         return []

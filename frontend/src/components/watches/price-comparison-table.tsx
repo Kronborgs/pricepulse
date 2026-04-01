@@ -236,7 +236,7 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
       </div>
       {fxData && (
         <p className="text-xs text-muted-foreground px-5 py-2 border-t border-border">
-          Kurser fra ECB via Frankfurter
+          Kurser fra Danmarks Nationalbank
           {fxData.rates["EUR"] && <> · 1 EUR = {fxData.rates["EUR"].toFixed(2)} kr</>}
         </p>
       )}

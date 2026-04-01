@@ -326,6 +326,7 @@ class SourceService:
 
         # Opdatér source
         source.last_price = new_price
+        source.last_currency = parse_result.currency or "DKK"
         source.last_stock_status = new_stock
         source.last_diagnostic = diagnostic
         source.consecutive_errors = 0
