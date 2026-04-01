@@ -10,11 +10,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 from app.models.base import TimestampMixin
 
+from app.models.notification_rule import NotificationRule
+
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
     from app.models.product_watch import ProductWatch
     from app.models.email_preference import EmailPreference
-    from app.models.notification_rule import NotificationRule
 
 
 class User(Base, TimestampMixin):
@@ -60,7 +61,7 @@ class User(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="select",
     )
-    notification_rules: Mapped[list["NotificationRule"]] = relationship(
+    notification_rules: Mapped[list[NotificationRule]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",

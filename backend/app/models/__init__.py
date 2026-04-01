@@ -26,6 +26,7 @@ from app.models.ai_job import AIJob
 from app.models.smtp_settings import SMTPSettings
 from app.models.email_preference import EmailPreference
 from app.models.email_queue import EmailQueue
+from app.models.notification_rule import NotificationRule
 
 # Scraper reports
 from app.models.scraper_report import ScraperReport
