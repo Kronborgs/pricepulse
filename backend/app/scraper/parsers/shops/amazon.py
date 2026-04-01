@@ -6,7 +6,7 @@ import structlog
 from bs4 import BeautifulSoup
 
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
-from app.scraper.parsers.inline_json_parser import _clean_price, _detect_currency
+from app.scraper.parsers.inline_json_parser import _clean_price, _detect_currency, _has_currency_indicator
 from app.scraper.providers.base import ParseResult, PriceParser
 
 logger = structlog.get_logger()
@@ -87,8 +87,8 @@ class AmazonParser(PriceParser):
         result = self._css_primary.parse(content, url)
         if result.success and result.price and result.price > 1:
             result.parser_used = self.parser_name
-            # CSS-resultatet har pris-tekst med valutasymbol — opdatér currency
-            result.currency = _currency_from_url(url)
+            # Forsøg at finde valuta fra buy-box tekst; fald tilbage til domænekort
+            result.currency = self._detect_currency_from_soup(soup, url)
             logger.debug("amazon: pris fundet via CSS (Playwright)", price=result.price, currency=result.currency, url=url)
             return result
 
@@ -137,8 +137,8 @@ class AmazonParser(PriceParser):
             logger.debug("amazon: defaultAsin ikke fundet i twister-data", asin=asin, url=url)
             return None
 
-        # Søg priceWithoutCurrencySymbol inden for 1000 tegn fremad fra markøren
-        window = content[marker.start(): marker.start() + 1000]
+        # Søg priceWithoutCurrencySymbol inden for 2000 tegn fremad fra markøren
+        window = content[marker.start(): marker.start() + 2000]
         price_match = re.search(r'"priceWithoutCurrencySymbol"\s*:\s*"([0-9]+\.[0-9]+)"', window)
         if not price_match:
             logger.debug("amazon: priceWithoutCurrencySymbol ikke fundet for ASIN", asin=asin)
@@ -148,8 +148,13 @@ class AmazonParser(PriceParser):
         if not price or price <= 1:
             return None
 
-        # Forsøg at finde currencyCode i samme vindue — ellers udled fra domæne
-        currency_match = re.search(r'"currencyCode"\s*:\s*"([A-Z]{3})"', window)
+        # currencyCode ligger typisk tæt på priseWithoutCurrencySymbol — søg i vinduer op til fund
+        price_pos = price_match.start()
+        currency_window = window[:price_pos + 200]
+        currency_match = re.search(r'"currencyCode"\s*:\s*"([A-Z]{3})"', currency_window)
+        # Fallback: søg hele vinduet
+        if not currency_match:
+            currency_match = re.search(r'"currencyCode"\s*:\s*"([A-Z]{3})"', window)
         currency = currency_match.group(1) if currency_match else _currency_from_url(url)
 
         # Titel og billede fra statisk HTML (er til stede uden Playwright)
@@ -177,6 +182,21 @@ class AmazonParser(PriceParser):
             parser_used=self.parser_name,
         )
 
+    def _detect_currency_from_soup(self, soup: BeautifulSoup, url: str) -> str:
+        """
+        Scanner buy-box .a-offscreen spans for valutaindikatorer.
+        Falder tilbage til domænekort hvis ingen indikator findes i teksten.
+        """
+        containers = soup.select(
+            "#buybox, #centerCol, #apex_desktop, #corePriceDisplay_desktop_feature_div"
+        )
+        search_root = containers[0] if containers else soup
+        for span in search_root.select(".a-offscreen"):
+            raw = span.get_text(strip=True)
+            if _has_currency_indicator(raw):
+                return _detect_currency(raw)
+        return _currency_from_url(url)
+
     def _scan_offscreen_spans(self, soup: BeautifulSoup, url: str) -> tuple[float | None, str]:
         """Scan .a-offscreen spans i buy-box containere — fallback til Playwright."""
         containers = soup.select(
@@ -187,7 +207,9 @@ class AmazonParser(PriceParser):
             raw = span.get_text(strip=True)
             price = _clean_price(raw)
             if price and price > 1:
-                currency = _detect_currency(raw) if any(s in raw for s in ("€", "$", "£", "¥")) else _currency_from_url(url)
+                # Brug tekst-baseret valutadetektion; fald kun tilbage til domæne
+                # hvis ingen indikator (€, kr., DKK osv.) er til stede i teksten
+                currency = _detect_currency(raw) if _has_currency_indicator(raw) else _currency_from_url(url)
                 return price, currency
         return None, _currency_from_url(url)
 

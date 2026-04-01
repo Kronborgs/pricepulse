@@ -81,6 +81,21 @@ def _detect_currency(text: str) -> str:
     if "KR" in upper:
         return "DKK"
     return "DKK"
+
+
+def _has_currency_indicator(text: str) -> bool:
+    """Returnerer True hvis teksten indeholder et genkendeligt valutasymbol eller kode."""
+    for sym in _SYMBOL_TO_CURRENCY:
+        if sym in text:
+            return True
+    upper = text.upper()
+    for ind in ("KR", "DKK", "EUR", "USD", "GBP", "SEK", "NOK", "CHF", "JPY", "CAD", "AUD", "PLN", "CZK", "HUF"):
+        if ind in upper:
+            return True
+    return False
+
+
+def _deep_find(obj: Any, keys: frozenset[str], max_depth: int = 8, _d: int = 0) -> list[Any]:
     """Find alle værdier for de givne (lowercase) nøgler i en nested JSON-struktur."""
     if _d > max_depth:
         return []
