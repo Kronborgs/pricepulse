@@ -143,6 +143,9 @@ class PriceService:
             product = Product(name=watch.title, image_url=watch.image_url)
             self.db.add(product)
             await self.db.flush()
+        elif not product.image_url and watch.image_url:
+            # Selvhelende: udfyld manglende produktbillede fra watch
+            product.image_url = watch.image_url
         watch.product_id = product.id
 
     async def handle_scrape_error(

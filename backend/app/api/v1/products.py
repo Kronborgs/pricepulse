@@ -186,9 +186,9 @@ async def merge_products(
         .where(ProductWatch.product_id == body.source_product_id)
         .values(product_id=product_id)
     )
-    # Arv billede hvis target mangler
-    if not target.image_url and source.image_url:
-        target.image_url = source.image_url
+    # Brug source-billede hvis tilgængeligt (source slettes — bevar billedet)
+    # Eksempel: source har scraperens produktbillede, target har brudt/manglende URL
+    target.image_url = source.image_url or target.image_url
 
     await db.delete(source)
     await db.commit()
