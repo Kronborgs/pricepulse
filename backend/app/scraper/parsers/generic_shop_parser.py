@@ -78,6 +78,35 @@ _PRICE_ATTR_SELECTORS = [
     ("[itemprop='price'][content]", "content"),
 ]
 
+# Mapping af URL-TLD/domænesegment til valutakode for kendte markeder
+_TLD_CURRENCY: list[tuple[str, str]] = [
+    (".dk", "DKK"),
+    (".no", "NOK"),
+    (".se", "SEK"),
+    (".co.uk", "GBP"),
+    (".uk", "GBP"),
+    (".de", "EUR"),
+    (".nl", "EUR"),
+    (".fr", "EUR"),
+    (".es", "EUR"),
+    (".it", "EUR"),
+    (".be", "EUR"),
+    (".at", "EUR"),
+    (".pl", "PLN"),
+    (".ch", "CHF"),
+    (".cz", "CZK"),
+]
+
+
+def _currency_from_url(url: str) -> str:
+    """Udled valutakode fra URL-TLD. Fallback til DKK."""
+    url_lower = url.lower()
+    for tld, currency in _TLD_CURRENCY:
+        if tld in url_lower:
+            return currency
+    return "DKK"
+
+
 # Titel-selectors
 _TITLE_SELECTORS = [
     "[itemprop='name']",
@@ -162,7 +191,7 @@ class GenericShopParser(PriceParser):
         return ParseResult(
             title=title,
             price=price,
-            currency="DKK",
+            currency=_currency_from_url(url),
             stock_status=stock,
             image_url=image,
             parser_used=self.parser_name,

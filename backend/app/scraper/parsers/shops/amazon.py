@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
 from app.scraper.parsers.inline_json_parser import _clean_price, _detect_currency, _has_currency_indicator
-from app.scraper.providers.base import ParseResult, PriceParser
+from app.scraper.providers.base import ErrorType, ParseResult, PriceParser
 
 logger = structlog.get_logger()
 
@@ -78,12 +78,33 @@ class AmazonParser(PriceParser):
     def parse(self, content: str, url: str) -> ParseResult:
         soup = BeautifulSoup(content, "lxml")
 
+        # Sandvagt: Amazons statiske HTML er typisk 100-500 KB.
+        # En respons under 15 KB er en bot-afvisningsside (returnerer 200 men intet produkt).
+        # Returnér en specifik fejl så at parseren korrekt signalerer "prøv Chrome-TLS" eller
+        # "prøv Browser/JS" i stedet for at falde igennem til GenericShopParser.
+        if len(content) < 15_000:
+            logger.info(
+                "amazon: HTML for lille — sandsynlig bot-afvisning",
+                html_bytes=len(content), url=url,
+            )
+            return ParseResult(
+                error="amazon: HTML for lille (bot-afvisning?). Prøv Chrome-TLS eller Browser/JS.",
+                error_type=ErrorType.bot_protection,
+                recommended_action="Siden afviser HTTP-scraping. Skift til Chrome-TLS eller Browser/JS.",
+                parser_used=self.parser_name,
+            )
+
         # Strategi 0: Twister-data — priser i statisk HTML, ingen Playwright nødvendig
         result = self._try_twister_data(content, url, soup)
         if result:
             return result
 
-        # Strategi 1-2: CSS (virker kun efter Playwright-rendering)
+        # Strategi 1: a-price-whole + a-price-fraction (statisk HTML, ingen JS nødvendig)
+        result = self._try_price_parts(soup, url)
+        if result:
+            return result
+
+        # Strategi 2-3: CSS (virker kun efter Playwright-rendering)
         result = self._css_primary.parse(content, url)
         if result.success and result.price and result.price > 1:
             result.parser_used = self.parser_name
@@ -92,7 +113,7 @@ class AmazonParser(PriceParser):
             logger.debug("amazon: pris fundet via CSS (Playwright)", price=result.price, currency=result.currency, url=url)
             return result
 
-        # Strategi 3: Manuel scan af a-offscreen i buy-box containere
+        # Strategi 4: Manuel scan af a-offscreen i buy-box containere
         price, currency = self._scan_offscreen_spans(soup, url)
         if price and price > 1:
             title_tag = soup.select_one("#productTitle")
@@ -109,6 +130,59 @@ class AmazonParser(PriceParser):
 
         return ParseResult(
             error="amazon: ingen pris fundet i twister-data eller buy-box",
+            parser_used=self.parser_name,
+        )
+
+    def _try_price_parts(self, soup: BeautifulSoup, url: str) -> ParseResult | None:
+        """
+        Statisk HTML strategi: kombiner a-price-whole + a-price-fraction.
+
+        Amazon's priser vises sådan i HTML (også uden JS):
+          <span class="a-price-whole">15</span>
+          <span class="a-price-fraction">50</span>
+        Begge er i statisk HTML og er særdelst pålidelige når de er til stede.
+        """
+        # Begræns søgning til buy-box området hvis muligt
+        container = soup.select_one(
+            "#corePriceDisplay_desktop_feature_div, #apexPriceToPay, "
+            "#corePrice_feature_div, #centerCol, #rightCol"
+        )
+        root = container if container else soup
+
+        whole_tag = root.select_one("span.a-price-whole")
+        frac_tag = root.select_one("span.a-price-fraction")
+        if not whole_tag:
+            return None
+
+        # Ryd op: fjern decimal-separator-element inde i whole (typisk `<span class='a-price-decimal'>.</span>`)
+        decimal_sep = whole_tag.select_one(".a-price-decimal")
+        if decimal_sep:
+            decimal_sep.extract()
+
+        whole_text = whole_tag.get_text(strip=True).replace(".", "").replace(",", "")
+        frac_text = frac_tag.get_text(strip=True) if frac_tag else "00"
+        frac_text = frac_text[:2]  # maks 2 decimaler
+
+        try:
+            price = float(f"{whole_text}.{frac_text}")
+        except ValueError:
+            return None
+
+        if not price or price <= 1:
+            return None
+
+        currency = _currency_from_url(url)
+        title_tag = soup.select_one("#productTitle")
+        stock_tag = soup.select_one("#availability span, #availability")
+        img_tag = soup.select_one("#landingImage")
+
+        logger.info("amazon: pris fundet via a-price-whole/fraction", price=price, currency=currency, url=url)
+        return ParseResult(
+            price=price,
+            currency=currency,
+            title=title_tag.get_text(strip=True) if title_tag else None,
+            stock_status=stock_tag.get_text(strip=True) if stock_tag else None,
+            image_url=img_tag.get("src") if img_tag else None,
             parser_used=self.parser_name,
         )
 
