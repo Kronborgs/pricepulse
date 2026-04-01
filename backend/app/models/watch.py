@@ -47,8 +47,12 @@ class Watch(Base, TimestampMixin):
     title: Mapped[str | None] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text)
 
+    # Valutahint: bruges til konvertering når parseren ikke detekterer valuta
+    currency_hint: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
     # Seneste scrapede data
     current_price: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    current_price_raw: Mapped[float | None] = mapped_column(Numeric(10, 4))
     current_currency: Mapped[str] = mapped_column(String(3), default="DKK", nullable=False)
     current_stock_status: Mapped[str | None] = mapped_column(String(100))
 

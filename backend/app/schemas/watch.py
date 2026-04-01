@@ -15,6 +15,7 @@ class WatchCreate(BaseModel):
     check_interval: int = 360
     provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
+    currency_hint: str | None = None
 
     @field_validator("url")
     @classmethod
@@ -39,6 +40,7 @@ class WatchUpdate(BaseModel):
     check_interval: int | None = None
     provider: str | None = None
     scraper_config: dict[str, Any] | None = None
+    currency_hint: str | None = None
     is_active: bool | None = None
     status: str | None = None
 

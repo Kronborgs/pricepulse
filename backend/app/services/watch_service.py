@@ -39,6 +39,7 @@ class WatchService:
             check_interval=data.check_interval,
             provider=provider,
             scraper_config=data.scraper_config,
+            currency_hint=data.currency_hint if data.currency_hint and data.currency_hint != "DKK" else None,
             status="pending",
             owner_id=owner_id,
         )

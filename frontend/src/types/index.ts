@@ -128,6 +128,7 @@ export interface WatchCreate {
   check_interval?: number;
   provider?: string;
   scraper_config?: Record<string, string> | null;
+  currency_hint?: string | null;
 }
 
 export interface WatchDetectResult {

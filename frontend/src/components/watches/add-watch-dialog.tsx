@@ -12,6 +12,7 @@ import { getDomain } from "@/lib/utils";
 const schema = z.object({
   url: z.string().url("Angiv en gyldig URL (inkl. https://)"),
   check_interval: z.coerce.number().min(5).max(10080).default(360),
+  currency_hint: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -43,6 +44,7 @@ export function AddWatchDialog() {
   // Bulk state
   const [bulkText, setBulkText] = useState("");
   const [bulkInterval, setBulkInterval] = useState(360);
+  const [bulkCurrency, setBulkCurrency] = useState("");
   const [bulkItems, setBulkItems] = useState<BulkItem[] | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
 
@@ -68,6 +70,7 @@ export function AddWatchDialog() {
       url: data.url,
       check_interval: data.check_interval,
       provider: "http",
+      currency_hint: data.currency_hint || undefined,
     });
   }
 
@@ -77,6 +80,7 @@ export function AddWatchDialog() {
     setBulkText("");
     setBulkItems(null);
     setBulkRunning(false);
+    setBulkCurrency("");
   }
 
   // ── Bulk-logik ──────────────────────────────────────────────────────────────
@@ -94,7 +98,7 @@ export function AddWatchDialog() {
       items[i].status = "adding";
       setBulkItems([...items]);
       try {
-        await api.watches.create({ url: items[i].url, check_interval: bulkInterval, provider: "http" });
+        await api.watches.create({ url: items[i].url, check_interval: bulkInterval, provider: "http", currency_hint: bulkCurrency || undefined });
         items[i].status = "ok";
       } catch (err: unknown) {
         items[i].status = "error";
@@ -202,6 +206,23 @@ export function AddWatchDialog() {
                   <option value={1440}>Dagligt</option>
                 </select>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Valuta</label>
+                <select
+                  {...register("currency_hint")}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Auto-detect (standard DKK)</option>
+                  <option value="DKK">DKK — Dansk krone</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="USD">USD — US dollar</option>
+                  <option value="GBP">GBP — Britisk pund</option>
+                  <option value="SEK">SEK — Svensk krone</option>
+                  <option value="NOK">NOK — Norsk krone</option>
+                  <option value="CHF">CHF — Schweizisk franc</option>
+                  <option value="PLN">PLN — Polsk zloty</option>
+                </select>
+              </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={handleClose} className="rounded-md px-4 py-2 text-sm border border-border hover:bg-accent transition-colors">
                   Annuller
@@ -253,6 +274,24 @@ export function AddWatchDialog() {
                       <option value={360}>Hver 6. time</option>
                       <option value={720}>To gange dagligt</option>
                       <option value={1440}>Dagligt</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Valuta (for alle)</label>
+                    <select
+                      value={bulkCurrency}
+                      onChange={(e) => setBulkCurrency(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Auto-detect (standard DKK)</option>
+                      <option value="DKK">DKK — Dansk krone</option>
+                      <option value="EUR">EUR — Euro</option>
+                      <option value="USD">USD — US dollar</option>
+                      <option value="GBP">GBP — Britisk pund</option>
+                      <option value="SEK">SEK — Svensk krone</option>
+                      <option value="NOK">NOK — Norsk krone</option>
+                      <option value="CHF">CHF — Schweizisk franc</option>
+                      <option value="PLN">PLN — Polsk zloty</option>
                     </select>
                   </div>
                   <div className="flex justify-end gap-3 pt-2">

@@ -36,9 +36,29 @@ class PriceService:
         - Opdatér watch-status
         Returnerer True hvis der var en ændring.
         """
+        from app.services.exchange_rate_service import get_dkk_rates
+
         now = datetime.now(timezone.utc)
-        new_price = parse_result.price
+        raw_price = parse_result.price
         new_stock = parse_result.stock_status
+
+        # Valuta: brug parsers detektion; fald tilbage til currency_hint
+        detected_currency = parse_result.currency or "DKK"
+        currency_hint = getattr(watch, "currency_hint", None)
+        if detected_currency == "DKK" and currency_hint and currency_hint != "DKK":
+            effective_currency = currency_hint
+        else:
+            effective_currency = detected_currency
+
+        # Konvertér til DKK
+        if raw_price is not None and effective_currency != "DKK":
+            try:
+                rates = await get_dkk_rates()
+                new_price = round(raw_price * rates.get(effective_currency, 1.0), 2)
+            except Exception:
+                new_price = raw_price
+        else:
+            new_price = raw_price
 
         old_price = float(watch.current_price) if watch.current_price is not None else None
         old_stock = watch.current_stock_status
@@ -106,7 +126,9 @@ class PriceService:
                 )
 
         # Opdatér watch
-        watch.current_price = new_price
+        watch.current_price = new_price           # DKK (konverteret)
+        watch.current_price_raw = raw_price       # Original pris i effective_currency
+        watch.current_currency = effective_currency
         watch.current_stock_status = new_stock
         watch.last_checked_at = now
         watch.last_error = None
