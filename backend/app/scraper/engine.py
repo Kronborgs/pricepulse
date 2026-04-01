@@ -474,6 +474,13 @@ class ScraperEngine:
                         url=url,
                     )
                     return result
+                # Hård fejl (bot-afvisning, challenge-side) — stop kæden
+                if result.error_type in (
+                    ErrorType.bot_protection,
+                    ErrorType.js_render_required,
+                ):
+                    result.extractors_tried = extractors_tried[:]
+                    return result
             except Exception as e:
                 logger.warning(
                     "Parser kastede exception",
