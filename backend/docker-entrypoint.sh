@@ -60,12 +60,21 @@ done
 # ─── Run Alembic migrations (med retry ved connection-fejl) ──────────────────
 echo "[entrypoint] Running database migrations..."
 cd /app
+MIGRATION_OK=0
 for i in $(seq 1 5); do
-    DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/${PGDB}" \
-        alembic upgrade head && break
+    if DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPASSWORD}@127.0.0.1:5432/${PGDB}" \
+        alembic upgrade head; then
+        MIGRATION_OK=1
+        break
+    fi
     echo "[entrypoint] Migration attempt $i failed, retrying in 3s..."
     sleep 3
 done
+
+if [ "$MIGRATION_OK" -eq 0 ]; then
+    echo "[entrypoint] ERROR: Database migrations failed after 5 attempts — aborting startup."
+    exit 1
+fi
 
 # ─── Start FastAPI via supervisord ────────────────────────────────────────────
 echo "[entrypoint] Starting API..."
