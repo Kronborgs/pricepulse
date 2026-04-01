@@ -33,7 +33,6 @@ def upgrade() -> None:
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey("users.id", ondelete="CASCADE"),
             nullable=False,
-            index=True,
         ),
         sa.Column("name", sa.Text(), nullable=True),
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default="true"),
