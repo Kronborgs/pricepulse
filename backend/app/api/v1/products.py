@@ -160,7 +160,7 @@ async def merge_products(
     product_id: uuid.UUID,
     body: MergeProductRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
-    _user: User = Depends(SuperOrAdmin),
+    _user: SuperOrAdmin,
 ) -> ProductRead:
     """Sammenflet kilde-produktets watches ind i dette produkt og slet kilde-produktet."""
     if product_id == body.source_product_id:

@@ -37,7 +37,7 @@ async def ollama_status() -> OllamaStatusResponse:
 
 
 @router.patch("/config")
-async def update_ollama_config(body: OllamaConfigPatch, _admin: AdminUser = None) -> OllamaStatusResponse:
+async def update_ollama_config(body: OllamaConfigPatch, _admin: AdminUser) -> OllamaStatusResponse:
     """Opdatér Ollama-config i runtime (gemmes ikke til disk — sæt env-vars for persistens)."""
     if body.enabled is not None:
         settings.ollama_enabled = body.enabled
