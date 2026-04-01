@@ -238,11 +238,11 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
         </table>
       </div>
       {fxData && (() => {
-        const foreignCurrencies = [...new Set(
-          active
-            .filter((s) => s.last_currency !== "DKK" && s.last_price_raw != null)
-            .map((s) => s.last_currency)
-        )];
+        const seen = new Set<string>();
+        const foreignCurrencies = active
+          .filter((s) => s.last_currency !== "DKK" && s.last_price_raw != null)
+          .map((s) => s.last_currency)
+          .filter((c) => { if (seen.has(c)) return false; seen.add(c); return true; });
         if (foreignCurrencies.length === 0) return null;
         return (
           <p className="text-xs text-muted-foreground px-5 py-2 border-t border-border">
