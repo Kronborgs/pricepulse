@@ -9,7 +9,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_BUILD_VERSION=dev
 ENV NEXT_PUBLIC_BUILD_VERSION=$NEXT_PUBLIC_BUILD_VERSION
 
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json* .npmrc* ./
 RUN npm ci
 
 COPY . .
