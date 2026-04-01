@@ -19,6 +19,7 @@ import { LlmInsightPanel } from "@/components/watches/llm-insight-panel";
 import { formatPrice, formatRelative } from "@/lib/utils";
 import { SourceCheck, SourcePriceEvent } from "@/types";
 import { ERROR_TYPE_LABELS } from "@/types";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
 
 export default function SourceDetailPage({
   params,
@@ -49,6 +50,8 @@ export default function SourceDetailPage({
     queryFn: () => api.sources.priceEvents(id, 30),
     enabled: !!source,
   });
+
+  const { data: fxData } = useExchangeRates();
 
   const qInvalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["source", id] });
@@ -168,11 +171,22 @@ export default function SourceDetailPage({
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Aktuel pris">
-          {source.last_price != null
-            ? formatPrice(source.last_price, source.last_currency)
-            : "—"}
-        </StatCard>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground mb-1">Aktuel pris</p>
+          {source.last_price != null ? (
+            <div>
+              <p className="text-lg font-semibold">{formatPrice(source.last_price, source.last_currency)}</p>
+              {source.last_currency !== "DKK" && fxData?.rates[source.last_currency] && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  ≈ {formatPrice(source.last_price * fxData.rates[source.last_currency], "DKK")}
+                  <span className="text-xs ml-1.5 opacity-70">· 1 {source.last_currency} = {fxData.rates[source.last_currency].toFixed(2)} kr</span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-lg font-semibold">—</p>
+          )}
+        </div>
         <StatCard label="Lager">
           {source.last_stock_status === "in_stock"
             ? "På lager"
@@ -370,7 +384,7 @@ export default function SourceDetailPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {checksData.items.map((check) => (
-                  <CheckRow key={check.id} check={check} />
+                  <CheckRow key={check.id} check={check} fxRates={fxData?.rates} />
                 ))}
               </tbody>
             </table>
@@ -550,12 +564,21 @@ function PriceEventRow({ event }: { event: SourcePriceEvent }) {
   );
 }
 
-function CheckRow({ check }: { check: SourceCheck }) {
+function CheckRow({ check, fxRates }: { check: SourceCheck; fxRates?: Record<string, number> }) {
   return (
     <tr className="hover:bg-muted/20 transition-colors">
       <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{formatRelative(check.checked_at)}</td>
       <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-        {check.price != null ? formatPrice(check.price, check.currency) : "—"}
+        {check.price != null ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <span>{formatPrice(check.price, check.currency)}</span>
+            {check.currency && check.currency !== "DKK" && fxRates?.[check.currency] && (
+              <span className="text-xs font-normal text-muted-foreground">
+                ≈ {formatPrice(check.price * fxRates[check.currency], "DKK")}
+              </span>
+            )}
+          </div>
+        ) : "—"}
       </td>
       <td className="px-4 py-2.5 hidden sm:table-cell text-muted-foreground">
         {check.stock_status === "in_stock" ? "På lager" : check.stock_status === "out_of_stock" ? "Udsolgt" : check.stock_status ?? "—"}
