@@ -32,11 +32,19 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 ### Watch — detalje & prisgraf
 ![Watch detalje](assets/screenshots/watch-detail.png)
-> **Tag screenshot af:** En enkelt watch åbnet — prisgrafen i toppen, kilde-listen nedenunder med butikslogoer og priser side om side, og "Rapportér fejl"-knappen.
+> **Tag screenshot af:** En enkelt watch åbnet — prisgrafen i toppen (AreaChart med gradient og IQR y-akse), kilde-listen nedenunder med butikslogoer og priser side om side, og "Rapportér fejl"-knappen.
 
-### Produkter
+### Produkter — oversigt med tags
 ![Produkter](assets/screenshots/products.png)
-> **Tag screenshot af:** Produktoversigten med søgefelt, et par produktkort med billede og bedste pris, og gerne duplikat-advarslen øverst hvis der er nogen.
+> **Tag screenshot af:** Produktoversigten med søgefelt, tag-filter-pills under søgefeltet, et par produktkort med billede, bedste pris og tag-badges, og gerne duplikat-advarslen øverst.
+
+### Produkt — detalje med tag-editor
+![Produkt detalje](assets/screenshots/product-detail.png)
+> **Tag screenshot af:** En enkelt produktside åbnet — produktnavn, tag-editoren med et par tags og input-feltet ("Tilføj tags…"), multi-kilde prisgrafen nedenunder, og "Sammenflet"-knappen.
+
+### Produkt — multi-kilde prisgraf
+![Multi-kilde prisgraf](assets/screenshots/product-chart.png)
+> **Tag screenshot af:** Zoom ind på prisgrafen på en produktside — vis AreaChart med gradient-fyldt kurver for mindst to butikker, "Billigst nu"-banneret og toggle-knappen Custom/MUI X øverst til højre.
 
 ### Notifikationspræferencer
 ![Notifikationer](assets/screenshots/notifications.png)
@@ -73,8 +81,11 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 | Område | Hvad det gør |
 |--------|-------------|
 | **Prisovervågning** | Følger en eller flere butikskilder pr. produkt og registrerer hvert prisfald og lagerændring |
-| **Multi-kilde sammenligning** | Viser alle butikspriser på samme produkt side om side med prisgraf pr. kilde |
+| **Multi-kilde sammenligning** | Viser alle butikspriser på samme produkt side om side med interaktiv AreaChart pr. kilde (gradient-fyld, IQR y-akse, "Billigst nu"-banner) |
+| **Chart-valg** | Vælg pr. produkt mellem **Custom** (Recharts AreaChart) og **MUI X** (officiel MUI-komponent) via toggle i UI |
 | **Produktkatalog** | Samler watch-kilder under ét produkt og foreslår automatisk mulige dubletter |
+| **Produkt-tags** | Brugere tilføjer egne tags (fx `lego`, `akvarie`, `cpu`) direkte på produkter — søg og filtrer produktlisten på tags |
+| **Produktsammenfletning** | Alle brugere kan flette egne produkter (ikke kun admins) — samler alle butikskilder under ét produkt |
 | **E-mail notifikationer** | Prisfald, lager, enhver ændring eller fejl — konfigurerbart pr. bruger med valg af frekvens (straks/daglig/ugentlig/månedlig) |
 | **Digest-e-mail** | Periodisk oversigt over alle ændringer — daglig, ugentlig eller månedlig med valgfri dag |
 | **AI-assistent (Ollama)** | Analyserer sider der fejler og foreslår CSS-selectors, Playwright-behov og bot-beskyttelse |
@@ -95,6 +106,8 @@ PricePulse har tre brugerroller. Den første konto der oprettes ved opsætning e
 | Dashboard, watches, produkter (egne) | ✅ | ✅ | ✅ |
 | Se alle brugeres watches og produkter | ❌ | ✅ | ✅ |
 | Opret og rediger watches/produkter | ✅ | ✅ | ✅ |
+| Tilføj/rediger tags på egne produkter | ✅ | ✅ | ✅ |
+| Flette egne produkter | ✅ | ✅ | ✅ |
 | Indstil notifikationspræferencer | ✅ | ✅ | ✅ |
 | **Admin: Brugeroversigt** | ❌ | ✅ | ✅ |
 | Opret nye brugere (invitation) | ❌ | ✅ | ✅ |
