@@ -347,7 +347,7 @@ export default function ProductDetailPage({
       {watches.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-5">
           <h2 className="text-base font-semibold mb-4">Prishistorik</h2>
-          <MultiPriceChart watches={watches} />
+          <MultiPriceChart watches={watches} productId={id} />
         </div>
       )}
 
