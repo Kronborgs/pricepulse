@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,27 +13,43 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { da } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
+import { Loader2, TrendingDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Watch, PriceHistoryPoint } from "@/types";
 
-const COLORS = [
-  "#29ABE2", "#F5A623", "#8DC63F", "#EF4444",
-  "#A855F7", "#EC4899", "#14B8A6", "#F97316",
+// ─── Palette — vibrant on dark navy ──────────────────────────────────────────
+const PALETTE = [
+  "#60A5FA", // blue-400
+  "#FB923C", // orange-400
+  "#4ADE80", // green-400
+  "#F472B6", // pink-400
+  "#A78BFA", // violet-400
+  "#22D3EE", // cyan-400
+  "#FBBF24", // amber-400
+  "#F87171", // red-400
 ];
 
 type TimeRange = "7d" | "30d" | "3m" | "all";
-const RANGE_LABELS: Record<TimeRange, string> = {
-  "7d": "7 dage",
-  "30d": "30 dage",
-  "3m": "3 mdr.",
-  "all": "Alt",
-};
+
+const RANGES: { key: TimeRange; label: string }[] = [
+  { key: "7d", label: "7 dage" },
+  { key: "30d", label: "30 dage" },
+  { key: "3m", label: "3 mdr." },
+  { key: "all", label: "Alt" },
+];
 
 interface Props {
   watches: Watch[];
   productId: string;
+}
+
+interface ChartEntry {
+  watchId: string;
+  label: string;
+  color: string;
+  currentPrice: number | null;
+  data: PriceHistoryPoint[];
 }
 
 interface MergedPoint {
@@ -69,10 +85,7 @@ function mergeHistories(
 }
 
 /** Trim data to cutoff and carry the last known price forward as the first boundary point */
-function applyTimeRange(
-  entries: { watchId: string; label: string; data: PriceHistoryPoint[] }[],
-  cutoffMs: number
-) {
+function applyTimeRange(entries: ChartEntry[], cutoffMs: number): ChartEntry[] {
   if (cutoffMs === 0) return entries;
   return entries.map((e) => {
     const before = e.data.filter((p) => new Date(p.recorded_at).getTime() < cutoffMs);
@@ -81,11 +94,102 @@ function applyTimeRange(
     if (lastBefore) {
       return {
         ...e,
-        data: [{ recorded_at: new Date(cutoffMs).toISOString(), price: lastBefore.price }, ...after],
+        data: [
+          {
+            recorded_at: new Date(cutoffMs).toISOString(),
+            price: lastBefore.price,
+            stock_status: lastBefore.stock_status,
+            is_change: false,
+          } as PriceHistoryPoint,
+          ...after,
+        ],
       };
     }
     return { ...e, data: after };
   });
+}
+
+/** IQR-based domain — outliers don't destroy y-axis readability */
+function smartDomain(prices: number[]): [number, number] {
+  if (prices.length === 0) return [0, 1000];
+  if (prices.length < 4) {
+    const mn = Math.min(...prices);
+    const mx = Math.max(...prices);
+    const pad = (mx - mn) * 0.12 || 50;
+    return [Math.max(0, Math.floor(mn - pad)), Math.ceil(mx + pad)];
+  }
+  const s = [...prices].sort((a, b) => a - b);
+  const q1 = s[Math.floor(s.length * 0.25)];
+  const q3 = s[Math.floor(s.length * 0.75)];
+  const iqr = q3 - q1;
+  const clipped = prices.filter((p) => p >= q1 - 2.5 * iqr && p <= q3 + 2.5 * iqr);
+  const mn = Math.min(...clipped);
+  const mx = Math.max(...clipped);
+  const pad = (mx - mn) * 0.1 || 50;
+  return [Math.max(0, Math.floor(mn - pad)), Math.ceil(mx + pad)];
+}
+
+function xTickFmt(v: number, diffMs: number): string {
+  const d = new Date(v);
+  if (diffMs <= 2 * 86_400_000) return format(d, "HH:mm", { locale: da });
+  if (diffMs <= 60 * 86_400_000) return format(d, "d. MMM", { locale: da });
+  return format(d, "MMM yy", { locale: da });
+}
+
+function yTickFmt(v: number): string {
+  if (v >= 10_000) return `${Math.round(v / 1000)}k`;
+  if (v >= 1_000) return `${(v / 1000).toFixed(1).replace(".", ",")}k`;
+  return String(Math.round(v));
+}
+
+// ─── Custom dark-glass tooltip ────────────────────────────────────────────────
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  entries,
+}: {
+  active?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload?: any[];
+  label?: number;
+  entries: ChartEntry[];
+}) {
+  if (!active || !payload?.length || label == null) return null;
+  const items = entries
+    .map((e) => ({ ...e, price: payload.find((p) => p.dataKey === e.watchId)?.value ?? null }))
+    .filter((e) => e.price != null)
+    .sort((a, b) => (a.price as number) - (b.price as number));
+  if (items.length === 0) return null;
+  const lowest = items[0];
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0d1526]/95 shadow-2xl backdrop-blur-sm p-3 min-w-[190px]">
+      <p className="text-[11px] text-slate-400 mb-2.5 font-medium">
+        {format(new Date(label), "d. MMM yyyy  HH:mm", { locale: da })}
+      </p>
+      <div className="space-y-1.5">
+        {items.map((item) => {
+          const isCheapest = item.watchId === lowest.watchId;
+          return (
+            <div key={item.watchId} className="flex items-center justify-between gap-5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: item.color }}
+                />
+                <span className={`text-xs truncate ${isCheapest ? "text-white font-medium" : "text-slate-300"}`}>
+                  {item.label}
+                </span>
+              </div>
+              <span className={`text-xs font-semibold tabular-nums whitespace-nowrap ${isCheapest ? "text-emerald-400" : "text-slate-200"}`}>
+                {formatPrice(item.price)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function MultiPriceChart({ watches, productId }: Props) {
@@ -136,27 +240,26 @@ export function MultiPriceChart({ watches, productId }: Props) {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground text-sm gap-2">
+      <div className="flex h-64 items-center justify-center text-slate-400 text-sm gap-2">
         <Loader2 className="h-4 w-4 animate-spin" />
         Indlæser prishistorik…
       </div>
     );
   }
 
-  const allEntries = watches.map((w, i) => ({
+  const allEntries: ChartEntry[] = watches.map((w, i) => ({
     watchId: w.id,
     label: w.shop?.name ?? w.title ?? w.url,
-    color: COLORS[i % COLORS.length],
-    currentPrice: w.current_price,
+    color: PALETTE[i % PALETTE.length],
+    currentPrice: w.current_price ?? null,
     data: (results[i].data ?? []).slice().sort(
       (a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
     ),
   }));
 
-  const hasData = allEntries.some((e) => e.data.length > 0);
-  if (!hasData) {
+  if (!allEntries.some((e) => e.data.length > 0)) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
+      <div className="flex h-64 items-center justify-center text-slate-500 text-sm">
         Ingen prishistorik endnu
       </div>
     );
@@ -176,42 +279,38 @@ export function MultiPriceChart({ watches, productId }: Props) {
   const allPrices = merged.flatMap((p) =>
     visibleEntries.map((e) => p[e.watchId]).filter((v): v is number => v != null)
   );
-  const minPrice = allPrices.length ? Math.min(...allPrices) : 0;
-  const maxPrice = allPrices.length ? Math.max(...allPrices) : 100;
-  const pad = (maxPrice - minPrice) * 0.08 || 50;
-  const yMin = Math.max(0, Math.floor(minPrice - pad));
-  const yMax = Math.ceil(maxPrice + pad);
+  const [yMin, yMax] = smartDomain(allPrices);
 
-  function xTickFormatter(v: number) {
-    const d = new Date(v);
-    const diffDays = (Date.now() - v) / 86_400_000;
-    if (diffDays < 2) return format(d, "HH:mm", { locale: da });
-    if (diffDays < 60) return format(d, "d. MMM", { locale: da });
-    return format(d, "MMM yy", { locale: da });
-  }
+  const tsDiff =
+    merged.length >= 2 ? merged[merged.length - 1].date - merged[0].date : 86_400_000;
+
+  const cheapest =
+    allEntries
+      .filter((e) => !hidden.has(e.watchId) && e.currentPrice != null)
+      .sort((a, b) => (a.currentPrice ?? Infinity) - (b.currentPrice ?? Infinity))[0] ?? null;
 
   return (
-    <div className="space-y-3">
-      {/* Controls row */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Time range selector */}
-        <div className="flex rounded-md border border-border overflow-hidden text-xs shrink-0">
-          {(["7d", "30d", "3m", "all"] as TimeRange[]).map((r) => (
+    <div className="space-y-4">
+      {/* ── Controls ── */}
+      <div className="flex flex-wrap items-start gap-3">
+        {/* Period tabs */}
+        <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5 gap-0.5">
+          {RANGES.map(({ key, label }) => (
             <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                range === r
-                  ? "bg-[#29ABE2] text-white"
-                  : "bg-background text-muted-foreground hover:bg-muted"
+              key={key}
+              onClick={() => setRange(key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                range === key
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              {RANGE_LABELS[r]}
+              {label}
             </button>
           ))}
         </div>
 
-        {/* Shop toggle pills */}
+        {/* Store chips */}
         <div className="flex flex-wrap gap-1.5 ml-auto">
           {allEntries.map((e) => {
             const isHidden = hidden.has(e.watchId);
@@ -219,21 +318,29 @@ export function MultiPriceChart({ watches, productId }: Props) {
               <button
                 key={e.watchId}
                 onClick={() => toggleHidden(e.watchId)}
-                title={isHidden ? "Vis linje" : "Skjul linje"}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                title={isHidden ? "Vis" : "Skjul"}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all cursor-pointer"
+                style={
                   isHidden
-                    ? "border-border text-muted-foreground opacity-40 hover:opacity-70"
-                    : "border-transparent text-white"
-                }`}
-                style={!isHidden ? { backgroundColor: e.color } : undefined}
+                    ? {
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        color: "#475569",
+                      }
+                    : {
+                        background: `${e.color}1a`,
+                        border: `1px solid ${e.color}40`,
+                        color: e.color,
+                      }
+                }
               >
                 <span
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: e.color }}
+                  className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: isHidden ? "#475569" : e.color }}
                 />
                 {e.label}
-                {e.currentPrice != null && (
-                  <span className="opacity-80">{formatPrice(e.currentPrice)}</span>
+                {!isHidden && e.currentPrice != null && (
+                  <span className="opacity-70 tabular-nums">{formatPrice(e.currentPrice)}</span>
                 )}
               </button>
             );
@@ -241,67 +348,108 @@ export function MultiPriceChart({ watches, productId }: Props) {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* ── Cheapest-now banner ── */}
+      {cheapest && (
+        <div
+          className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-sm"
+          style={{
+            background: `linear-gradient(90deg, ${cheapest.color}14 0%, transparent 100%)`,
+            borderLeft: `3px solid ${cheapest.color}80`,
+          }}
+        >
+          <TrendingDown className="h-3.5 w-3.5 shrink-0" style={{ color: cheapest.color }} />
+          <span className="text-slate-400 text-xs">
+            Billigst nu:{" "}
+            <span className="font-semibold text-white">{cheapest.label}</span>
+          </span>
+          <span
+            className="ml-auto font-bold tabular-nums text-sm"
+            style={{ color: cheapest.color }}
+          >
+            {formatPrice(cheapest.currentPrice)}
+          </span>
+        </div>
+      )}
+
+      {/* ── Chart ── */}
       {merged.length === 0 ? (
-        <div className="flex h-52 items-center justify-center text-sm text-muted-foreground">
+        <div className="flex h-52 items-center justify-center text-slate-500 text-sm">
           Ingen data i det valgte tidsrum
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={merged} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <ResponsiveContainer width="100%" height={290}>
+          <AreaChart data={merged} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+            <defs>
+              {visibleEntries.map((e) => (
+                <linearGradient key={e.watchId} id={`grad-${e.watchId}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"   stopColor={e.color} stopOpacity={0.20} />
+                  <stop offset="60%"  stopColor={e.color} stopOpacity={0.06} />
+                  <stop offset="100%" stopColor={e.color} stopOpacity={0.00} />
+                </linearGradient>
+              ))}
+            </defs>
+
+            <CartesianGrid
+              strokeDasharray="2 4"
+              stroke="rgba(255,255,255,0.05)"
+              vertical={false}
+            />
+
             <XAxis
               dataKey="date"
               type="number"
               scale="time"
               domain={["dataMin", "dataMax"]}
-              tickFormatter={xTickFormatter}
-              tick={{ fontSize: 11 }}
+              tickFormatter={(v) => xTickFmt(v, tsDiff)}
+              tick={{ fontSize: 11, fill: "#475569" }}
               tickLine={false}
               axisLine={false}
-              minTickGap={60}
+              minTickGap={64}
             />
+
             <YAxis
               domain={[yMin, yMax]}
-              tickFormatter={(v) => formatPrice(v)}
-              tick={{ fontSize: 11 }}
+              tickFormatter={yTickFmt}
+              tick={{ fontSize: 11, fill: "#475569" }}
               tickLine={false}
               axisLine={false}
-              width={85}
+              width={44}
             />
+
             <Tooltip
-              labelFormatter={(v) =>
-                format(new Date(v as number), "d. MMM yyyy HH:mm", { locale: da })
-              }
-              formatter={(v: number, name: string) => {
-                const entry = allEntries.find((e) => e.watchId === name);
-                return [formatPrice(v), entry?.label ?? name];
-              }}
-              contentStyle={{
-                borderRadius: "8px",
-                border: "1px solid hsl(var(--border))",
-                background: "hsl(var(--card))",
-                color: "hsl(var(--foreground))",
-                fontSize: 12,
+              content={(props) => (
+                <ChartTooltip
+                  {...props}
+                  entries={allEntries.filter((e) => !hidden.has(e.watchId))}
+                />
+              )}
+              cursor={{
+                stroke: "rgba(255,255,255,0.08)",
+                strokeWidth: 1,
+                strokeDasharray: "4 4",
               }}
             />
-            {visibleEntries.map((entry) => {
-              const color = allEntries.find((e) => e.watchId === entry.watchId)?.color ?? "#29ABE2";
-              return (
-              <Line
-                key={entry.watchId}
+
+            {visibleEntries.map((e) => (
+              <Area
+                key={e.watchId}
                 type="stepAfter"
-                dataKey={entry.watchId}
-                stroke={color}
+                dataKey={e.watchId}
+                stroke={e.color}
                 strokeWidth={2}
+                fill={`url(#grad-${e.watchId})`}
                 dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
+                activeDot={{
+                  r: 4,
+                  fill: e.color,
+                  stroke: "rgba(0,0,0,0.5)",
+                  strokeWidth: 2,
+                }}
                 connectNulls={false}
                 isAnimationActive={false}
               />
-            );
-            })}
-          </LineChart>
+            ))}
+          </AreaChart>
         </ResponsiveContainer>
       )}
     </div>
