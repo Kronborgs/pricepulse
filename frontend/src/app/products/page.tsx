@@ -3,7 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Package2, Search, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const OWNER_FILTER_KEY = "products_owner_filter";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
@@ -36,8 +38,26 @@ export default function ProductsPage() {
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
   const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(OWNER_FILTER_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    try {
+      if (ownerFilter.length > 0) {
+        localStorage.setItem(OWNER_FILTER_KEY, JSON.stringify(ownerFilter));
+      } else {
+        localStorage.removeItem(OWNER_FILTER_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [ownerFilter]);
 
   // Hent brugerliste til filterdropdown (kun for admin/superuser)
   const { data: usersData } = useQuery({
