@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AuthGuard } from "@/components/layout/auth-guard";
 import { User } from "@/types";
-import { Loader2, UserPlus, Trash2, Mail } from "lucide-react";
+import { Loader2, UserPlus, Trash2, Mail, MonitorPlay } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function UsersPage() {
@@ -76,6 +76,11 @@ export default function UsersPage() {
     const label = user.display_name ?? user.email;
     if (!window.confirm(`Slet bruger "${label}"?\n\nHandlingen kan ikke fortrydes.`)) return;
     deleteMutation.mutate(user.id);
+  }
+
+  function openUserWatches(userId: string) {
+    try { localStorage.setItem("watches_owner_filter", JSON.stringify([userId])); } catch { /* ignore */ }
+    router.push("/watches");
   }
 
   return (
@@ -254,6 +259,14 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openUserWatches(user.id)}
+                            title="Se brugerens watches"
+                            className="text-xs text-slate-400 hover:text-[#29ABE2] border border-slate-700 rounded px-2 py-1 flex items-center gap-1"
+                          >
+                            <MonitorPlay className="h-3 w-3" />
+                            Watches
+                          </button>
                           {/* Superuser må ikke deaktivere admin/superuser-brugere */}
                           {!(meData?.role === "superuser" && user.role !== "user") && (
                           <button

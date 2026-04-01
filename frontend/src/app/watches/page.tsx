@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { WatchTable } from "@/components/watches/watch-table";
 import { AddWatchDialog } from "@/components/watches/add-watch-dialog";
@@ -20,14 +20,35 @@ const STATUS_OPTIONS = [
   { value: "blocked", label: "Blokeret" },
 ];
 
+const OWNER_FILTER_KEY = "watches_owner_filter";
+
 export default function WatchesPage() {
   const { data: me } = useCurrentUser();
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(OWNER_FILTER_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [page, setPage] = useState(1);
+
+  // Gem ownerFilter i localStorage når det ændres
+  useEffect(() => {
+    try {
+      if (ownerFilter.length > 0) {
+        localStorage.setItem(OWNER_FILTER_KEY, JSON.stringify(ownerFilter));
+      } else {
+        localStorage.removeItem(OWNER_FILTER_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [ownerFilter]);
 
   // Hent brugerliste til filterdropdown (kun for admin/superuser)
   const { data: usersData } = useQuery({
