@@ -183,7 +183,7 @@ export default function PreferencesPage() {
             )}
             {testMutation.isError && (
               <span className="text-xs text-red-400">
-                Fejl — er SMTP konfigureret?
+                {(testMutation.error as Error)?.message || "Fejl — er SMTP konfigureret?"}
               </span>
             )}
             {testSent && (

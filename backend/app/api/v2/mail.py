@@ -220,24 +220,32 @@ async def send_test_notification(
     if not cfg:
         raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
 
-    # Prøv først sources med en pris — ellers tag hvad som helst
-    for price_filter in [WatchSource.last_price.isnot(None), True]:
-        row = await db.execute(
+    # Prøv først en source med en reel pris
+    row = await db.execute(
+        select(ProductWatch, WatchSource, Product)
+        .join(Product, Product.id == ProductWatch.product_id)
+        .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+        .where(WatchSource.last_price.isnot(None))
+        .order_by(func.random())
+        .limit(1)
+    )
+    result = row.first()
+
+    # Fallback: enhver source (nyt produkt uden prischeck endnu)
+    if not result:
+        row2 = await db.execute(
             select(ProductWatch, WatchSource, Product)
             .join(Product, Product.id == ProductWatch.product_id)
             .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-            .where(price_filter)
             .order_by(func.random())
             .limit(1)
         )
-        result = row.first()
-        if result:
-            break
+        result = row2.first()
 
     if not result:
         raise HTTPException(
             status_code=400,
-            detail="Ingen produkter fundet — tilføj et produkt og kør et prischeck først"
+            detail="Ingen produkter fundet — tilføj et produkt i PricePulse og kør et prischeck"
         )
 
     watch, source, product = result

@@ -74,7 +74,12 @@ async function apiFetch<T>(path: string, init?: RequestInit, _retried = false): 
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    let message = `API ${res.status}: ${text}`;
+    try {
+      const json = JSON.parse(text);
+      if (json?.detail) message = typeof json.detail === "string" ? json.detail : JSON.stringify(json.detail);
+    } catch { /* brug rå text */ }
+    throw new Error(message);
   }
   if (res.status === 204 || res.headers.get("content-length") === "0") {
     return undefined as T;
