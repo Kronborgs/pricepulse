@@ -12,7 +12,7 @@ from pydantic import BaseModel, HttpUrl, field_validator
 class WatchCreate(BaseModel):
     url: str
     product_id: uuid.UUID | None = None
-    check_interval: int = 60
+    check_interval: int = 360
     provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
 

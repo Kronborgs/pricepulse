@@ -61,7 +61,7 @@ class Watch(Base, TimestampMixin):
     error_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Scraper-konfiguration
-    check_interval: Mapped[int] = mapped_column(Integer, default=60, nullable=False)  # minutter
+    check_interval: Mapped[int] = mapped_column(Integer, default=360, nullable=False)  # minutter
     provider: Mapped[str] = mapped_column(String(50), default="curl_cffi", nullable=False)
 
     # JSONB: {price_selector, title_selector, stock_selector, wait_for_selector, ...}

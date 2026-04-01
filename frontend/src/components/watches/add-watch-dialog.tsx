@@ -11,7 +11,7 @@ import { getDomain } from "@/lib/utils";
 
 const schema = z.object({
   url: z.string().url("Angiv en gyldig URL (inkl. https://)"),
-  check_interval: z.coerce.number().min(5).max(10080).default(60),
+  check_interval: z.coerce.number().min(5).max(10080).default(360),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -42,14 +42,14 @@ export function AddWatchDialog() {
 
   // Bulk state
   const [bulkText, setBulkText] = useState("");
-  const [bulkInterval, setBulkInterval] = useState(60);
+  const [bulkInterval, setBulkInterval] = useState(360);
   const [bulkItems, setBulkItems] = useState<BulkItem[] | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
 
   const qc = useQueryClient();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { check_interval: 60 },
+    defaultValues: { check_interval: 360 },
   });
 
   const createMutation = useMutation({
