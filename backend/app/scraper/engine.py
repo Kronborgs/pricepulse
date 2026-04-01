@@ -74,6 +74,13 @@ SHOP_PARSERS: dict[str, PriceParser] = {
     "www.komplett.dk": KomplettParser(),
     "proshop.dk": ProshopParser(),
     "www.proshop.dk": ProshopParser(),
+    # csmegastore.dk er computersalg.dk under nyt navn — samme platform
+    "csmegastore.dk": ComputersalgParser(),
+    "www.csmegastore.dk": ComputersalgParser(),
+    "csmegastore.se": ComputersalgParser(),
+    "www.csmegastore.se": ComputersalgParser(),
+    "csmegastore.de": ComputersalgParser(),
+    "www.csmegastore.de": ComputersalgParser(),
 }
 
 # Shops der kræver Playwright (aktiv bot-beskyttelse / JS-renderet pris)
@@ -371,7 +378,8 @@ class ScraperEngine:
         if needs_playwright and settings.playwright_enabled:
             provider = _get_playwright_provider()
         else:
-            provider = _http_provider
+            # curl_cffi som default — bedre TLS-fingerprinting end plain HTTP
+            provider = _get_curl_cffi_provider()
 
         fetch_result = await provider.fetch(url)
 

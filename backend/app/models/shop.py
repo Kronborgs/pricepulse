@@ -24,7 +24,7 @@ class Shop(Base, TimestampMixin):
     logo_url: Mapped[str | None] = mapped_column(Text)
 
     # Scraper-konfiguration pr. shop
-    default_provider: Mapped[str] = mapped_column(String(50), default="http")
+    default_provider: Mapped[str] = mapped_column(String(50), default="curl_cffi")
     default_price_selector: Mapped[str | None] = mapped_column(Text)
     default_title_selector: Mapped[str | None] = mapped_column(Text)
     default_stock_selector: Mapped[str | None] = mapped_column(Text)
