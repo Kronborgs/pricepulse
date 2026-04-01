@@ -54,6 +54,7 @@ class SourceService:
             interval_override_min=data.interval_override_min,
             provider=provider,
             scraper_config=data.scraper_config,
+            currency_hint=data.currency_hint if data.currency_hint and data.currency_hint != "DKK" else None,
             next_check_at=datetime.now(timezone.utc),  # klar til straks
         )
         self.db.add(source)
@@ -270,6 +271,14 @@ class SourceService:
         old_stock = source.last_stock_status
         is_initial = source.last_check_at is None or source.status == "pending"
 
+        # Valuta: brug parsers detektion; fald tilbage til currency_hint hvis parseren returnerer DKK
+        # og brugeren har specificeret en anden valuta (f.eks. SEK for en svensk butik)
+        detected_currency = parse_result.currency or "DKK"
+        if detected_currency == "DKK" and source.currency_hint and source.currency_hint != "DKK":
+            effective_currency = source.currency_hint
+        else:
+            effective_currency = detected_currency
+
         price_changed = old_price is not None and new_price != old_price
         stock_changed = old_stock != new_stock
 
@@ -277,7 +286,7 @@ class SourceService:
             source_id=source.id,
             checked_at=now,
             price=new_price,
-            currency=parse_result.currency or "DKK",
+            currency=effective_currency,
             stock_status=new_stock,
             success=True,
             status_code=diagnostic.get("fetch", {}).get("status_code") if diagnostic else None,
@@ -326,7 +335,7 @@ class SourceService:
 
         # Opdatér source
         source.last_price = new_price
-        source.last_currency = parse_result.currency or "DKK"
+        source.last_currency = effective_currency
         source.last_stock_status = new_stock
         source.last_diagnostic = diagnostic
         source.consecutive_errors = 0

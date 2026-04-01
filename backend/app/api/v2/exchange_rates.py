@@ -1,5 +1,5 @@
 """
-GET /exchange-rates  — returnerer live DKK-kurser for alle understøttede valutaer.
+GET /exchange-rates  — returnerer daglige DKK-kurser fra Danmarks Nationalbank.
 Ingen autentificering krævet (public data).
 """
 from __future__ import annotations

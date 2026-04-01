@@ -29,6 +29,7 @@ const addSourceSchema = z.object({
     .optional()
     .refine((v) => !v || /^\d+$/.test(v), "Skal være et tal")
     .transform((v) => (v ? parseInt(v) : undefined)),
+  currency_hint: z.string().optional(),
 });
 
 type AddSourceValues = z.input<typeof addSourceSchema>;
@@ -78,6 +79,7 @@ export default function ProductWatchDetailPage({
       api.productWatches.addSource(id, {
         url: values.url,
         interval_override_min: values.interval_override_min as number | undefined,
+        currency_hint: (values.currency_hint as string) || undefined,
       }),
     onSuccess: () => {
       qInvalidate();
@@ -197,6 +199,26 @@ export default function ProductWatchDetailPage({
                   {addSourceForm.formState.errors.url.message}
                 </p>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Valuta{" "}
+                <span className="font-normal text-muted-foreground">(valgfrit — til butikker uden auto-detektion)</span>
+              </label>
+              <select
+                {...addSourceForm.register("currency_hint")}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Auto-detektér</option>
+                <option value="DKK">DKK — Danske kroner</option>
+                <option value="EUR">EUR — Euro</option>
+                <option value="USD">USD — Amerikanske dollar</option>
+                <option value="GBP">GBP — Britiske pund</option>
+                <option value="SEK">SEK — Svenske kroner</option>
+                <option value="NOK">NOK — Norske kroner</option>
+                <option value="CHF">CHF — Schweiziske franc</option>
+                <option value="PLN">PLN — Polske zloty</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">

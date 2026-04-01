@@ -224,7 +224,7 @@ export const api = {
       apiFetch<ProductWatch>(`/product-watches/${id}/resume`, { method: "POST" }),
     timeline: (id: string, limit = 50) =>
       apiFetch<TimelineEvent[]>(`/product-watches/${id}/timeline?limit=${limit}`),
-    addSource: (id: string, data: { url: string; provider?: string; interval_override_min?: number; scraper_config?: Record<string, string> }) =>
+    addSource: (id: string, data: { url: string; provider?: string; interval_override_min?: number; scraper_config?: Record<string, string>; currency_hint?: string }) =>
       apiFetch<WatchSource>(`/product-watches/${id}/sources`, {
         method: "POST",
         body: JSON.stringify(data),
@@ -234,7 +234,7 @@ export const api = {
   // ─── Sources (v2) ────────────────────────────────────────────────────────────
   sources: {
     get: (id: string) => apiFetch<WatchSource>(`/sources/${id}`),
-    update: (id: string, data: { url?: string; interval_override_min?: number | null; provider?: string; scraper_config?: Record<string, string> | null }) =>
+    update: (id: string, data: { url?: string; interval_override_min?: number | null; provider?: string; scraper_config?: Record<string, string> | null; currency_hint?: string | null }) =>
       apiFetch<WatchSource>(`/sources/${id}`, {
         method: "PATCH",
         body: JSON.stringify(data),

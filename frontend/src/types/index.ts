@@ -195,6 +195,7 @@ export interface WatchSource {
   next_check_at: string | null;
   last_price: number | null;
   last_currency: string;
+  currency_hint: string | null;
   last_stock_status: string | null;
   last_error_type: ScrapeErrorType | null;
   last_error_message: string | null;

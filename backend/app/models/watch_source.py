@@ -46,6 +46,7 @@ class WatchSource(Base, TimestampMixin):
     next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     last_price: Mapped[float | None] = mapped_column(Numeric(10, 2))
     last_currency: Mapped[str] = mapped_column(String(3), default="DKK", nullable=False)
+    currency_hint: Mapped[str | None] = mapped_column(String(3), nullable=True)  # Brugerdefineret valuta-override
     last_stock_status: Mapped[str | None] = mapped_column(String(100))
     last_error_type: Mapped[str | None] = mapped_column(String(100))
     last_error_message: Mapped[str | None] = mapped_column(Text)

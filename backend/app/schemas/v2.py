@@ -14,6 +14,7 @@ class WatchSourceCreate(BaseModel):
     interval_override_min: int | None = None
     provider: str = "curl_cffi"
     scraper_config: dict[str, Any] | None = None
+    currency_hint: str | None = None  # Manuelt sat valuta (f.eks. SEK, NOK) — bruges når parser ikke kan detektere
 
     @field_validator("url")
     @classmethod
@@ -22,12 +23,22 @@ class WatchSourceCreate(BaseModel):
             raise ValueError("URL skal starte med http:// eller https://")
         return v.strip()
 
+    @field_validator("currency_hint")
+    @classmethod
+    def validate_currency_hint(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip().upper()
+            if len(v) != 3:
+                raise ValueError("Valutakode skal være 3 bogstaver (ISO 4217)")
+        return v or None
+
 
 class WatchSourceUpdate(BaseModel):
     url: str | None = None
     interval_override_min: int | None = None
     provider: str | None = None
     scraper_config: dict[str, Any] | None = None
+    currency_hint: str | None = None
 
 
 class WatchSourceRead(BaseModel):
@@ -42,6 +53,7 @@ class WatchSourceRead(BaseModel):
     next_check_at: datetime | None = None
     last_price: float | None = None
     last_currency: str = "DKK"
+    currency_hint: str | None = None
     last_stock_status: str | None = None
     last_error_type: str | None = None
     last_error_message: str | None = None
