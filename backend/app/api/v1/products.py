@@ -52,8 +52,17 @@ async def list_products(
             )
         )
     elif owner_ids:
-        # Admin/superuser kan filtrere på én eller flere ejere
-        stmt = stmt.where(Product.owner_id.in_(owner_ids))
+        # Admin/superuser: filtrer på ejer ELLER på produkter som brugeren har watches til
+        watch_product_ids = select(Watch.product_id).where(
+            Watch.owner_id.in_(owner_ids),
+            Watch.product_id.isnot(None),
+        )
+        stmt = stmt.where(
+            or_(
+                Product.owner_id.in_(owner_ids),
+                Product.id.in_(watch_product_ids),
+            )
+        )
 
     if search:
         stmt = stmt.where(Product.name.ilike(f"%{search}%"))
