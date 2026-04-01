@@ -206,11 +206,12 @@ async def send_test_notification(
 ) -> dict:
     """
     Send en test-prisfald-e-mail direkte til den loggede brugers email.
-    Bruger et tilfældigt rigtigt produkt fra databasen.
+    Prøver v2 ProductWatch → v1 Watch → fiktiv fallback (aldrig fejl).
     """
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
     from app.models.product import Product
+    from app.models.watch import Watch
     from app.models.source_price_event import SourcePriceEvent
     from app.services.smtp_service import SMTPService, _render_template
     from sqlalchemy import func
@@ -218,9 +219,17 @@ async def send_test_notification(
     svc = SMTPService()
     cfg = await svc._get_active_config(db)
     if not cfg:
-        raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration")
+        raise HTTPException(status_code=400, detail="Ingen aktiv SMTP-konfiguration — konfigurer SMTP under Admin → SMTP")
 
-    # Prøv først en source med en reel pris
+    watch_name: str
+    new_price: float | None
+    old_price: float | None
+    currency: str
+    image_url: str | None
+    product_url: str
+    watch_id: object
+
+    # ── Forsøg 1: v2 ProductWatch + WatchSource ────────────────────────────
     row = await db.execute(
         select(ProductWatch, WatchSource, Product)
         .join(Product, Product.id == ProductWatch.product_id)
@@ -229,55 +238,65 @@ async def send_test_notification(
         .order_by(func.random())
         .limit(1)
     )
-    result = row.first()
+    v2_result = row.first()
 
-    # Fallback: enhver source (nyt produkt uden prischeck endnu)
-    if not result:
-        row2 = await db.execute(
-            select(ProductWatch, WatchSource, Product)
-            .join(Product, Product.id == ProductWatch.product_id)
-            .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+    if v2_result:
+        pw, source, product = v2_result
+        prev_event = await db.scalar(
+            select(SourcePriceEvent)
+            .where(
+                SourcePriceEvent.source_id == source.id,
+                SourcePriceEvent.old_price.isnot(None),
+            )
+            .order_by(SourcePriceEvent.created_at.desc())
+            .limit(1)
+        )
+        watch_name = pw.name or product.name
+        new_price = float(source.last_price)
+        old_price = float(prev_event.old_price) if prev_event else None
+        currency = source.last_currency or "DKK"
+        image_url = product.image_url
+        product_url = source.url
+        watch_id = pw.id
+
+    else:
+        # ── Forsøg 2: v1 Watch-tabel ──────────────────────────────────────
+        v1_row = await db.scalar(
+            select(Watch)
+            .where(Watch.current_price.isnot(None))
             .order_by(func.random())
             .limit(1)
         )
-        result = row2.first()
-
-    if not result:
-        raise HTTPException(
-            status_code=400,
-            detail="Ingen produkter fundet — tilføj et produkt i PricePulse og kør et prischeck"
-        )
-
-    watch, source, product = result
-
-    # Seneste prisevent for denne kilde — giver os "gammel pris"
-    prev_event = await db.scalar(
-        select(SourcePriceEvent)
-        .where(
-            SourcePriceEvent.source_id == source.id,
-            SourcePriceEvent.old_price.isnot(None),
-        )
-        .order_by(SourcePriceEvent.created_at.desc())
-        .limit(1)
-    )
-
-    new_price = float(source.last_price) if source.last_price else None
-    old_price = float(prev_event.old_price) if prev_event and prev_event.old_price else None
-    currency = source.last_currency or "DKK"
+        if v1_row:
+            watch_name = v1_row.title or v1_row.url
+            new_price = float(v1_row.current_price)
+            old_price = None
+            currency = v1_row.current_currency or "DKK"
+            image_url = v1_row.image_url
+            product_url = v1_row.url
+            watch_id = v1_row.id
+        else:
+            # ── Fallback: fiktiv data (nye brugere uden produkter) ────────
+            watch_name = "Philips Sonicare DiamondClean 9000"
+            new_price = 999.0
+            old_price = 1299.0
+            currency = "DKK"
+            image_url = None
+            product_url = _app_url()
+            watch_id = None
 
     html_body = _render_template("price_drop.html", {
-        "watch_name": watch.name or product.name,
+        "watch_name": watch_name,
         "new_price": f"{new_price:,.0f}".replace(",", ".") if new_price is not None else "—",
         "old_price": f"{old_price:,.0f}".replace(",", ".") if old_price is not None else None,
         "currency": currency,
-        "watch_url": f"{_app_url()}/watches/{watch.id}",
-        "product_url": source.url,
-        "image_url": product.image_url,
-        "in_stock": (source.last_stock_status == "in_stock") if source.last_stock_status else True,
+        "watch_url": f"{_app_url()}/watches/{watch_id}" if watch_id else _app_url(),
+        "product_url": product_url,
+        "image_url": image_url,
+        "in_stock": True,
         "is_test": True,
     })
 
-    # Send direkte — ikke via kø, så fejl er synlige med det samme
     try:
         await svc.send_email(
             db,
