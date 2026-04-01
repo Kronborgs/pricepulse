@@ -431,6 +431,13 @@ export interface NotificationRule {
 
 export type NotificationRuleWrite = Omit<NotificationRule, "id">;
 
+// ─── Exchange Rates ───────────────────────────────────────────────────────────
+export interface ExchangeRates {
+  base: "DKK";
+  rates: Record<string, number>; // e.g. { EUR: 7.47, USD: 6.59 }
+  updated_at: string;
+}
+
 // ─── SMTP Settings ────────────────────────────────────────────────────────────
 export interface SMTPSettings {
   id: number;

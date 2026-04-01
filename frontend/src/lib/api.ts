@@ -32,6 +32,7 @@ import {
   WatchSource,
   NotificationRule,
   NotificationRuleWrite,
+  ExchangeRates,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -424,6 +425,11 @@ export const api = {
       }),
     delete: (id: string) =>
       apiFetch<void>(`/me/notification-rules/${id}`, { method: "DELETE" }),
+  },
+
+  // ─── Exchange Rates ───────────────────────────────────────────────────────
+  exchangeRates: {
+    get: () => apiFetch<ExchangeRates>("/exchange-rates"),
   },
 
   // ─── Admin: Data management ───────────────────────────────────────────────

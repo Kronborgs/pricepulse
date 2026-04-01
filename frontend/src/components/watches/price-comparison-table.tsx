@@ -8,6 +8,7 @@ import { WatchSource, SourceStatus } from "@/types";
 import { StatusBadge } from "./status-badge";
 import { formatPrice, formatRelative, getDomain } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useExchangeRates } from "@/hooks/useExchangeRates";
 
 const STOCK_LABELS: Record<string, string> = {
   in_stock: "På lager",
@@ -51,6 +52,8 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
       setEditingId(null);
     },
   });
+
+  const { data: fxData } = useExchangeRates();
 
   const active = sources.filter((s) => s.status !== "archived");
 
@@ -145,7 +148,16 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
                     )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                    {src.last_price != null ? formatPrice(src.last_price, src.last_currency) : "—"}
+                    {src.last_price != null ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span>{formatPrice(src.last_price, src.last_currency)}</span>
+                        {src.last_currency !== "DKK" && fxData?.rates[src.last_currency] && (
+                          <span className="text-xs font-normal text-muted-foreground">
+                            ≈ {formatPrice(src.last_price * fxData.rates[src.last_currency], "DKK")}
+                          </span>
+                        )}
+                      </div>
+                    ) : "—"}
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">
                     {STOCK_LABELS[src.last_stock_status ?? "unknown"] ?? src.last_stock_status ?? "—"}
@@ -222,6 +234,12 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
           </tbody>
         </table>
       </div>
+      {fxData && (
+        <p className="text-xs text-muted-foreground px-5 py-2 border-t border-border">
+          Kurser fra ECB via Frankfurter
+          {fxData.rates["EUR"] && <> · 1 EUR = {fxData.rates["EUR"].toFixed(2)} kr</>}
+        </p>
+      )}
     </div>
   );
 }
