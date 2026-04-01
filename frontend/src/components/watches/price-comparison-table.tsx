@@ -150,10 +150,13 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
                   <td className="px-4 py-3 text-right tabular-nums font-semibold">
                     {src.last_price != null ? (
                       <div className="flex flex-col items-end gap-0.5">
-                        <span>{formatPrice(src.last_price, src.last_currency)}</span>
-                        {src.last_currency !== "DKK" && fxData?.rates[src.last_currency] && (
+                        <span>{formatPrice(src.last_price)}</span>
+                        {src.last_currency !== "DKK" && src.last_price_raw != null && (
                           <span className="text-xs font-normal text-muted-foreground">
-                            ≈ {formatPrice(src.last_price * fxData.rates[src.last_currency], "DKK")}
+                            {formatPrice(src.last_price_raw, src.last_currency)}
+                            {fxData?.rates[src.last_currency] && (
+                              <> &middot; 1 {src.last_currency} = {fxData.rates[src.last_currency].toFixed(2)} kr</>
+                            )}
                           </span>
                         )}
                       </div>
@@ -234,12 +237,22 @@ export function PriceComparisonTable({ sources, bestSourceId, watchId }: Props) 
           </tbody>
         </table>
       </div>
-      {fxData && (
-        <p className="text-xs text-muted-foreground px-5 py-2 border-t border-border">
-          Kurser fra Danmarks Nationalbank
-          {fxData.rates["EUR"] && <> · 1 EUR = {fxData.rates["EUR"].toFixed(2)} kr</>}
-        </p>
-      )}
+      {fxData && (() => {
+        const foreignCurrencies = [...new Set(
+          active
+            .filter((s) => s.last_currency !== "DKK" && s.last_price_raw != null)
+            .map((s) => s.last_currency)
+        )];
+        if (foreignCurrencies.length === 0) return null;
+        return (
+          <p className="text-xs text-muted-foreground px-5 py-2 border-t border-border">
+            Kurser fra Danmarks Nationalbank
+            {foreignCurrencies.map((c) =>
+              fxData.rates[c] ? ` · 1 ${c} = ${fxData.rates[c].toFixed(2)} kr` : ""
+            ).join("")}
+          </p>
+        );
+      })()}
     </div>
   );
 }

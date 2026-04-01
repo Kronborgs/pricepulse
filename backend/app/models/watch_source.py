@@ -44,7 +44,8 @@ class WatchSource(Base, TimestampMixin):
     interval_override_min: Mapped[int | None] = mapped_column(Integer)       # None = brug watch default
     last_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    last_price: Mapped[float | None] = mapped_column(Numeric(10, 2))
+    last_price: Mapped[float | None] = mapped_column(Numeric(10, 2))         # altid i DKK
+    last_price_raw: Mapped[float | None] = mapped_column(Numeric(10, 4))     # pris i original valuta (før konvertering)
     last_currency: Mapped[str] = mapped_column(String(3), default="DKK", nullable=False)
     currency_hint: Mapped[str | None] = mapped_column(String(3), nullable=True)  # Brugerdefineret valuta-override
     last_stock_status: Mapped[str | None] = mapped_column(String(100))

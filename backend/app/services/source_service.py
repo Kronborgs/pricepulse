@@ -265,7 +265,9 @@ class SourceService:
     async def _process_success(
         self, source: WatchSource, parse_result, diagnostic: dict | None, now: datetime
     ) -> None:
-        new_price = float(parse_result.price) if parse_result.price is not None else None
+        from app.services.exchange_rate_service import exchange_rate_service
+
+        raw_price = float(parse_result.price) if parse_result.price is not None else None
         new_stock = parse_result.stock_status
         old_price = float(source.last_price) if source.last_price is not None else None
         old_stock = source.last_stock_status
@@ -278,6 +280,17 @@ class SourceService:
             effective_currency = source.currency_hint
         else:
             effective_currency = detected_currency
+
+        # Konvertér til DKK for sammenligning og visning
+        if raw_price is not None and effective_currency != "DKK":
+            try:
+                rates = await exchange_rate_service.get_rates()
+                rate = rates.get(effective_currency, 1.0)
+                new_price = round(raw_price * rate, 2)
+            except Exception:
+                new_price = raw_price  # Fald tilbage til rå pris hvis konvertering fejler
+        else:
+            new_price = raw_price
 
         price_changed = old_price is not None and new_price != old_price
         stock_changed = old_stock != new_stock
@@ -334,7 +347,8 @@ class SourceService:
                 await self._dispatch_notification(source, event, new_stock)
 
         # Opdatér source
-        source.last_price = new_price
+        source.last_price = new_price          # DKK-pris (konverteret)
+        source.last_price_raw = raw_price      # Original pris i last_currency
         source.last_currency = effective_currency
         source.last_stock_status = new_stock
         source.last_diagnostic = diagnostic

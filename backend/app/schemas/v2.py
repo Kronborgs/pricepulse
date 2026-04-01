@@ -51,7 +51,8 @@ class WatchSourceRead(BaseModel):
     interval_override_min: int | None = None
     last_check_at: datetime | None = None
     next_check_at: datetime | None = None
-    last_price: float | None = None
+    last_price: float | None = None          # DKK (konverteret)
+    last_price_raw: float | None = None      # Original pris i last_currency
     last_currency: str = "DKK"
     currency_hint: str | None = None
     last_stock_status: str | None = None

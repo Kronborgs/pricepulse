@@ -193,7 +193,8 @@ export interface WatchSource {
   interval_override_min: number | null;
   last_check_at: string | null;
   next_check_at: string | null;
-  last_price: number | null;
+  last_price: number | null;           // DKK (konverteret)
+  last_price_raw: number | null;        // Original pris i last_currency
   last_currency: string;
   currency_hint: string | null;
   last_stock_status: string | null;

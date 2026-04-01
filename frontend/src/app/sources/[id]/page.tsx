@@ -175,11 +175,15 @@ export default function SourceDetailPage({
           <p className="text-xs text-muted-foreground mb-1">Aktuel pris</p>
           {source.last_price != null ? (
             <div>
-              <p className="text-lg font-semibold">{formatPrice(source.last_price, source.last_currency)}</p>
-              {source.last_currency !== "DKK" && fxData?.rates[source.last_currency] && (
+              <p className="text-lg font-semibold">{formatPrice(source.last_price)}</p>
+              {source.last_currency !== "DKK" && source.last_price_raw != null && (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  ≈ {formatPrice(source.last_price * fxData.rates[source.last_currency], "DKK")}
-                  <span className="text-xs ml-1.5 opacity-70">· 1 {source.last_currency} = {fxData.rates[source.last_currency].toFixed(2)} kr</span>
+                  {formatPrice(source.last_price_raw, source.last_currency)}
+                  {fxData?.rates[source.last_currency] && (
+                    <span className="text-xs ml-1.5 opacity-70">
+                      · 1 {source.last_currency} = {fxData.rates[source.last_currency].toFixed(2)} kr
+                    </span>
+                  )}
                 </p>
               )}
             </div>
