@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="da">
+<head><meta charset="UTF-8"><title>PricePulse Digest</title></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
+  <!-- Header -->
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
+    {% if logo_url %}
+    <img src="{{ logo_url }}" alt="PricePulse" style="height:32px;width:auto" />
+    {% else %}
+    <span style="font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
+    {% endif %}
+  </div>
+
+  <!-- Body -->
+  <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
+    <h1 style="color:#29ABE2;margin-top:0;font-size:20px">{{ period_label }} prisdigest</h1>
+    <p style="color:#6b7280;font-size:13px;margin-top:-8px">
+      Oversigt over prisændringer siden {{ since_label }}
+    </p>
+
+    {% if events %}
+    {% for ev in events %}
+    <!-- Hændelse -->
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          {% if ev.image_url %}
+          <td style="width:72px;padding-right:12px;vertical-align:top">
+            <img src="{{ ev.image_url }}" alt="{{ ev.watch_name }}"
+                 style="width:64px;height:64px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb" />
+          </td>
+          {% endif %}
+          <td style="vertical-align:top">
+            <p style="margin:0 0 4px 0;font-weight:bold;font-size:14px;color:#1a1a1a">{{ ev.watch_name }}</p>
+            {% if ev.shop %}
+            <p style="margin:0 0 6px 0;font-size:11px;color:#9ca3af">{{ ev.shop }}</p>
+            {% endif %}
+            <!-- Badge -->
+            {% if ev.change_type == "decrease" %}
+            <span style="display:inline-block;background:#dcfce7;color:#166534;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              &#8595; Prisfald
+            </span>
+            {% elif ev.change_type == "increase" %}
+            <span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              &#8593; Prisstigning
+            </span>
+            {% elif ev.change_type == "back_in_stock" %}
+            <span style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              Tilbage på lager
+            </span>
+            {% elif ev.change_type == "unavailable" %}
+            <span style="display:inline-block;background:#f3f4f6;color:#4b5563;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">
+              Utilgængelig
+            </span>
+            {% endif %}
+          </td>
+          <td style="vertical-align:middle;text-align:right;white-space:nowrap">
+            {% if ev.old_price %}
+            <p style="margin:0;font-size:12px;color:#9ca3af;text-decoration:line-through">{{ ev.old_price }} {{ ev.currency }}</p>
+            {% endif %}
+            {% if ev.new_price %}
+            <p style="margin:0;font-size:18px;font-weight:bold;color:{% if ev.change_type == 'decrease' %}#16a34a{% elif ev.change_type == 'increase' %}#dc2626{% else %}#1a1a1a{% endif %}">
+              {{ ev.new_price }} {{ ev.currency }}
+            </p>
+            {% endif %}
+          </td>
+        </tr>
+      </table>
+      {% if ev.product_url %}
+      <p style="margin:10px 0 0 0">
+        <a href="{{ ev.product_url }}"
+           style="font-size:12px;color:#29ABE2;text-decoration:none">&#8594; Gå til butikken</a>
+        &nbsp;&nbsp;
+        <a href="{{ app_url }}/watches/{{ ev.watch_id }}"
+           style="font-size:12px;color:#6b7280;text-decoration:none">Se overvågning</a>
+      </p>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#6b7280;font-size:14px">
+      Ingen prisændringer registreret i perioden.
+    </p>
+    {% endif %}
+
+    {% if total_watches %}
+    <p style="color:#9ca3af;font-size:12px;margin-top:8px">
+      Du overvåger i alt {{ total_watches }} produkt{% if total_watches != 1 %}er{% endif %}.
+    </p>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="color:#9ca3af;font-size:11px;margin:0">
+      PricePulse &mdash; automatisk prisovervågning &nbsp;|&nbsp;
+      <a href="{{ app_url }}/me/preferences" style="color:#9ca3af">Indstillinger</a>
+    </p>
+  </div>
+</body>
+</html>

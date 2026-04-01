@@ -50,13 +50,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def _register_email_job() -> None:
-    """Registrér APScheduler-job til email-udsendelse hvert 5. minut."""
+    """Registrér APScheduler-jobs til email-udsendelse."""
     try:
         from app.scheduler.jobs import scheduler
         from app.services.smtp_service import smtp_service
 
         async def _send_emails():
             await smtp_service.send_pending_emails()
+
+        async def _send_digests():
+            await smtp_service.send_due_digests()
 
         # Undgå dubletter ved hot-reload
         if not scheduler.get_job("send_pending_emails"):
@@ -65,6 +68,14 @@ def _register_email_job() -> None:
                 trigger="interval",
                 minutes=5,
                 id="send_pending_emails",
+                replace_existing=True,
+            )
+        if not scheduler.get_job("send_digests"):
+            scheduler.add_job(
+                _send_digests,
+                trigger="interval",
+                minutes=30,
+                id="send_digests",
                 replace_existing=True,
             )
     except Exception as exc:

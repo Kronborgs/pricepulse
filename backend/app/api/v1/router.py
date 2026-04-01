@@ -7,6 +7,7 @@ from app.api.v2.admin_data import router as admin_data_router
 from app.api.v2.events import router as events_router
 from app.api.v2.mail import router as mail_router
 from app.api.v2.backup import router as backup_router
+from app.api.v2.notification_rules import router as notification_rules_router
 
 api_router = APIRouter()
 
@@ -31,4 +32,5 @@ api_router.include_router(events_router, prefix="", tags=["sse"])
 api_router.include_router(mail_router, prefix="", tags=["mail"])
 api_router.include_router(admin_data_router, prefix="", tags=["admin-data"])
 api_router.include_router(backup_router, prefix="", tags=["backup"])
+api_router.include_router(notification_rules_router, prefix="", tags=["notification-rules"])
 

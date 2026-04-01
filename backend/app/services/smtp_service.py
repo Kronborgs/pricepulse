@@ -91,6 +91,24 @@ def decrypt_password(enc: str) -> str:
     return _get_fernet().decrypt(enc.encode()).decode()
 
 
+def _is_digest_due(pref: Any, now: datetime) -> bool:
+    """Returnér True hvis digest-e-mailen er forfalden for denne præference."""
+    if not pref.last_digest_sent_at:
+        return True
+    from datetime import timedelta
+    delta = now - pref.last_digest_sent_at
+    freq = pref.digest_frequency
+    if freq == "hourly":
+        return delta.total_seconds() >= 3600
+    if freq == "daily":
+        return delta.total_seconds() >= 86400
+    if freq == "weekly":
+        return delta.days >= 7
+    if freq == "monthly":
+        return delta.days >= 28
+    return False
+
+
 def _render_template(name: str, context: dict) -> str:
     """Render Jinja2-template. Returnerer fallback-tekst hvis template ikke findes."""
     try:
@@ -315,6 +333,137 @@ class SMTPService:
                         error=err,
                     )
                 await db.commit()
+
+    async def send_due_digests(self) -> None:
+        """
+        Kør af APScheduler hvert 30. minut.
+        Find notification_rules med rule_type='digest' der er forfaldne og send digest.
+        """
+        from datetime import timedelta
+        from app.database import AsyncSessionLocal
+        from app.models.notification_rule import NotificationRule
+        from app.models.product_watch import ProductWatch
+        from app.models.source_price_event import SourcePriceEvent
+        from app.models.watch_source import WatchSource
+        from app.models.product import Product
+        from app.models.user import User
+
+        async with AsyncSessionLocal() as db:
+            config = await self._get_active_config(db)
+            if not config:
+                return
+
+            now = datetime.now(timezone.utc)
+            rules_result = await db.execute(
+                select(NotificationRule)
+                .where(
+                    NotificationRule.rule_type == "digest",
+                    NotificationRule.enabled == True,
+                )
+            )
+            rules = rules_result.scalars().all()
+
+            for rule in rules:
+                if not _is_digest_due(rule, now):
+                    continue
+
+                user = await db.scalar(select(User).where(User.id == rule.user_id))
+                if not user or not user.email:
+                    continue
+
+                freq = rule.digest_frequency or "daily"
+                since = rule.last_digest_sent_at or (now - timedelta(hours=24))
+
+                # Find alle watches for denne bruger
+                watches_result = await db.execute(
+                    select(ProductWatch).where(
+                        ProductWatch.owner_id == rule.user_id,
+                        ProductWatch.status.notin_(["archived"]),
+                    )
+                )
+                watches = watches_result.scalars().all()
+                if not watches:
+                    continue
+
+                watch_ids = [w.id for w in watches]
+                total_watches = len(watches)
+
+                # Hent prisbegivenheder siden sidst
+                events_result = await db.execute(
+                    select(SourcePriceEvent, WatchSource, ProductWatch, Product)
+                    .join(WatchSource, WatchSource.id == SourcePriceEvent.source_id)
+                    .join(ProductWatch, ProductWatch.id == WatchSource.watch_id)
+                    .join(Product, Product.id == ProductWatch.product_id)
+                    .where(
+                        ProductWatch.id.in_(watch_ids),
+                        SourcePriceEvent.created_at > since,
+                        SourcePriceEvent.change_type.notin_(["initial"]),
+                    )
+                    .order_by(SourcePriceEvent.created_at.desc())
+                    .limit(50)
+                )
+                rows = events_result.all()
+
+                # Byg event-liste — filtrér efter regelens produktfilter
+                seen: set = set()
+                template_events = []
+                for ev, source, watch, product in rows:
+                    key = (source.id, ev.change_type)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
+                    # Produktfilter
+                    filter_mode = rule.filter_mode or "all"
+                    if filter_mode == "tags":
+                        rule_tags = set(rule.filter_tags or [])
+                        product_tags = set(product.tags or [])
+                        if not (rule_tags & product_tags):
+                            continue
+                    elif filter_mode == "products":
+                        rule_products = {str(p) for p in (rule.filter_product_ids or [])}
+                        if str(product.id) not in rule_products:
+                            continue
+
+                    old_p = float(ev.old_price) if ev.old_price else None
+                    new_p = float(ev.new_price) if ev.new_price else None
+                    template_events.append({
+                        "watch_name": watch.name or product.name,
+                        "shop": source.shop,
+                        "change_type": ev.change_type,
+                        "old_price": f"{old_p:,.0f}".replace(",", ".") if old_p else None,
+                        "new_price": f"{new_p:,.0f}".replace(",", ".") if new_p else None,
+                        "currency": source.last_currency or "DKK",
+                        "image_url": product.image_url,
+                        "product_url": source.url,
+                        "watch_id": str(watch.id),
+                    })
+
+                freq_labels = {
+                    "hourly": "Timevis",
+                    "daily": "Daglig",
+                    "weekly": "Ugentlig",
+                    "monthly": "Månedlig",
+                }
+                period_label = freq_labels.get(freq, "Periodisk")
+                rule_name = rule.name or period_label
+                since_fmt = since.strftime("%d/%m/%Y %H:%M")
+
+                body = _render_template("digest.html", {
+                    "events": template_events,
+                    "period_label": rule_name,
+                    "since_label": since_fmt,
+                    "total_watches": total_watches,
+                })
+
+                await self._enqueue(
+                    db, rule.user_id, user.email, "digest",
+                    f"{rule_name} digest — PricePulse", body,
+                )
+
+                rule.last_digest_sent_at = now
+                await db.commit()
+                logger.info("digest_koelagt", rule_id=str(rule.id), user_id=str(rule.user_id), events=len(template_events))
 
 
 smtp_service = SMTPService()

@@ -407,7 +407,29 @@ export interface EmailPreferences {
   digest_enabled: boolean;
   digest_frequency: "hourly" | "daily" | "weekly" | "monthly";
   digest_day_of_week: number;
+  notify_filter_mode: "all" | "tags" | "products";
+  notify_tags: string[] | null;
+  notify_product_ids: string[] | null;
 }
+
+// ─── Notification Rules ───────────────────────────────────────────────────────
+export interface NotificationRule {
+  id: string;
+  name: string | null;
+  enabled: boolean;
+  rule_type: "instant" | "digest";
+  notify_price_drop: boolean;
+  notify_back_in_stock: boolean;
+  notify_on_change: boolean;
+  notify_new_error: boolean;
+  filter_mode: "all" | "tags" | "products";
+  filter_tags: string[] | null;
+  filter_product_ids: string[] | null;
+  digest_frequency: "hourly" | "daily" | "weekly" | "monthly" | null;
+  digest_day_of_week: number | null;
+}
+
+export type NotificationRuleWrite = Omit<NotificationRule, "id">;
 
 // ─── SMTP Settings ────────────────────────────────────────────────────────────
 export interface SMTPSettings {

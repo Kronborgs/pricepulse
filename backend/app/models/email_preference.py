@@ -5,6 +5,7 @@ from datetime import datetime, time
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Time
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -44,6 +45,18 @@ class EmailPreference(Base, TimestampMixin):
     digest_day_of_week: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     digest_send_time: Mapped[time | None] = mapped_column(Time)
     last_digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Notifikationsfilter
+    # notify_filter_mode: 'all' | 'tags' | 'products'
+    notify_filter_mode: Mapped[str] = mapped_column(
+        String(20), default="all", nullable=False, server_default="all"
+    )
+    notify_tags: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String(100)), nullable=True
+    )
+    notify_product_ids: Mapped[list[uuid.UUID] | None] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), nullable=True
+    )
 
     # Relations
     user: Mapped["User"] = relationship(back_populates="email_preference")

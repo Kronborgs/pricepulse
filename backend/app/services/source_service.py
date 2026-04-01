@@ -320,6 +320,10 @@ class SourceService:
                     event_data={"price": new_price, "stock": new_stock},
                 ))
 
+            # Kø øjeblikkelig notifikation (kun hvis ikke initial)
+            if not is_initial:
+                await self._dispatch_notification(source, event, new_stock)
+
         # Opdatér source
         source.last_price = new_price
         source.last_stock_status = new_stock
@@ -385,6 +389,111 @@ class SourceService:
         self.db.add(check)
 
     # ── Aggregering ───────────────────────────────────────────────────────────
+
+    async def _dispatch_notification(
+        self, source: WatchSource, event: SourcePriceEvent, new_stock: str | None
+    ) -> None:
+        """
+        Send øjeblikkelig e-mailnotifikation baseret på notification_rules (rule_type='instant').
+        Én email pr. matchende aktiv regel.
+        """
+        try:
+            from app.models.notification_rule import NotificationRule
+            from app.models.product import Product
+            from app.models.user import User
+            from app.services.smtp_service import smtp_service
+
+            watch = source.watch
+            if not watch or not watch.owner_id:
+                return
+
+            change_type = event.change_type
+            is_price_drop = change_type == "decrease"
+            is_back_in_stock = change_type == "back_in_stock"
+
+            user = await self.db.scalar(select(User).where(User.id == watch.owner_id))
+            if not user or not user.email:
+                return
+
+            # Hent alle aktive instant-regler for denne bruger
+            rules_result = await self.db.execute(
+                select(NotificationRule).where(
+                    NotificationRule.user_id == watch.owner_id,
+                    NotificationRule.rule_type == "instant",
+                    NotificationRule.enabled == True,
+                )
+            )
+            instant_rules = rules_result.scalars().all()
+            if not instant_rules:
+                return
+
+            # Hent produkt én gang
+            product = await self.db.scalar(
+                select(Product).where(Product.id == watch.product_id)
+            )
+
+            in_stock = bool(
+                new_stock and ("lager" in new_stock.lower() or "stock" in new_stock.lower())
+            )
+            watch_name = watch.name or (product.name if product else f"Produkt ({str(watch.product_id)[:8]})")
+            image_url = product.image_url if product else None
+
+            notified = False
+            for rule in instant_rules:
+                # Kontrollér om hændelsestypen matcher regelens indstillinger
+                wants = False
+                if is_price_drop and watch.notify_on_price_drop and rule.notify_price_drop:
+                    if watch.price_threshold and event.new_price:
+                        if float(event.new_price) <= float(watch.price_threshold):
+                            wants = True
+                    else:
+                        wants = True
+                elif is_back_in_stock and watch.notify_on_back_in_stock and rule.notify_back_in_stock:
+                    wants = True
+                elif rule.notify_on_change and change_type in ("increase", "unavailable", "decrease", "back_in_stock"):
+                    wants = True
+
+                if not wants:
+                    continue
+
+                # Kontrollér regelens produktfilter
+                filter_mode = rule.filter_mode or "all"
+                if filter_mode == "tags":
+                    rule_tags = set(rule.filter_tags or [])
+                    product_tags = set(product.tags or []) if product else set()
+                    if not (rule_tags & product_tags):
+                        continue
+                elif filter_mode == "products":
+                    rule_products = {str(p) for p in (rule.filter_product_ids or [])}
+                    if not product or str(product.id) not in rule_products:
+                        continue
+
+                await smtp_service.queue_price_drop(
+                    db=self.db,
+                    user_id=user.id,
+                    to_email=user.email,
+                    watch_name=watch_name,
+                    old_price=float(event.old_price) if event.old_price else 0.0,
+                    new_price=float(event.new_price) if event.new_price else 0.0,
+                    currency=source.last_currency or "DKK",
+                    watch_id=watch.id,
+                    source_id=source.id,
+                    image_url=image_url,
+                    product_url=source.url,
+                    in_stock=in_stock,
+                )
+                notified = True
+
+            if notified:
+                logger.info(
+                    "notifikation_koelagt",
+                    user_id=str(user.id),
+                    watch_id=str(watch.id),
+                    change_type=change_type,
+                )
+        except Exception as exc:
+            # Blødlander fejl — en notifikation må ikke crashe scrape-pipelinen
+            logger.error("notifikation_fejl", error=repr(exc))
 
     async def _try_ollama_retry(
         self,

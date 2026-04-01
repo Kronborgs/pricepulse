@@ -56,6 +56,9 @@ class EmailPrefRead(BaseModel):
     digest_enabled: bool
     digest_frequency: str
     digest_day_of_week: int
+    notify_filter_mode: str = "all"
+    notify_tags: list[str] | None = None
+    notify_product_ids: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -68,6 +71,9 @@ class EmailPrefWrite(BaseModel):
     digest_enabled: bool | None = None
     digest_frequency: str | None = None
     digest_day_of_week: int | None = None
+    notify_filter_mode: str | None = None
+    notify_tags: list[str] | None = None
+    notify_product_ids: list[str] | None = None
 
 
 # ── SMTP Settings (admin only) ────────────────────────────────────────────────
@@ -171,8 +177,15 @@ async def get_email_preferences(
             digest_enabled=False,
             digest_frequency="weekly",
             digest_day_of_week=0,
+            notify_filter_mode="all",
+            notify_tags=None,
+            notify_product_ids=None,
         ).model_dump()
-    return EmailPrefRead.model_validate(pref).model_dump()
+    result = EmailPrefRead.model_validate(pref).model_dump()
+    # Serialize UUIDs as strings for JSON transport
+    if result.get("notify_product_ids"):
+        result["notify_product_ids"] = [str(p) for p in result["notify_product_ids"]]
+    return result
 
 
 @router.patch("/me/email-preferences")
@@ -190,6 +203,9 @@ async def update_email_preferences(
         db.add(pref)
 
     data = body.model_dump(exclude_unset=True)
+    # Convert string UUIDs to UUID objects for the ARRAY(UUID) column
+    if "notify_product_ids" in data and data["notify_product_ids"] is not None:
+        data["notify_product_ids"] = [uuid.UUID(str(p)) for p in data["notify_product_ids"]]
     for k, v in data.items():
         setattr(pref, k, v)
 

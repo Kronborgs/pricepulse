@@ -30,6 +30,8 @@ import {
   WatchDetectResult,
   WatchList,
   WatchSource,
+  NotificationRule,
+  NotificationRuleWrite,
 } from "@/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -406,6 +408,22 @@ export const api = {
       }),
     sendTest: () =>
       apiFetch<{ ok: boolean }>("/me/email-preferences/test", { method: "POST" }),
+  },
+
+  notificationRules: {
+    list: () => apiFetch<NotificationRule[]>("/me/notification-rules"),
+    create: (data: NotificationRuleWrite) =>
+      apiFetch<NotificationRule>("/me/notification-rules", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<NotificationRuleWrite>) =>
+      apiFetch<NotificationRule>(`/me/notification-rules/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      apiFetch<void>(`/me/notification-rules/${id}`, { method: "DELETE" }),
   },
 
   // ─── Admin: Data management ───────────────────────────────────────────────
