@@ -265,7 +265,7 @@ class SourceService:
     async def _process_success(
         self, source: WatchSource, parse_result, diagnostic: dict | None, now: datetime
     ) -> None:
-        from app.services.exchange_rate_service import exchange_rate_service
+        from app.services.exchange_rate_service import get_dkk_rates
 
         raw_price = float(parse_result.price) if parse_result.price is not None else None
         new_stock = parse_result.stock_status
@@ -284,7 +284,7 @@ class SourceService:
         # Konvertér til DKK for sammenligning og visning
         if raw_price is not None and effective_currency != "DKK":
             try:
-                rates = await exchange_rate_service.get_rates()
+                rates = await get_dkk_rates()
                 rate = rates.get(effective_currency, 1.0)
                 new_price = round(raw_price * rate, 2)
             except Exception:
