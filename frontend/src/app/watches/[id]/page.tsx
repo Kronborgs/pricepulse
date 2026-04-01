@@ -32,15 +32,18 @@ export default function WatchDetailPage({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
+  const [isPolling, setIsPolling] = useState(false);
+
   const { data: watch, isLoading } = useQuery({
     queryKey: ["watch", id],
     queryFn: () => api.watches.get(id),
-    refetchInterval: 30_000,
+    refetchInterval: isPolling ? 3_000 : 30_000,
   });
 
   const { data: events } = useQuery({
     queryKey: ["watch-events", id],
     queryFn: () => api.history.events(id, 50),
+    refetchInterval: isPolling ? 3_000 : false,
   });
 
   const checkMutation = useMutation({
@@ -48,6 +51,9 @@ export default function WatchDetailPage({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watch", id] });
       queryClient.invalidateQueries({ queryKey: ["watch-events", id] });
+      // Poll hurtigt i 30 sek. så resultatet vises med det samme
+      setIsPolling(true);
+      setTimeout(() => setIsPolling(false), 30_000);
     },
   });
 

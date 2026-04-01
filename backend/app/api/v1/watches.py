@@ -93,7 +93,7 @@ async def get_watch(
     stmt = (
         select(Watch)
         .where(Watch.id == watch_id)
-        .options(selectinload(Watch.shop))
+        .options(selectinload(Watch.shop), selectinload(Watch.owner))
     )
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
@@ -115,8 +115,8 @@ async def create_watch(
     # Kør første scrape i baggrunden
     background_tasks.add_task(service.trigger_scrape, watch.id)
 
-    # Genindlæs med shop eager-loaded for at undgå MissingGreenlet i response
-    stmt = select(Watch).where(Watch.id == watch.id).options(selectinload(Watch.shop))
+    # Genindlæs med shop+owner eager-loaded for at undgå MissingGreenlet i response
+    stmt = select(Watch).where(Watch.id == watch.id).options(selectinload(Watch.shop), selectinload(Watch.owner))
     watch = (await db.execute(stmt)).scalar_one()
 
     logger.info("Watch oprettet", watch_id=str(watch.id), url=watch.url)
@@ -133,7 +133,7 @@ async def update_watch(
     stmt = (
         select(Watch)
         .where(Watch.id == watch_id)
-        .options(selectinload(Watch.shop))
+        .options(selectinload(Watch.shop), selectinload(Watch.owner))
     )
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
@@ -144,7 +144,8 @@ async def update_watch(
         setattr(watch, field, value)
 
     await db.commit()
-    await db.refresh(watch)
+    # Genindlæs med relationer efter commit
+    watch = (await db.execute(stmt)).scalar_one()
     return watch
 
 
@@ -174,7 +175,7 @@ async def trigger_check(
     stmt = (
         select(Watch)
         .where(Watch.id == watch_id)
-        .options(selectinload(Watch.shop))
+        .options(selectinload(Watch.shop), selectinload(Watch.owner))
     )
     watch = (await db.execute(stmt)).scalar_one_or_none()
     if not watch:
