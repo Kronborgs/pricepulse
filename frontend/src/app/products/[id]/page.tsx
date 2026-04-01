@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { StoreComparison } from "@/components/products/store-comparison";
 import { MultiPriceChart } from "@/components/products/multi-price-chart";
+import { MultiPriceChartMUI } from "@/components/products/multi-price-chart-mui";
 import { ReportIssueDialog } from "@/components/watches/report-issue-dialog";
 import { Product, Watch } from "@/types";
 import { formatPrice } from "@/lib/utils";
@@ -34,6 +35,17 @@ export default function ProductDetailPage({
   const [showAddStore, setShowAddStore] = useState(false);
   const [addUrl, setAddUrl] = useState("");
   const [addError, setAddError] = useState("");
+
+  const chartStyleKey = `chart_ui_${id}`;
+  const [chartStyle, setChartStyleState] = useState<"recharts" | "mui">(() => {
+    if (typeof window === "undefined") return "recharts";
+    try { return (localStorage.getItem(`chart_ui_${id}`) as "recharts" | "mui") ?? "recharts"; }
+    catch { return "recharts"; }
+  });
+  const setChartStyle = (s: "recharts" | "mui") => {
+    setChartStyleState(s);
+    try { localStorage.setItem(chartStyleKey, s); } catch { /* ignore */ }
+  };
 
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSearch, setMergeSearch] = useState("");
@@ -346,8 +358,36 @@ export default function ProductDetailPage({
       {/* Combined price chart */}
       {watches.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="text-base font-semibold mb-4">Prishistorik</h2>
-          <MultiPriceChart watches={watches} productId={id} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold">Prishistorik</h2>
+            <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5 gap-0.5">
+              <button
+                onClick={() => setChartStyle("recharts")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                  chartStyle === "recharts"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Custom
+              </button>
+              <button
+                onClick={() => setChartStyle("mui")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                  chartStyle === "mui"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                MUI X
+              </button>
+            </div>
+          </div>
+          {chartStyle === "mui" ? (
+            <MultiPriceChartMUI watches={watches} productId={id} />
+          ) : (
+            <MultiPriceChart watches={watches} productId={id} />
+          )}
         </div>
       )}
 
