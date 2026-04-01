@@ -10,6 +10,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AdminUser
 from app.config import settings
 from app.database import get_db
 from app.schemas.v2 import OllamaAnalyzeRequest, OllamaConfigPatch, OllamaNormalizeRequest, OllamaStatusResponse
@@ -36,7 +37,7 @@ async def ollama_status() -> OllamaStatusResponse:
 
 
 @router.patch("/config")
-async def update_ollama_config(body: OllamaConfigPatch) -> OllamaStatusResponse:
+async def update_ollama_config(body: OllamaConfigPatch, _admin: AdminUser = None) -> OllamaStatusResponse:
     """Opdatér Ollama-config i runtime (gemmes ikke til disk — sæt env-vars for persistens)."""
     if body.enabled is not None:
         settings.ollama_enabled = body.enabled

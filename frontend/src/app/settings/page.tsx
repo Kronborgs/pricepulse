@@ -23,7 +23,7 @@ export default function SettingsPage() {
       </div>
 
       <HealthCard />
-      <OllamaSection readonly={readonly} />
+      <OllamaSection readonly={superuserReadonly} />
       <BackupSection readonly={superuserReadonly} />
       <ShopsSection readonly={superuserReadonly} />
     </div>
