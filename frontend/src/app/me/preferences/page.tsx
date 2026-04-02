@@ -312,11 +312,24 @@ interface RuleCardProps {
 
 function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deleting, saving }: RuleCardProps) {
   const [editing, setEditing] = useState(false);
+  const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
+
+  const enabled = optimisticEnabled ?? rule.enabled;
+
+  function handleToggle() {
+    setOptimisticEnabled(!enabled);
+    onToggle();
+  }
+
+  // Sync optimistic state back when server responds
+  if (optimisticEnabled !== null && optimisticEnabled === rule.enabled) {
+    setOptimisticEnabled(null);
+  }
 
   return (
     <div
       className={`rounded-lg border bg-slate-900 ${
-        rule.enabled ? "border-slate-700" : "border-slate-800 opacity-60"
+        enabled ? "border-slate-700" : "border-slate-800 opacity-60"
       }`}
     >
       {/* Header */}
@@ -364,15 +377,15 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
           {/* Toggle enabled */}
           <button
             type="button"
-            onClick={onToggle}
-            title={rule.enabled ? "Deaktivér" : "Aktivér"}
+            onClick={handleToggle}
+            title={enabled ? "Deaktivér" : "Aktivér"}
             className={`h-5 w-9 rounded-full transition-colors ${
-              rule.enabled ? "bg-[#29ABE2]" : "bg-slate-600"
+              enabled ? "bg-[#29ABE2]" : "bg-slate-600"
             } relative flex-shrink-0`}
           >
             <span
               className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                rule.enabled ? "translate-x-4" : "translate-x-0.5"
+                enabled ? "translate-x-4" : "translate-x-0.5"
               }`}
             />
           </button>
@@ -620,4 +633,4 @@ export default function PreferencesPage() {
       </div>
     </AuthGuard>
   );
-}
+}
