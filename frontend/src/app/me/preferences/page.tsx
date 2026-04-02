@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AuthGuard } from "@/components/layout/auth-guard";
@@ -314,16 +314,18 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
   const [editing, setEditing] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
 
+  // Reset optimistic state when server responds with confirmed value
+  useEffect(() => {
+    if (optimisticEnabled !== null && optimisticEnabled === rule.enabled) {
+      setOptimisticEnabled(null);
+    }
+  }, [rule.enabled, optimisticEnabled]);
+
   const enabled = optimisticEnabled ?? rule.enabled;
 
   function handleToggle() {
-    setOptimisticEnabled(!enabled);
+    setOptimisticEnabled(!rule.enabled);
     onToggle();
-  }
-
-  // Sync optimistic state back when server responds
-  if (optimisticEnabled !== null && optimisticEnabled === rule.enabled) {
-    setOptimisticEnabled(null);
   }
 
   return (
