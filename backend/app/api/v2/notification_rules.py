@@ -318,12 +318,6 @@ async def run_notification_rule_now(
                     "watch_id": str(watch.id),
                 })
 
-        if not template_events:
-            raise HTTPException(
-                status_code=422,
-                detail="no_events",
-            )
-
         body_html = _render_template("digest.html", {
             "events": template_events,
             "period_label": rule_label,
@@ -386,9 +380,11 @@ async def run_notification_rule_now(
                 body_html,
             )
         else:
-            raise HTTPException(
-                status_code=422,
-                detail="no_products",
+            # Ingen produkter med kendte priser — send plain besked
+            await smtp_service.send_email(
+                db, owner.email,
+                f"{rule_label} — PricePulse",
+                "<p style='font-family:sans-serif'>Ingen produkter matcher denne regel endnu.</p>",
             )
         logger.info("instant_sendt_manuelt", rule_id=str(rule.id), user_id=str(user.id))
 

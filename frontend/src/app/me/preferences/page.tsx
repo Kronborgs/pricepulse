@@ -378,14 +378,7 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
       setTimeout(() => setRunSent(false), 5000);
     },
     onError: (err: Error) => {
-      const code = err.message;
-      const friendly =
-        code === "no_events"
-          ? "Ingen prisændringer i perioden — mail ikke sendt"
-          : code === "no_products"
-          ? "Ingen produkter matcher denne regel endnu"
-          : "Fejl ved afsendelse";
-      setRunError(friendly);
+      setRunError(err.message ?? "Fejl ved afsendelse");
       setTimeout(() => setRunError(null), 6000);
     },
   });
