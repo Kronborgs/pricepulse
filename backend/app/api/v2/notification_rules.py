@@ -77,6 +77,43 @@ class NotificationRuleWrite(BaseModel):
         return v
 
 
+class NotificationRulePatch(BaseModel):
+    """Partial update — alle felter er valgfrie (bruges til PATCH)."""
+    name: str | None = None
+    enabled: bool | None = None
+    rule_type: str | None = None
+    notify_price_drop: bool | None = None
+    notify_back_in_stock: bool | None = None
+    notify_on_change: bool | None = None
+    notify_new_error: bool | None = None
+    filter_mode: str | None = None
+    filter_tags: list[str] | None = None
+    filter_product_ids: list[str] | None = None
+    digest_frequency: str | None = None
+    digest_day_of_week: int | None = None
+
+    @field_validator("rule_type", mode="before")
+    @classmethod
+    def validate_rule_type(cls, v: str | None) -> str | None:
+        if v is not None and v not in _VALID_RULE_TYPES:
+            raise ValueError(f"rule_type skal være en af: {_VALID_RULE_TYPES}")
+        return v
+
+    @field_validator("filter_mode", mode="before")
+    @classmethod
+    def validate_filter_mode(cls, v: str | None) -> str | None:
+        if v is not None and v not in _VALID_FILTER_MODES:
+            raise ValueError(f"filter_mode skal være en af: {_VALID_FILTER_MODES}")
+        return v
+
+    @field_validator("digest_frequency", mode="before")
+    @classmethod
+    def validate_digest_frequency(cls, v: str | None) -> str | None:
+        if v is not None and v not in _VALID_FREQUENCIES:
+            raise ValueError(f"digest_frequency skal være en af: {_VALID_FREQUENCIES}")
+        return v
+
+
 def _serialize_rule(rule: Any) -> dict:
     return {
         "id": str(rule.id),
@@ -144,7 +181,7 @@ async def create_notification_rule(
 @router.patch("/me/notification-rules/{rule_id}")
 async def update_notification_rule(
     rule_id: uuid.UUID,
-    body: NotificationRuleWrite,
+    body: NotificationRulePatch,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = None,
 ) -> dict:
