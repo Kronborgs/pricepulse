@@ -433,7 +433,7 @@ export interface NotificationRule {
   filter_product_ids: string[] | null;
   digest_frequency: "hourly" | "daily" | "weekly" | "monthly" | null;
   digest_day_of_week: number | null;
-  last_digest_sent_at: string | null;
+  last_digest_sent_at?: string | null;
 }
 
 export type NotificationRuleWrite = Omit<NotificationRule, "id">;
