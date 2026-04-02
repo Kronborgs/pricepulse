@@ -105,7 +105,8 @@ export function WatchTable({ watches, isLoading, showOwner }: Props) {
 
   return (
     <div className="rounded-lg border border-border overflow-hidden">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="border-b border-border bg-muted/30">
             <th className="text-left px-4 py-3 font-medium text-muted-foreground">{t("watch_table_col_product")}</th>
@@ -200,6 +201,7 @@ export function WatchTable({ watches, isLoading, showOwner }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
 
       {deleteTarget && (
         <ConfirmDeleteDialog

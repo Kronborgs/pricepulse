@@ -180,7 +180,8 @@ export default function UsersPage() {
           </div>
         ) : (
           <div className="rounded-lg border border-slate-800 overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-slate-900 border-b border-slate-800">
                 <tr>
                   <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">User</th>
@@ -296,6 +297,7 @@ export default function UsersPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

@@ -21,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useI18n, type Locale } from "@/lib/i18n";
 
-export function Sidebar() {
+export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -71,7 +71,10 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:flex w-60 flex-shrink-0 flex-col bg-slate-950 border-r border-slate-800">
+    <aside className={cn(
+      "flex w-60 flex-shrink-0 flex-col bg-slate-950 border-r border-slate-800",
+      onClose ? "h-full" : "hidden md:flex"
+    )}>
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-4">
         <Image
@@ -101,6 +104,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                 active
@@ -131,6 +135,7 @@ export function Sidebar() {
                 <Link
                   key={href}
                   href={href}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
                     active
@@ -155,6 +160,7 @@ export function Sidebar() {
         {user && (
           <Link
             href="/me/preferences"
+            onClick={onClose}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
               pathname === "/me/preferences"
