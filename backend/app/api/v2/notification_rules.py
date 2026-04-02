@@ -229,6 +229,7 @@ async def run_notification_rule_now(
     Opdaterer last_digest_sent_at og returnerer den opdaterede regel.
     """
     from datetime import datetime, timezone, timedelta
+    from zoneinfo import ZoneInfo
     from app.models.notification_rule import NotificationRule
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
@@ -236,7 +237,8 @@ async def run_notification_rule_now(
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
     from app.services.smtp_service import smtp_service, _render_template
-    from sqlalchemy import func
+    from sqlalchemy import func, nullslast
+    _TZ = ZoneInfo("Europe/Copenhagen")
 
     rule = await db.scalar(
         select(NotificationRule).where(
@@ -328,9 +330,8 @@ async def run_notification_rule_now(
                 ProductWatch.owner_id == user.id,
                 ProductWatch.status.notin_(["archived"]),
                 WatchSource.status.notin_(["archived"]),
-                WatchSource.last_price.isnot(None),
             )
-            .order_by(ProductWatch.id, WatchSource.last_price.asc())
+            .order_by(ProductWatch.id, nullslast(WatchSource.last_price.asc()))
         )
         seen_products: dict = {}
         for pw2, src2, prod2 in cp_result.all():
@@ -342,29 +343,35 @@ async def run_notification_rule_now(
                     "watch_id": str(pw2.id),
                     "shops": [],
                 }
+            price_raw = float(src2.last_price) if src2.last_price is not None else None
+            lca = src2.last_check_at
             seen_products[pid]["shops"].append({
                 "shop": src2.shop,
-                "price": f"{float(src2.last_price):,.0f}".replace(",", "."),
-                "price_raw": float(src2.last_price),
+                "price": f"{price_raw:,.0f}".replace(",", ".") if price_raw is not None else "—",
+                "price_raw": price_raw,
                 "currency": src2.last_currency or "DKK",
                 "url": src2.url,
                 "stock_status": src2.last_stock_status,
-                "last_check_at": src2.last_check_at.isoformat() if src2.last_check_at else None,
+                "last_check_at": lca.astimezone(_TZ).isoformat() if lca else None,
             })
         # Markér billigste shop per produkt
         for prod_data in seen_products.values():
             shops = prod_data["shops"]
-            if shops:
-                min_price = min(s["price_raw"] for s in shops)
+            priced = [s for s in shops if s["price_raw"] is not None]
+            if priced:
+                min_price = min(s["price_raw"] for s in priced)
                 for s in shops:
-                    s["cheapest"] = (s["price_raw"] == min_price)
+                    s["cheapest"] = (s["price_raw"] is not None and s["price_raw"] == min_price)
+            else:
+                for s in shops:
+                    s["cheapest"] = False
         products_with_prices = list(seen_products.values())
 
         body_html = _render_template("digest.html", {
             "events": template_events,
             "products_with_prices": products_with_prices,
             "period_label": rule_label,
-            "since_label": since.strftime("%d/%m/%Y %H:%M"),
+            "since_label": since.astimezone(_TZ).strftime("%d/%m/%Y %H:%M"),
             "total_watches": len(watches),
             "display_name": owner.display_name or owner.email.split("@")[0],
         })

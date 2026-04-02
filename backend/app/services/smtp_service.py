@@ -25,14 +25,17 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import nullslast, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 
 logger = structlog.get_logger(__name__)
+
+_TZ = ZoneInfo("Europe/Copenhagen")
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "email"
 _MAX_ATTEMPTS = 3
@@ -448,7 +451,7 @@ class SMTPService:
                 }
                 period_label = freq_labels.get(freq, "Periodisk")
                 rule_name = rule.name or period_label
-                since_fmt = since.strftime("%d/%m/%Y %H:%M")
+                since_fmt = since.astimezone(_TZ).strftime("%d/%m/%Y %H:%M")
 
                 # ── Aktuelle priser fra alle shops (altid med i digest) ─────
                 cp_result = await db.execute(
@@ -459,9 +462,8 @@ class SMTPService:
                         ProductWatch.owner_id == rule.user_id,
                         ProductWatch.status.notin_(["archived"]),
                         WatchSource.status.notin_(["archived"]),
-                        WatchSource.last_price.isnot(None),
                     )
-                    .order_by(ProductWatch.id, WatchSource.last_price.asc())
+                    .order_by(ProductWatch.id, nullslast(WatchSource.last_price.asc()))
                 )
                 seen_products: dict = {}
                 for pw2, src2, prod2 in cp_result.all():
@@ -473,22 +475,28 @@ class SMTPService:
                             "watch_id": str(pw2.id),
                             "shops": [],
                         }
+                    price_raw = float(src2.last_price) if src2.last_price is not None else None
+                    lca = src2.last_check_at
                     seen_products[pid]["shops"].append({
                         "shop": src2.shop,
-                        "price": f"{float(src2.last_price):,.0f}".replace(",", "."),
-                        "price_raw": float(src2.last_price),
+                        "price": f"{price_raw:,.0f}".replace(",", ".") if price_raw is not None else "—",
+                        "price_raw": price_raw,
                         "currency": src2.last_currency or "DKK",
                         "url": src2.url,
                         "stock_status": src2.last_stock_status,
-                        "last_check_at": src2.last_check_at.isoformat() if src2.last_check_at else None,
+                        "last_check_at": lca.astimezone(_TZ).isoformat() if lca else None,
                     })
                 # Markér billigste shop per produkt
                 for prod_data in seen_products.values():
                     shops = prod_data["shops"]
-                    if shops:
-                        min_price = min(s["price_raw"] for s in shops)
+                    priced = [s for s in shops if s["price_raw"] is not None]
+                    if priced:
+                        min_price = min(s["price_raw"] for s in priced)
                         for s in shops:
-                            s["cheapest"] = (s["price_raw"] == min_price)
+                            s["cheapest"] = (s["price_raw"] is not None and s["price_raw"] == min_price)
+                    else:
+                        for s in shops:
+                            s["cheapest"] = False
                 products_with_prices = list(seen_products.values())
 
                 body = _render_template("digest.html", {
