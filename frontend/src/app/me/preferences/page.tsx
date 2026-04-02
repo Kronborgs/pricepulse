@@ -380,14 +380,15 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
           <button
             type="button"
             onClick={handleToggle}
-            title={enabled ? "Deaktivér" : "Aktivér"}
-            className={`h-5 w-9 rounded-full transition-colors relative flex-shrink-0 ${
+            aria-label={enabled ? "Deaktivér" : "Aktivér"}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
               enabled ? "bg-[#29ABE2]" : "bg-slate-600"
             }`}
           >
             <span
-              style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }}
-              className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+              className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                enabled ? "translate-x-6" : "translate-x-1"
+              }`}
             />
           </button>
           <button
