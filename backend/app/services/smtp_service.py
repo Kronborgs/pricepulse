@@ -482,10 +482,19 @@ class SMTPService:
                     seen_products[pid]["shops"].append({
                         "shop": src2.shop,
                         "price": f"{float(src2.last_price):,.0f}".replace(",", "."),
+                        "price_raw": float(src2.last_price),
                         "currency": src2.last_currency or "DKK",
                         "url": src2.url,
                         "stock_status": src2.last_stock_status,
+                        "last_check_at": src2.last_check_at.isoformat() if src2.last_check_at else None,
                     })
+                # Markér billigste shop per produkt
+                for prod_data in seen_products.values():
+                    shops = prod_data["shops"]
+                    if shops:
+                        min_price = min(s["price_raw"] for s in shops)
+                        for s in shops:
+                            s["cheapest"] = (s["price_raw"] == min_price)
                 products_with_prices = list(seen_products.values())
 
                 body = _render_template("digest.html", {
