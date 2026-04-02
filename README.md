@@ -17,62 +17,32 @@ PricePulse monitors prices across web shops and notifies you when a price drops 
 
 ## Screenshots
 
-<!-- SCREENSHOT-GUIDE
-     All screenshots are taken in the browser with PricePulse running (dark theme).
-     Save as PNG, preferably 1400-1600px wide, in the assets/screenshots/ folder.
--->
-
 ### Dashboard
 ![Dashboard](assets/screenshots/dashboard.png)
-> **Screenshot should show:** The full dashboard page — the stats row at the top (number of watches, active, errors, price drops today), recent price changes in the middle, and optionally the error banner at the bottom.
 
-### Watches — overview
-![Watches](assets/screenshots/watches.png)
-> **Screenshot should show:** The watch list with status filters at the top (All / Active / Pending / AI / Paused / Error / Blocked), search field, and a few rows of watches with status badges and prices. The data scraper is opened via the Products page or directly at `/watches`.
-
-### Watch — detail & price chart
-![Watch detail](assets/screenshots/watch-detail.png)
-> **Screenshot should show:** A single watch opened — the price chart at the top (AreaChart with gradient and IQR y-axis), the source list below with shop logos and prices side by side, and the "Report issue" button.
-
-### Products — overview with tags
+### Products
 ![Products](assets/screenshots/products.png)
-> **Screenshot should show:** The product overview with search field, tag filter pills below the search field, a few product cards with image, best price and tag badges, and ideally the duplicate warning at the top. Note the **Data scraper** and **Add watch** buttons in the top-right corner.
 
-### Product — detail with tag editor
-![Product detail](assets/screenshots/product-detail.png)
-> **Screenshot should show:** A single product page opened — product name, the tag editor with a few tags and the input field ("Add tags…"), the multi-source price chart below, and the "Merge" button.
+### Product detail
+![Product detail](assets/screenshots/products-detail.png)
 
-### Product — multi-source price chart
-![Multi-source price chart](assets/screenshots/product-chart.png)
-> **Screenshot should show:** Zoomed in on the price chart on a product page — show AreaChart with gradient-filled curves for at least two shops, the "Cheapest now" banner and the Custom/MUI X toggle button in the top-right.
+### Data Webscraper
+![Data Webscraper](assets/screenshots/datascraper.png)
+
+### Add watch — single URL
+![Add watch](assets/screenshots/addwatch.png)
+
+### Add watch — bulk URLs
+![Add watch bulk](assets/screenshots/addwatchbulk.png)
 
 ### Notification preferences
 ![Notifications](assets/screenshots/notifications.png)
-> **Screenshot should show:** The `/me/preferences` page — Event notifications (Price drop, Back in stock, Any change, Error), Digest email with frequency and day selector, and the "Send test email" button.
 
 ### Settings — Backup
 ![Backup](assets/screenshots/backup.png)
-> **Screenshot should show:** The Settings page open on the Backup section — show the automatic backup configuration, the SMTP info note, and the backup list with one or more files.
-
-### Initial setup
-![Setup](assets/screenshots/setup.png)
-> **Screenshot should show:** The setup wizard (opens automatically on a fresh installation) — show the two tabs "New account" and "Restore backup".
 
 ### Admin — Users
 ![Users](assets/screenshots/admin-users.png)
-> **Screenshot should show:** Admin → Users — the user table with role badges (admin/superuser/user), status, session timeout and Deactivate/Delete buttons. Ideally with at least two users visible.
-
-### Admin — SMTP
-![SMTP](assets/screenshots/smtp.png)
-> **Screenshot should show:** Admin → SMTP page with the configuration form filled in. Show that the status reads "Configured".
-
-### Admin — Scraper reports
-![Reports](assets/screenshots/admin-reports.png)
-> **Screenshot should show:** Admin → Reports — show the tabs (All/New/Read/Resolved), a few report cards with status badge, username, watch link and action buttons (Mark read / Resolved / Delete).
-
-### Global SMTP warning
-![SMTP banner](assets/screenshots/smtp-banner.png)
-> **Screenshot should show:** Any page (e.g. dashboard) where the SMTP banner is shown at the top — the amber-coloured banner with "SMTP not configured" and the "Set up SMTP" button.
 
 ---
 
