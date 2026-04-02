@@ -28,7 +28,7 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 ### Watches — oversigt
 ![Watches](assets/screenshots/watches.png)
-> **Tag screenshot af:** Watch-listen med statusfiltre øverst (Alle / Aktiv / Afventer / AI / Pause / Fejl / Blokeret), søgefelt, og et par rækker watches med statusbadges og priser.
+> **Tag screenshot af:** Watch-listen med statusfiltre øverst (Alle / Aktiv / Afventer / AI / Pause / Fejl / Blokeret), søgefelt, og et par rækker watches med statusbadges og priser i DKK. Data webscraper åbnes via Produkter-siden eller direkte på `/watches`.
 
 ### Watch — detalje & prisgraf
 ![Watch detalje](assets/screenshots/watch-detail.png)
@@ -36,7 +36,7 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 
 ### Produkter — oversigt med tags
 ![Produkter](assets/screenshots/products.png)
-> **Tag screenshot af:** Produktoversigten med søgefelt, tag-filter-pills under søgefeltet, et par produktkort med billede, bedste pris og tag-badges, og gerne duplikat-advarslen øverst.
+> **Tag screenshot af:** Produktoversigten med søgefelt, tag-filter-pills under søgefeltet, et par produktkort med billede, bedste pris og tag-badges, og gerne duplikat-advarslen øverst. Bemærk knapperne **Data webscraper** og **Tilføj watch** øverst til højre på siden.
 
 ### Produkt — detalje med tag-editor
 ![Produkt detalje](assets/screenshots/product-detail.png)
@@ -81,6 +81,7 @@ PricePulse holder øje med priser på tværs af danske webshops og sender dig be
 | Område | Hvad det gør |
 |--------|-------------|
 | **Prisovervågning** | Følger en eller flere butikskilder pr. produkt og registrerer hvert prisfald og lagerændring |
+| **Valutakonvertering** | Pris gemmes automatisk i DKK via Danmarks Nationalbanks daglige valutakurser. Valuta-hint (EUR, USD, SEK osv.) sættes pr. watch/source. Råpris og kurs vises på detaljesiden — fx `115,83 kr. / €15,50 · 1 EUR = 7,47 kr` |
 | **Multi-kilde sammenligning** | Viser alle butikspriser på samme produkt side om side med interaktiv AreaChart pr. kilde (gradient-fyld, IQR y-akse, "Billigst nu"-banner) |
 | **Chart-valg** | Vælg pr. produkt mellem **Custom** (Recharts AreaChart) og **MUI X** (officiel MUI-komponent) via toggle i UI |
 | **Produktkatalog** | Samler watch-kilder under ét produkt og foreslår automatisk mulige dubletter |
@@ -299,6 +300,40 @@ git push origin v20260329v1
 ```
 
 GitHub Actions bygger og pusher automatisk til `ghcr.io/kronborgs/pricepulse-backend:latest` og `ghcr.io/kronborgs/pricepulse-frontend:latest`.
+
+---
+
+## Valutakonvertering
+
+Priser gemmes altid i **DKK** i databasen. Når en kilde er på et udenlandsk site (f.eks. Amazon .de/.com), håndteres konverteringen automatisk:
+
+1. **Auto-detect** — parseren prøver selv at aflæse valutasymbolet fra siden (€, $, £, SEK osv.)
+2. **Valuta-hint** — du kan manuelt angive valuta (EUR, USD, GBP, SEK, NOK, CHF, PLN) ved oprettelse af watch/source
+3. **Nationalbanken-kurser** — konverteringskurser hentes dagligt fra Danmarks Nationalbank og caches i 24 timer
+4. **Råpris bevares** — den originale pris i kildevalutaen gemmes i `current_price_raw` / `last_price_raw` og vises på detaljesiden:
+
+```
+115,83 kr.
+€15,50 · 1 EUR = 7,47 kr
+```
+
+> Konverteringen sker i `price_service.py` (v1 watches) og `source_service.py` (v2 sources). Eksisterende watches konverteres korrekt ved næste scrape-kørsel.
+
+---
+
+## Navigation
+
+Navigationsmenuen er organiseret således:
+
+| Menupunkt | Indhold |
+|---|---|
+| **Dashboard** | Oversigt over aktive watches, seneste prisændringer og fejl |
+| **Produkter** | Produktkatalog med alle overvågede produkter |
+| ↳ Knapper på Produkter-siden | **Data webscraper** (åbner watch-listen) og **Tilføj watch** direkte fra Produkter |
+| **Indstillinger** | Butikker, Ollama AI, Backup, SMTP (roleafhængigt) |
+| **Admin** | AI Job Log, Brugere, SMTP, Data, Rapporter (kun admin/superuser) |
+
+> Data webscraper (`/watches`) åbnes via knappen på Produkter-siden. Watch-listen viser alle overvågede URL'er med priser, status og seneste tjektidspunkt.
 
 ---
 
