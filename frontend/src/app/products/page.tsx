@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Package2, Search, Tag, Users, X } from "lucide-react";
+import { Eye, Package2, Search, Tag, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -136,13 +136,22 @@ export default function ProductsPage() {
             {total} produkter i databasen
           </p>
         </div>
-        {isPrivileged && (
-          <UserFilterDropdown
-            users={usersData?.items ?? []}
-            selected={ownerFilter}
-            onChange={(ids) => { setOwnerFilter(ids); setPage(1); }}
-          />
-        )}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/watches"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            Data webscraper
+          </Link>
+          {isPrivileged && (
+            <UserFilterDropdown
+              users={usersData?.items ?? []}
+              selected={ownerFilter}
+              onChange={(ids) => { setOwnerFilter(ids); setPage(1); }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Duplicate suggestions */}
