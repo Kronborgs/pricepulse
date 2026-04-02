@@ -254,6 +254,24 @@ const en = {
   prefs_day_saturday: "Saturday",
   prefs_day_sunday: "Sunday",
 
+  // ── Admin: Reports ────────────────────────────────────────────────────────────
+  reports_title: "Scraper Reports",
+  reports_subtitle: "User-submitted error reports for the Data Scraper",
+  reports_unread: "{n} unread",
+  reports_tab_all: "All",
+  reports_tab_new: "New",
+  reports_tab_read: "Read",
+  reports_tab_resolved: "Resolved",
+  reports_status_new: "New",
+  reports_status_read: "Read",
+  reports_status_resolved: "Resolved",
+  reports_empty: "No reports",
+  reports_mark_read: "Mark read",
+  reports_reopen: "Reopen",
+  reports_delete_tooltip: "Delete report",
+  reports_delete_confirm: "Permanently delete this report?",
+  reports_from: "from",
+
   // ── Common ────────────────────────────────────────────────────────────────────
   common_loading: "Loading…",
   common_save: "Save",

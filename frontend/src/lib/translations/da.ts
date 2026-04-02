@@ -257,6 +257,24 @@ const da: Record<TranslationKey, string> = {
   prefs_day_sunday: "Søndag",
 
   // ── Common ────────────────────────────────────────────────────────────────────
+  // ── Admin: Reports ────────────────────────────────────────────────────────────
+  reports_title: "Scraper-rapporter",
+  reports_subtitle: "Bruger-indsendte fejlrapporter for Data Webscraper",
+  reports_unread: "{n} ulæst",
+  reports_tab_all: "Alle",
+  reports_tab_new: "Nye",
+  reports_tab_read: "Læst",
+  reports_tab_resolved: "Løst",
+  reports_status_new: "Ny",
+  reports_status_read: "Læst",
+  reports_status_resolved: "Løst",
+  reports_empty: "Ingen rapporter",
+  reports_mark_read: "Markér læst",
+  reports_reopen: "Genåbn",
+  reports_delete_tooltip: "Slet rapport",
+  reports_delete_confirm: "Slet denne rapport permanent?",
+  reports_from: "fra",
+
   common_loading: "Indlæser…",
   common_save: "Gem",
   common_cancel: "Annuller",
