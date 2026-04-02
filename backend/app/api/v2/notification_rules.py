@@ -333,14 +333,7 @@ async def run_notification_rule_now(
             .order_by(ProductWatch.id, WatchSource.last_price.asc())
         )
         seen_products: dict = {}
-        filter_mode = rule.filter_mode or "all"
         for pw2, src2, prod2 in cp_result.all():
-            if filter_mode == "tags":
-                if not (set(rule.filter_tags or []) & set(prod2.tags or [])):
-                    continue
-            elif filter_mode == "products":
-                if str(prod2.id) not in {str(p) for p in (rule.filter_product_ids or [])}:
-                    continue
             pid = str(prod2.id)
             if pid not in seen_products:
                 seen_products[pid] = {
@@ -385,7 +378,7 @@ async def run_notification_rule_now(
         rule.last_digest_sent_at = now
         await db.commit()
         await db.refresh(rule)
-        logger.info("digest_sendt_manuelt", rule_id=str(rule.id), user_id=str(user.id), events=len(template_events))
+        logger.info("digest_sendt_manuelt", rule_id=str(rule.id), user_id=str(user.id), events=len(template_events), products=len(products_with_prices))
 
     else:
         # ── Kør instant for netop denne regel med et tilfældigt produkt ───────

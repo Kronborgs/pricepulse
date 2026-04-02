@@ -465,12 +465,6 @@ class SMTPService:
                 )
                 seen_products: dict = {}
                 for pw2, src2, prod2 in cp_result.all():
-                    if filter_mode == "tags":
-                        if not (set(rule.filter_tags or []) & set(prod2.tags or [])):
-                            continue
-                    elif filter_mode == "products":
-                        if str(prod2.id) not in {str(p) for p in (rule.filter_product_ids or [])}:
-                            continue
                     pid = str(prod2.id)
                     if pid not in seen_products:
                         seen_products[pid] = {
