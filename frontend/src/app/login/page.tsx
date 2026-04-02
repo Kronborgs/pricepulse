@@ -31,7 +31,11 @@ export default function LoginPage() {
     mutationFn: () => api.auth.login({ email, password }),
     onSuccess: (user) => {
       queryClient.setQueryData(["auth", "me"], user);
-      router.push("/");
+      if (user.must_change_password) {
+        router.push("/change-password");
+      } else {
+        router.push("/");
+      }
     },
     onError: (err: Error) => {
       setError(err.message.includes("401") ? "Forkert e-mail eller adgangskode" : err.message);

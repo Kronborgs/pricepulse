@@ -56,11 +56,11 @@ function ResetForm() {
           id="password"
           type="password"
           required
-          minLength={8}
+          minLength={10}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
-          placeholder="Minimum 8 tegn"
+          placeholder="Min. 10 tegn, stort bogstav, tal og specialtegn"
         />
       </div>
 
@@ -72,7 +72,7 @@ function ResetForm() {
           id="confirm"
           type="password"
           required
-          minLength={8}
+          minLength={10}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"

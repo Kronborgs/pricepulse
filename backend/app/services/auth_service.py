@@ -112,6 +112,7 @@ class AuthService:
             password_hash=hash_password(password),
             role=role,
             display_name=display_name or email.split("@")[0],
+            password_changed_at=datetime.now(timezone.utc),
         )
         self.db.add(user)
         await self.db.commit()
@@ -256,12 +257,31 @@ class AuthService:
             return False
 
         user.password_hash = hash_password(new_password)
+        user.password_changed_at = now
         token_row.revoked_at = now
         await self.db.commit()
 
         # Revoke alle refresh tokens (tving re-login)
         await self.revoke_all_refresh_tokens(user.id)
         logger.info("password_reset", user_id=str(user.id))
+        return True
+
+    async def change_password(
+        self, user: User, old_password: str, new_password: str
+    ) -> bool:
+        """
+        Skifter password for en allerede autentificeret bruger.
+        Kræver korrekt gammelt password. Returnerer False ved forkert kodeord.
+        Sætter password_changed_at og revoker alle refresh tokens.
+        """
+        if not verify_password(old_password, user.password_hash):
+            return False
+        now = datetime.now(timezone.utc)
+        user.password_hash = hash_password(new_password)
+        user.password_changed_at = now
+        await self.db.commit()
+        await self.revoke_all_refresh_tokens(user.id)
+        logger.info("password_changed", user_id=str(user.id))
         return True
 
     # ── Cleanup ───────────────────────────────────────────────────────────────

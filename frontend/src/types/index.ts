@@ -358,6 +358,7 @@ export interface User {
   email_verified: boolean;
   session_timeout_minutes: number | null;
   created_at: string;
+  must_change_password: boolean;
 }
 
 export interface UserList {

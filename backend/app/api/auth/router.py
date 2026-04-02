@@ -4,20 +4,20 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 """
 from __future__ import annotations
 
-import shutil
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Request, Response, UploadFile, status
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_optional_user
 from app.config import settings
 from app.database import get_db
+from app.limiter import limiter
 from app.models.user import User
 from app.services.auth_service import AuthService, create_access_token
 
@@ -30,10 +30,32 @@ _SAMESITE = "lax"
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+_SPECIAL_CHARS = set("!@#$%^&*()_+-=[]{}|;':,./<>?")
+_PASSWORD_EXPIRY_DAYS = 6 * 30  # ~6 måneder
+
+
+def _validate_password(v: str) -> str:
+    """Fælles password-styrkevalidering: min 10 tegn, stort bogstav, ciffer, specialtegn."""
+    if len(v) < 10:
+        raise ValueError("Kodeord skal være mindst 10 tegn")
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("Kodeord skal indeholde mindst ét stort bogstav")
+    if not re.search(r"\d", v):
+        raise ValueError("Kodeord skal indeholde mindst ét tal")
+    if not any(c in _SPECIAL_CHARS for c in v):
+        raise ValueError("Kodeord skal indeholde mindst ét specialtegn (!@#$%^&* osv.)")
+    return v
+
+
 class SetupRequest(BaseModel):
     email: str
     password: str
     display_name: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
 
 
 class LoginRequest(BaseModel):
@@ -49,6 +71,21 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
+
 
 class UserRead(BaseModel):
     id: uuid.UUID
@@ -58,6 +95,7 @@ class UserRead(BaseModel):
     is_active: bool
     email_verified: bool
     created_at: str
+    must_change_password: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -71,6 +109,13 @@ class CreateUserRequest(BaseModel):
     password: str | None = None  # Ingen password = send invitationsmail
     role: str = "superuser"
     display_name: str | None = None
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_password(v)
+        return v
 
 
 class UpdateUserRequest(BaseModel):
@@ -108,7 +153,16 @@ def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie("refresh_token", path="/")
 
 
-def _user_to_read(user: User) -> dict:
+def _password_expired(user: User) -> bool:
+    """True hvis password ikke er skiftet indenfor de seneste ~6 måneder."""
+    changed_at = getattr(user, "password_changed_at", None)
+    if changed_at is None:
+        return False
+    cutoff = datetime.now(timezone.utc) - timedelta(days=_PASSWORD_EXPIRY_DAYS)
+    return changed_at < cutoff
+
+
+def _user_to_read(user: User, force_must_change: bool = False) -> dict:
     return {
         "id": str(user.id),
         "email": user.email,
@@ -118,6 +172,7 @@ def _user_to_read(user: User) -> dict:
         "email_verified": user.email_verified,
         "session_timeout_minutes": getattr(user, "session_timeout_minutes", None),
         "created_at": user.created_at.isoformat(),
+        "must_change_password": force_must_change or _password_expired(user),
     }
 
 
@@ -170,8 +225,18 @@ async def setup_restore(
     if not file.filename or not file.filename.endswith(".json.gz"):
         raise HTTPException(status_code=400, detail="Filen skal være en .json.gz backup-fil")
 
+    # Begræns filstørrelse til 100 MB for at forhindre DoS
+    MAX_UPLOAD_BYTES = 100 * 1024 * 1024
     with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
-        shutil.copyfileobj(file.file, tmp)
+        received = 0
+        while chunk := await file.read(65536):
+            received += len(chunk)
+            if received > MAX_UPLOAD_BYTES:
+                tmp.close()
+                import os as _os
+                _os.unlink(tmp.name)
+                raise HTTPException(status_code=413, detail="Fil er for stor (max 100 MB)")
+            tmp.write(chunk)
         tmp_path = tmp.name
 
     try:
@@ -191,12 +256,14 @@ async def setup_restore(
 
 
 @router.post("/login", response_model=UserRead)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     body: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Login med email + password. Sætter httpOnly cookies ved succes."""
+    """Login med email + password. Sætter httpOnly cookies ved succes. Max 10 forsøg/minut pr. IP."""
     svc = AuthService(db)
     user = await svc.authenticate(body.email, body.password)
     if not user:
@@ -205,6 +272,31 @@ async def login(
             detail="Forkert email eller kodeord",
         )
 
+    expired = _password_expired(user)
+    access = create_access_token(user.id, user.role)
+    refresh = await svc.create_refresh_token(user.id)
+    _set_auth_cookies(response, access, refresh)
+    return _user_to_read(user, force_must_change=expired)
+
+
+@router.post("/change-password", response_model=UserRead)
+async def change_password(
+    body: ChangePasswordRequest,
+    response: Response,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Skifter password for den indloggede bruger.
+    Kræver korrekt gammelt password. Udsteder nye cookies efter skift.
+    """
+    svc = AuthService(db)
+    ok = await svc.change_password(user, body.old_password, body.new_password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Gammelt kodeord er forkert")
+
+    # Genindlæs brugeren (password_changed_at er nu opdateret)
+    await db.refresh(user)
     access = create_access_token(user.id, user.role)
     refresh = await svc.create_refresh_token(user.id)
     _set_auth_cookies(response, access, refresh)
@@ -257,7 +349,9 @@ async def me(user: CurrentUser) -> dict:
 
 
 @router.post("/forgot-password")
+@limiter.limit("5/minute")
 async def forgot_password(
+    request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:

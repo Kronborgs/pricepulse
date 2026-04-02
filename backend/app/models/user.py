@@ -43,6 +43,8 @@ class User(Base, TimestampMixin):
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Inaktivitetstimeout i minutter. None = ingen auto-logout. 0 = brug default.
     session_timeout_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Tidspunkt for seneste password-skift. Bruges til 6-måneders udløbspolitik.
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relations
     tokens: Mapped[list["AuthToken"]] = relationship(

@@ -25,6 +25,7 @@ from fastapi import Cookie, Depends, HTTPException, status
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.services.auth_service import decode_access_token
@@ -39,7 +40,10 @@ async def get_optional_user(
     """
     Returnerer User hvis gyldig access_token cookie, ellers None.
     Bruges på endpoints der er tilgængelige for gæster.
+    Returnerer altid None hvis guest_mode_enabled=False i konfigurationen.
     """
+    if not settings.guest_mode_enabled:
+        return None
     if not access_token:
         return None
     try:

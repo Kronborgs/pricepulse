@@ -319,6 +319,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ token, new_password }),
       }),
+    changePassword: (old_password: string, new_password: string) =>
+      apiFetch<User>("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({ old_password, new_password }),
+      }),
   },
 
   // ─── Admin: Brugere ───────────────────────────────────────────────────────
