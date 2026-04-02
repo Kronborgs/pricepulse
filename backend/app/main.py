@@ -9,14 +9,11 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
 from app.database import engine, Base
-from app.limiter import limiter
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 from app.services.ollama_queue import process_queue_forever
 
@@ -123,10 +120,6 @@ def create_app() -> FastAPI:
 
     # Sikkerhedsheadere
     app.add_middleware(_SecurityHeadersMiddleware)
-
-    # Rate limiter state + handler
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     # Routers
     app.include_router(api_router, prefix="/api/v1")

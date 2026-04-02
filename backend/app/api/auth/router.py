@@ -4,8 +4,10 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 """
 from __future__ import annotations
 
+import re
 import tempfile
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -17,12 +19,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_optional_user
 from app.config import settings
 from app.database import get_db
-from app.limiter import limiter
+from app.limiter import make_rate_limiter
 from app.models.user import User
 from app.services.auth_service import AuthService, create_access_token
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
+
+_LOGIN_RATE_LIMIT = Depends(make_rate_limiter(10, 60))
+_FORGOT_RATE_LIMIT = Depends(make_rate_limiter(5, 60))
 
 _SECURE = settings.cookie_secure
 _SAMESITE = "lax"
@@ -256,12 +261,11 @@ async def setup_restore(
 
 
 @router.post("/login", response_model=UserRead)
-@limiter.limit("10/minute")
 async def login(
-    request: Request,
     body: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    _rl: None = _LOGIN_RATE_LIMIT,
 ) -> dict:
     """Login med email + password. Sætter httpOnly cookies ved succes. Max 10 forsøg/minut pr. IP."""
     svc = AuthService(db)
@@ -349,11 +353,10 @@ async def me(user: CurrentUser) -> dict:
 
 
 @router.post("/forgot-password")
-@limiter.limit("5/minute")
 async def forgot_password(
-    request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
+    _rl: None = _FORGOT_RATE_LIMIT,
 ) -> dict:
     """
     Sender password-reset mail hvis email findes.
