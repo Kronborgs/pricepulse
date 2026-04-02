@@ -316,6 +316,7 @@ async def run_notification_rule_now(
                     "image_url": product.image_url,
                     "product_url": source.url,
                     "watch_id": str(watch.id),
+                    "stock_status": ev.new_stock or source.last_stock_status,
                 })
 
         body_html = _render_template("digest.html", {
@@ -323,6 +324,7 @@ async def run_notification_rule_now(
             "period_label": rule_label,
             "since_label": since.strftime("%d/%m/%Y %H:%M"),
             "total_watches": len(watches),
+            "display_name": owner.display_name or owner.email.split("@")[0],
         })
 
         # Send direkte — omgår køen så mailen ankommer med det samme

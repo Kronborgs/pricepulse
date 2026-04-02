@@ -437,6 +437,7 @@ class SMTPService:
                         "image_url": product.image_url,
                         "product_url": source.url,
                         "watch_id": str(watch.id),
+                        "stock_status": ev.new_stock or source.last_stock_status,
                     })
 
                 freq_labels = {
@@ -454,6 +455,7 @@ class SMTPService:
                     "period_label": rule_name,
                     "since_label": since_fmt,
                     "total_watches": total_watches,
+                    "display_name": user.display_name or user.email.split("@")[0],
                 })
 
                 await self._enqueue(
