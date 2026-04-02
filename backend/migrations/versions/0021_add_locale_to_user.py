@@ -1,14 +1,14 @@
 """add locale to user
 
-Revision ID: 0013
-Revises: 0012
-Create Date: 2025-01-01 00:00:00.000000
+Revision ID: 0021
+Revises: 0020
+Create Date: 2026-04-02 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0013"
-down_revision = "0012"
+revision = "0021"
+down_revision = "0020"
 branch_labels = None
 depends_on = None
 
