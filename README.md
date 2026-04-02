@@ -13,7 +13,7 @@
 
 ---
 
-PricePulse holder øje med priser på tværs af danske webshops og sender dig besked, når prisen falder eller en vare kommer tilbage på lager. Alt kører lokalt i din egen infrastruktur  ingen cloud, ingen abonnement.
+PricePulse holder øje med priser på tværs af webshops og sender dig besked, når prisen falder eller en vare kommer tilbage på lager. Alt kører lokalt i din egen infrastruktur  ingen cloud, ingen abonnement.
 
 ## Skærmbilleder
 
