@@ -25,7 +25,7 @@ import {
 import { NotificationRule, NotificationRuleWrite } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-// ── Digest-nedtæller ─────────────────────────────────────────────────────────
+// ── Digest-info (sidst sendt + næste forventet) ────────────────────────────────────
 
 const FREQ_MS: Record<string, number> = {
   hourly: 3600 * 1000,
@@ -34,38 +34,44 @@ const FREQ_MS: Record<string, number> = {
   monthly: 28 * 86400 * 1000,
 };
 
-function nextDigestAt(rule: NotificationRule): Date | null {
-  if (rule.rule_type !== "digest" || !rule.digest_frequency) return null;
-  const base = rule.last_digest_sent_at
-    ? new Date(rule.last_digest_sent_at)
-    : new Date(Date.now() - (FREQ_MS[rule.digest_frequency] ?? 0)); // treat as just sent = due now
-  return new Date(base.getTime() + (FREQ_MS[rule.digest_frequency] ?? 0));
+function formatLocalDT(dt: Date): string {
+  return dt.toLocaleString("da-DK", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function formatCountdown(ms: number): string {
-  if (ms <= 0) return "Snart";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  if (h > 0) return `${h}t ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-function DigestCountdown({ rule }: { rule: NotificationRule }) {
+function DigestInfo({ rule }: { rule: NotificationRule }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-  const target = nextDigestAt(rule);
-  if (!target) return null;
-  const remaining = target.getTime() - now;
+
+  const lastSent = rule.last_digest_sent_at ? new Date(rule.last_digest_sent_at) : null;
+  const freq = rule.digest_frequency;
+  const nextAt =
+    lastSent && freq && FREQ_MS[freq]
+      ? new Date(lastSent.getTime() + FREQ_MS[freq])
+      : null;
+
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-      <Clock className="h-3 w-3" />
-      {remaining <= 0 ? "Klar til afsendelse" : `Næste om ${formatCountdown(remaining)}`}
-    </span>
+    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0">
+      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+        <Clock className="h-3 w-3 shrink-0" />
+        Sidst sendt: {lastSent ? formatLocalDT(lastSent) : "aldrig"}
+      </span>
+      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+        Næste:{" "}
+        {nextAt
+          ? nextAt.getTime() > now
+            ? formatLocalDT(nextAt)
+            : "Klar til afsendelse"
+          : "Ved første kørsel"}
+      </span>
+    </div>
   );
 }
 
@@ -435,7 +441,7 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
           </p>
           {rule.rule_type === "digest" && (
             <div className="mt-0.5">
-              <DigestCountdown rule={rule} />
+              <DigestInfo rule={rule} />
             </div>
           )}
         </div>

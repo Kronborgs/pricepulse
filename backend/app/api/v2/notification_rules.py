@@ -223,8 +223,10 @@ async def test_notification_rule(
 ) -> dict:
     """
     Send en test-email for en specifik notifikationsregel.
-    Illustrerer præcis hvilken e-mailtype reglen vil sende.
+    Digest-regler → digest.html med rigtige events (seneste 30 dage, regelfilter overholdt).
+    Instant-regler → price_drop.html med et tilfældigt produkt.
     """
+    from datetime import datetime, timezone, timedelta
     from app.models.notification_rule import NotificationRule
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
@@ -250,64 +252,139 @@ async def test_notification_rule(
             detail="Ingen aktiv SMTP-konfiguration — konfigurer SMTP under Admin → SMTP",
         )
 
-    # Find et eksempel-produkt fra brugerens watches
-    row = await db.execute(
-        select(ProductWatch, WatchSource, Product)
-        .join(Product, Product.id == ProductWatch.product_id)
-        .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
-        .where(
-            ProductWatch.owner_id == user.id,
-            WatchSource.last_price.isnot(None),
-        )
-        .order_by(func.random())
-        .limit(1)
-    )
-    ex = row.first()
-
     rule_label = rule.name or ("Digest" if rule.rule_type == "digest" else "Øjeblikkelig")
+    subject = f"[TEST] {rule_label} — PricePulse"
 
-    if ex:
-        pw, source, product = ex
-        prev = await db.scalar(
-            select(SourcePriceEvent)
-            .where(
-                SourcePriceEvent.source_id == source.id,
-                SourcePriceEvent.old_price.isnot(None),
+    if rule.rule_type == "digest":
+        # ── Digest-test: hent rigtige events (30-dages vindue) ────────────────
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=30)
+
+        watches_result = await db.execute(
+            select(ProductWatch).where(
+                ProductWatch.owner_id == user.id,
+                ProductWatch.status.notin_(["archived"]),
             )
-            .order_by(SourcePriceEvent.created_at.desc())
+        )
+        watches = watches_result.scalars().all()
+        watch_ids = [w.id for w in watches]
+
+        template_events: list[dict] = []
+        if watch_ids:
+            events_result = await db.execute(
+                select(SourcePriceEvent, WatchSource, ProductWatch, Product)
+                .join(WatchSource, WatchSource.id == SourcePriceEvent.source_id)
+                .join(ProductWatch, ProductWatch.id == WatchSource.watch_id)
+                .join(Product, Product.id == ProductWatch.product_id)
+                .where(
+                    ProductWatch.id.in_(watch_ids),
+                    SourcePriceEvent.created_at > since,
+                    SourcePriceEvent.change_type.notin_(["initial"]),
+                )
+                .order_by(SourcePriceEvent.created_at.desc())
+                .limit(10)
+            )
+            rows = events_result.all()
+            seen: set = set()
+            for ev, source, watch, product in rows:
+                key = (source.id, ev.change_type)
+                if key in seen:
+                    continue
+                seen.add(key)
+                # Overhold regelens produktfilter
+                filter_mode = rule.filter_mode or "all"
+                if filter_mode == "tags":
+                    if not (set(rule.filter_tags or []) & set(product.tags or [])):
+                        continue
+                elif filter_mode == "products":
+                    rule_products = {str(p) for p in (rule.filter_product_ids or [])}
+                    if str(product.id) not in rule_products:
+                        continue
+                old_p = float(ev.old_price) if ev.old_price else None
+                new_p = float(ev.new_price) if ev.new_price else None
+                template_events.append({
+                    "watch_name": watch.name or product.name,
+                    "shop": source.shop,
+                    "change_type": ev.change_type,
+                    "old_price": f"{old_p:,.0f}".replace(",", ".") if old_p else None,
+                    "new_price": f"{new_p:,.0f}".replace(",", ".") if new_p else None,
+                    "currency": source.last_currency or "DKK",
+                    "image_url": product.image_url,
+                    "product_url": source.url,
+                    "watch_id": str(watch.id),
+                })
+
+        # Fallback-data hvis ingen events matcher inden for filter
+        if not template_events:
+            template_events = [{
+                "watch_name": "Eksempel: Gaming Headset",
+                "shop": "eksempel-butik.dk",
+                "change_type": "decrease",
+                "old_price": "999",
+                "new_price": "699",
+                "currency": "DKK",
+                "image_url": None,
+                "product_url": "#",
+                "watch_id": str(uuid.uuid4()),
+            }]
+
+        body_html = _render_template("digest.html", {
+            "events": template_events,
+            "period_label": rule_label,
+            "since_label": since.strftime("%d/%m/%Y %H:%M"),
+            "total_watches": len(watches),
+        })
+
+    else:
+        # ── Instant-test: send price_drop med et tilfældigt produkt ──────────
+        row = await db.execute(
+            select(ProductWatch, WatchSource, Product)
+            .join(Product, Product.id == ProductWatch.product_id)
+            .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+            .where(
+                ProductWatch.owner_id == user.id,
+                WatchSource.last_price.isnot(None),
+            )
+            .order_by(func.random())
             .limit(1)
         )
-        watch_name = pw.name or product.name
-        new_price = float(source.last_price)
-        old_price = float(prev.old_price) if prev else new_price * 1.15
-        currency = source.last_currency or "DKK"
-        image_url = product.image_url
-        product_url = source.url
-        watch_id = pw.id
-    else:
-        # Fallback-data
-        watch_name = "Eksempel produkt"
-        new_price = 899.0
-        old_price = 1099.0
-        currency = "DKK"
-        image_url = None
-        product_url = "#"
-        import uuid as _uuid
-        watch_id = _uuid.uuid4()
+        ex = row.first()
+        if ex:
+            pw, source, product = ex
+            prev = await db.scalar(
+                select(SourcePriceEvent)
+                .where(
+                    SourcePriceEvent.source_id == source.id,
+                    SourcePriceEvent.old_price.isnot(None),
+                )
+                .order_by(SourcePriceEvent.created_at.desc())
+                .limit(1)
+            )
+            watch_name = pw.name or product.name
+            new_price_val = float(source.last_price)
+            old_price_val = float(prev.old_price) if prev else round(new_price_val * 1.15, 0)
+            currency = source.last_currency or "DKK"
+            image_url = product.image_url
+            product_url = source.url
+            watch_id = pw.id
+        else:
+            watch_name = "Eksempel: Gaming Headset"
+            new_price_val, old_price_val = 699.0, 999.0
+            currency, image_url, product_url = "DKK", None, "#"
+            watch_id = uuid.uuid4()
 
-    body_html = _render_template("price_drop.html", {
-        "watch_name": watch_name,
-        "old_price": f"{old_price:,.0f}".replace(",", "."),
-        "new_price": f"{new_price:,.0f}".replace(",", "."),
-        "currency": currency,
-        "watch_url": f"#",
-        "product_url": product_url,
-        "image_url": image_url,
-        "in_stock": True,
-        "is_test": True,
-    })
+        body_html = _render_template("price_drop.html", {
+            "watch_name": watch_name,
+            "old_price": f"{old_price_val:,.0f}".replace(",", "."),
+            "new_price": f"{new_price_val:,.0f}".replace(",", "."),
+            "currency": currency,
+            "watch_url": "#",
+            "product_url": product_url,
+            "image_url": image_url,
+            "in_stock": True,
+            "is_test": True,
+        })
 
-    subject = f"[TEST] {rule_label} — PricePulse"
     try:
         await svc.send_email(db, user.email, subject, body_html)
     except Exception as exc:
