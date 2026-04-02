@@ -37,6 +37,7 @@ class NotificationRuleRead(BaseModel):
     filter_product_ids: list[str] | None
     digest_frequency: str | None
     digest_day_of_week: int | None
+    last_digest_sent_at: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -129,6 +130,7 @@ def _serialize_rule(rule: Any) -> dict:
         "filter_product_ids": [str(p) for p in rule.filter_product_ids] if rule.filter_product_ids else None,
         "digest_frequency": rule.digest_frequency,
         "digest_day_of_week": rule.digest_day_of_week,
+        "last_digest_sent_at": rule.last_digest_sent_at.isoformat() if rule.last_digest_sent_at else None,
     }
 
 
@@ -211,6 +213,107 @@ async def update_notification_rule(
     await db.commit()
     await db.refresh(rule)
     return _serialize_rule(rule)
+
+
+@router.post("/me/notification-rules/{rule_id}/test")
+async def test_notification_rule(
+    rule_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = None,
+) -> dict:
+    """
+    Send en test-email for en specifik notifikationsregel.
+    Illustrerer præcis hvilken e-mailtype reglen vil sende.
+    """
+    from app.models.notification_rule import NotificationRule
+    from app.models.product_watch import ProductWatch
+    from app.models.watch_source import WatchSource
+    from app.models.product import Product
+    from app.models.source_price_event import SourcePriceEvent
+    from app.services.smtp_service import SMTPService, _render_template
+    from sqlalchemy import func
+
+    rule = await db.scalar(
+        select(NotificationRule).where(
+            NotificationRule.id == rule_id,
+            NotificationRule.user_id == user.id,
+        )
+    )
+    if not rule:
+        raise HTTPException(status_code=404, detail="Regel ikke fundet")
+
+    svc = SMTPService()
+    cfg = await svc._get_active_config(db)
+    if not cfg:
+        raise HTTPException(
+            status_code=400,
+            detail="Ingen aktiv SMTP-konfiguration — konfigurer SMTP under Admin → SMTP",
+        )
+
+    # Find et eksempel-produkt fra brugerens watches
+    row = await db.execute(
+        select(ProductWatch, WatchSource, Product)
+        .join(Product, Product.id == ProductWatch.product_id)
+        .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+        .where(
+            ProductWatch.owner_id == user.id,
+            WatchSource.last_price.isnot(None),
+        )
+        .order_by(func.random())
+        .limit(1)
+    )
+    ex = row.first()
+
+    rule_label = rule.name or ("Digest" if rule.rule_type == "digest" else "Øjeblikkelig")
+
+    if ex:
+        pw, source, product = ex
+        prev = await db.scalar(
+            select(SourcePriceEvent)
+            .where(
+                SourcePriceEvent.source_id == source.id,
+                SourcePriceEvent.old_price.isnot(None),
+            )
+            .order_by(SourcePriceEvent.created_at.desc())
+            .limit(1)
+        )
+        watch_name = pw.name or product.name
+        new_price = float(source.last_price)
+        old_price = float(prev.old_price) if prev else new_price * 1.15
+        currency = source.last_currency or "DKK"
+        image_url = product.image_url
+        product_url = source.url
+        watch_id = pw.id
+    else:
+        # Fallback-data
+        watch_name = "Eksempel produkt"
+        new_price = 899.0
+        old_price = 1099.0
+        currency = "DKK"
+        image_url = None
+        product_url = "#"
+        import uuid as _uuid
+        watch_id = _uuid.uuid4()
+
+    body_html = _render_template("price_drop.html", {
+        "watch_name": watch_name,
+        "old_price": f"{old_price:,.0f}".replace(",", "."),
+        "new_price": f"{new_price:,.0f}".replace(",", "."),
+        "currency": currency,
+        "watch_url": f"#",
+        "product_url": product_url,
+        "image_url": image_url,
+        "in_stock": True,
+        "is_test": True,
+    })
+
+    subject = f"[TEST] {rule_label} — PricePulse"
+    try:
+        await svc.send_email(db, user.email, subject, body_html)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"ok": True}
 
 
 @router.delete("/me/notification-rules/{rule_id}", status_code=204, response_model=None)

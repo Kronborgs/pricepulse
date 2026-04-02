@@ -19,9 +19,55 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
+  FlaskConical,
+  Clock,
 } from "lucide-react";
 import { NotificationRule, NotificationRuleWrite } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+
+// ── Digest-nedtæller ─────────────────────────────────────────────────────────
+
+const FREQ_MS: Record<string, number> = {
+  hourly: 3600 * 1000,
+  daily: 86400 * 1000,
+  weekly: 7 * 86400 * 1000,
+  monthly: 28 * 86400 * 1000,
+};
+
+function nextDigestAt(rule: NotificationRule): Date | null {
+  if (rule.rule_type !== "digest" || !rule.digest_frequency) return null;
+  const base = rule.last_digest_sent_at
+    ? new Date(rule.last_digest_sent_at)
+    : new Date(Date.now() - (FREQ_MS[rule.digest_frequency] ?? 0)); // treat as just sent = due now
+  return new Date(base.getTime() + (FREQ_MS[rule.digest_frequency] ?? 0));
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Snart";
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  if (h > 0) return `${h}t ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function DigestCountdown({ rule }: { rule: NotificationRule }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const target = nextDigestAt(rule);
+  if (!target) return null;
+  const remaining = target.getTime() - now;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+      <Clock className="h-3 w-3" />
+      {remaining <= 0 ? "Klar til afsendelse" : `Næste om ${formatCountdown(remaining)}`}
+    </span>
+  );
+}
 
 // ── Hjælpefunktioner ─────────────────────────────────────────────────────────
 
@@ -313,6 +359,21 @@ interface RuleCardProps {
 function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deleting, saving }: RuleCardProps) {
   const [editing, setEditing] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
+  const [testSent, setTestSent] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  const testMutation = useMutation({
+    mutationFn: () => api.notificationRules.test(rule.id),
+    onSuccess: () => {
+      setTestSent(true);
+      setTestError(null);
+      setTimeout(() => setTestSent(false), 4000);
+    },
+    onError: (err: Error) => {
+      setTestError(err.message ?? "Fejl ved afsendelse");
+      setTimeout(() => setTestError(null), 5000);
+    },
+  });
 
   // Reset optimistic state when server responds with confirmed value
   useEffect(() => {
@@ -372,10 +433,31 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
               <> · {eventSummary(rule)}</>
             )}
           </p>
+          {rule.rule_type === "digest" && (
+            <div className="mt-0.5">
+              <DigestCountdown rule={rule} />
+            </div>
+          )}
         </div>
 
         {/* Handlinger */}
         <div className="flex items-center gap-1">
+          {/* Test-knap */}
+          <button
+            type="button"
+            title="Send test-email"
+            onClick={() => testMutation.mutate()}
+            disabled={testMutation.isPending}
+            className="rounded p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-700 disabled:opacity-40"
+          >
+            {testMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : testSent ? (
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <FlaskConical className="h-4 w-4" />
+            )}
+          </button>
           {/* Toggle enabled */}
           <button
             type="button"
@@ -408,6 +490,14 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
           </button>
         </div>
       </div>
+
+      {/* Test feedback */}
+      {(testSent || testError) && (
+        <div className={`mx-4 mb-3 rounded-md px-3 py-2 text-xs flex items-center gap-2 ${testSent ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>
+          {testSent ? <CheckCircle className="h-3.5 w-3.5 shrink-0" /> : null}
+          {testSent ? "Test-email afsendt — tjek din indbakke" : testError}
+        </div>
+      )}
 
       {/* Redigeringsformular */}
       {editing && (
