@@ -479,7 +479,17 @@ class SMTPService:
                     .order_by(Watch.product_id, nullslast(Watch.current_price.asc()))
                 )
                 seen_products: dict = {}
+                _filter_mode = rule.filter_mode or "all"
+                _filter_tags = set(rule.filter_tags or [])
+                _filter_product_ids = {str(p) for p in (rule.filter_product_ids or [])}
                 for w, prod, shop in cp_result.all():
+                    # Respektér regelfilter
+                    if _filter_mode == "tags":
+                        if not (_filter_tags & set(prod.tags or [])):
+                            continue
+                    elif _filter_mode == "products":
+                        if str(prod.id) not in _filter_product_ids:
+                            continue
                     pid = str(prod.id)
                     if pid not in seen_products:
                         seen_products[pid] = {
