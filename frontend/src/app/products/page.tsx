@@ -10,6 +10,7 @@ const TAG_FILTER_KEY = "products_tag_filter";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { type TranslationKey } from "@/lib/translations/en";
 import { Product } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
@@ -281,7 +282,7 @@ export default function ProductsPage() {
   );
 }
 
-function ProductCard({ product, showOwner, t, locale }: { product: Product; showOwner?: boolean; t: (key: string, vars?: Record<string,unknown>) => string; locale: string }) {
+function ProductCard({ product, showOwner, t, locale }: { product: Product; showOwner?: boolean; t: (key: TranslationKey, vars?: Record<string, string | number>) => string; locale: string }) {
   return (
     <Link
       href={`/products/${product.id}`}

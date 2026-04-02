@@ -15,7 +15,7 @@ import da from "@/lib/translations/da";
 
 export type Locale = "en" | "da";
 
-type Translations = typeof en;
+type Translations = Record<TranslationKey, string>;
 
 interface I18nContextValue {
   locale: Locale;

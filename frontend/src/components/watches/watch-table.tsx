@@ -175,7 +175,6 @@ export function WatchTable({ watches, isLoading, showOwner }: Props) {
                     onClick={() => checkMutation.mutate(watch.id)}
                     disabled={checkMutation.isPending}
                     className="p-1.5 rounded hover:bg-accent disabled:opacity-40"
-                    title="Tjek nu"
                     title={t("watch_table_check_now")}>
                     <RefreshCw className={`h-3.5 w-3.5 ${checkMutation.isPending ? "animate-spin" : ""}`} />
                   </button>

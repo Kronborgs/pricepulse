@@ -135,7 +135,6 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
             disabled={isRefetching}
             className="p-1.5 rounded hover:bg-white/8 text-muted-foreground transition-colors"
             title={t("settings_reload_status")}>
-          >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
           {readonly ? (
@@ -381,7 +380,6 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             disabled={isRefetching}
             className="p-1.5 rounded hover:bg-white/8 text-muted-foreground transition-colors"
             title="Reload list">
-          >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
           {/* Upload & restore (frisk install) */}

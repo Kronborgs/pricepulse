@@ -55,7 +55,7 @@ function EventRow({ event, locale }: { event: PriceEvent; locale: string }) {
 
   return (
     <li className="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-      {/* Product thumbnail */}}
+      {/* Product thumbnail */}
       <div className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden bg-muted border border-border">
         {event.watch_image_url ? (
           <img
@@ -91,7 +91,7 @@ function EventRow({ event, locale }: { event: PriceEvent; locale: string }) {
         )}
       </div>
 
-      {/* Arrow indicator (only shown when image is present) */}}
+      {/* Arrow indicator (only shown when image is present) */}
       {event.watch_image_url && (
         <div
           className={`flex-shrink-0 rounded-full p-1.5 ${

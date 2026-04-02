@@ -5,17 +5,18 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
+import { type TranslationKey } from "@/lib/translations/en";
 import { WatchTable } from "@/components/watches/watch-table";
 import { AddWatchDialog } from "@/components/watches/add-watch-dialog";
 import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
 import { Watch } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
-const STATUS_OPTION_KEYS: { value: string; key: string }[] = [
+const STATUS_OPTION_KEYS: { value: string; key: TranslationKey }[] = [
   { value: "", key: "watches_filter_all" },
   { value: "active", key: "watches_filter_active" },
   { value: "pending", key: "watches_filter_pending" },
-  { value: "ai_analyzing", key: "watches_filter_ai" },
+  { value: "ai_analyzing", key: "watches_filter_ai_analyzing" },
   { value: "paused", key: "watches_filter_paused" },
   { value: "error", key: "watches_filter_error" },
   { value: "blocked", key: "watches_filter_blocked" },

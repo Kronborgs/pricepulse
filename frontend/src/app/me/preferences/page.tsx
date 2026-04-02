@@ -25,6 +25,7 @@ import {
 import { NotificationRule, NotificationRuleWrite } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useI18n } from "@/lib/i18n";
+import { type TranslationKey } from "@/lib/translations/en";
 
 // ── Digest-info (sidst sendt + næste forventet) ────────────────────────────────────
 
@@ -80,24 +81,24 @@ function DigestInfo({ rule }: { rule: NotificationRule }) {
 
 // ── Hjælpefunktioner ─────────────────────────────────────────────────────────
 
-const FREQ_KEYS: Record<string, string> = {
+const FREQ_KEYS: Record<string, TranslationKey> = {
   hourly: "prefs_freq_hourly",
   daily: "prefs_freq_daily",
   weekly: "prefs_freq_weekly",
   monthly: "prefs_freq_monthly",
 };
 
-const DAY_KEYS = [
+const DAY_KEYS: TranslationKey[] = [
   "prefs_day_mon", "prefs_day_tue", "prefs_day_wed", "prefs_day_thu",
   "prefs_day_fri", "prefs_day_sat", "prefs_day_sun",
 ];
 
-const DAY_FULL_KEYS = [
+const DAY_FULL_KEYS: TranslationKey[] = [
   "prefs_day_monday", "prefs_day_tuesday", "prefs_day_wednesday", "prefs_day_thursday",
   "prefs_day_friday", "prefs_day_saturday", "prefs_day_sunday",
 ];
 
-type TFn = (key: string, vars?: Record<string, unknown>) => string;
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 function filterSummary(rule: NotificationRule, t: TFn): string {
   if (rule.filter_mode === "tags" && rule.filter_tags?.length) {
@@ -249,7 +250,7 @@ function RuleForm({ initial, allTags, products, onSave, onCancel, saving }: Rule
                 onChange={(e) => setField("digest_day_of_week", Number(e.target.value))}
                 className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               >
-                {["prefs_day_monday", "prefs_day_tuesday", "prefs_day_wednesday", "prefs_day_thursday", "prefs_day_friday", "prefs_day_saturday", "prefs_day_sunday"].map((key, i) => (
+                {DAY_FULL_KEYS.map((key, i) => (
                   <option key={i} value={i}>{t(key)}</option>
                 ))}
               </select>
