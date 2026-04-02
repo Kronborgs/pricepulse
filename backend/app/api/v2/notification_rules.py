@@ -233,6 +233,8 @@ async def run_notification_rule_now(
     from app.models.notification_rule import NotificationRule
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
+    from app.models.watch import Watch
+    from app.models.shop import Shop
     from app.models.product import Product
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
@@ -267,10 +269,14 @@ async def run_notification_rule_now(
         # ── Kør digest-logik for netop denne regel ────────────────────────────
         since = rule.last_digest_sent_at or (now - timedelta(days=30))
 
+        from app.models.price_event import PriceEvent
+
         watches_result = await db.execute(
-            select(ProductWatch).where(
-                ProductWatch.owner_id == user.id,
-                ProductWatch.status.notin_(["archived"]),
+            select(Watch).where(
+                Watch.owner_id == user.id,
+                Watch.is_active == True,
+                Watch.status.notin_(["archived"]),
+                Watch.product_id.isnot(None),
             )
         )
         watches = watches_result.scalars().all()
@@ -279,22 +285,22 @@ async def run_notification_rule_now(
         template_events: list[dict] = []
         if watch_ids:
             events_result = await db.execute(
-                select(SourcePriceEvent, WatchSource, ProductWatch, Product)
-                .join(WatchSource, WatchSource.id == SourcePriceEvent.source_id)
-                .join(ProductWatch, ProductWatch.id == WatchSource.watch_id)
-                .join(Product, Product.id == ProductWatch.product_id)
+                select(PriceEvent, Watch, Product, Shop)
+                .join(Watch, Watch.id == PriceEvent.watch_id)
+                .join(Product, Product.id == Watch.product_id)
+                .outerjoin(Shop, Shop.id == Watch.shop_id)
                 .where(
-                    ProductWatch.id.in_(watch_ids),
-                    SourcePriceEvent.created_at > since,
-                    SourcePriceEvent.change_type.notin_(["initial"]),
+                    PriceEvent.watch_id.in_(watch_ids),
+                    PriceEvent.occurred_at > since,
+                    PriceEvent.event_type.notin_(["initial", "error"]),
                 )
-                .order_by(SourcePriceEvent.created_at.desc())
+                .order_by(PriceEvent.occurred_at.desc())
                 .limit(50)
             )
             rows = events_result.all()
             seen: set = set()
-            for ev, source, watch, product in rows:
-                key = (source.id, ev.change_type)
+            for ev, watch_obj, product, shop_obj in rows:
+                key = (watch_obj.id, ev.event_type)
                 if key in seen:
                     continue
                 seen.add(key)
@@ -308,50 +314,61 @@ async def run_notification_rule_now(
                         continue
                 old_p = float(ev.old_price) if ev.old_price else None
                 new_p = float(ev.new_price) if ev.new_price else None
+                # Map v1 event_type → template change_type
+                if ev.event_type == "price_change":
+                    delta = float(ev.price_delta) if ev.price_delta else 0
+                    change_type = "decrease" if delta < 0 else "increase"
+                elif ev.event_type == "stock_change":
+                    change_type = "stock_change"
+                else:
+                    change_type = ev.event_type
+                shop_name = shop_obj.domain if shop_obj else (watch_obj.url.split("/")[2] if watch_obj.url else "ukendt")
                 template_events.append({
-                    "watch_name": watch.name or product.name,
-                    "shop": source.shop,
-                    "change_type": ev.change_type,
+                    "watch_name": watch_obj.title or product.name,
+                    "shop": shop_name,
+                    "change_type": change_type,
                     "old_price": f"{old_p:,.0f}".replace(",", ".") if old_p else None,
                     "new_price": f"{new_p:,.0f}".replace(",", ".") if new_p else None,
-                    "currency": source.last_currency or "DKK",
-                    "image_url": product.image_url,
-                    "product_url": source.url,
-                    "watch_id": str(watch.id),
-                    "stock_status": ev.new_stock or source.last_stock_status,
+                    "currency": watch_obj.current_currency or "DKK",
+                    "image_url": product.image_url or watch_obj.image_url,
+                    "product_url": watch_obj.url,
+                    "watch_id": str(watch_obj.id),
+                    "stock_status": ev.new_stock or watch_obj.current_stock_status,
                 })
 
-        # ── Aktuelle priser fra alle shops (uanset om der er ændringer) ───────
+        # ── Aktuelle priser fra alle shops (v1 watches — det aktive datasystem) ──
         cp_result = await db.execute(
-            select(ProductWatch, WatchSource, Product)
-            .join(Product, Product.id == ProductWatch.product_id)
-            .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+            select(Watch, Product, Shop)
+            .join(Product, Product.id == Watch.product_id)
+            .outerjoin(Shop, Shop.id == Watch.shop_id)
             .where(
-                ProductWatch.owner_id == user.id,
-                ProductWatch.status.notin_(["archived"]),
-                WatchSource.status.notin_(["archived"]),
+                Watch.owner_id == user.id,
+                Watch.is_active == True,
+                Watch.status.notin_(["archived"]),
+                Watch.product_id.isnot(None),
             )
-            .order_by(ProductWatch.id, nullslast(WatchSource.last_price.asc()))
+            .order_by(Watch.product_id, nullslast(Watch.current_price.asc()))
         )
         seen_products: dict = {}
-        for pw2, src2, prod2 in cp_result.all():
-            pid = str(prod2.id)
+        for w, prod, shop in cp_result.all():
+            pid = str(prod.id)
             if pid not in seen_products:
                 seen_products[pid] = {
-                    "name": pw2.name or prod2.name,
-                    "image_url": prod2.image_url,
-                    "watch_id": str(pw2.id),
+                    "name": prod.name or w.title,
+                    "image_url": prod.image_url or w.image_url,
+                    "watch_id": str(w.id),
                     "shops": [],
                 }
-            price_raw = float(src2.last_price) if src2.last_price is not None else None
-            lca = src2.last_check_at
+            price_raw = float(w.current_price) if w.current_price is not None else None
+            lca = w.last_checked_at
+            shop_name = shop.domain if shop else (w.url.split("/")[2] if w.url else "ukendt")
             seen_products[pid]["shops"].append({
-                "shop": src2.shop,
+                "shop": shop_name,
                 "price": f"{price_raw:,.0f}".replace(",", ".") if price_raw is not None else "—",
                 "price_raw": price_raw,
-                "currency": src2.last_currency or "DKK",
-                "url": src2.url,
-                "stock_status": src2.last_stock_status,
+                "currency": w.current_currency or "DKK",
+                "url": w.url,
+                "stock_status": w.current_stock_status,
                 "last_check_at": lca.astimezone(_TZ).isoformat() if lca else None,
             })
         # Markér billigste shop per produkt
