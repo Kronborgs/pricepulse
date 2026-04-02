@@ -215,16 +215,17 @@ async def update_notification_rule(
     return _serialize_rule(rule)
 
 
-@router.post("/me/notification-rules/{rule_id}/test")
-async def test_notification_rule(
+@router.post("/me/notification-rules/{rule_id}/run")
+async def run_notification_rule_now(
     rule_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = None,
 ) -> dict:
     """
-    Send en test-email for en specifik notifikationsregel.
-    Digest-regler → digest.html med rigtige events (seneste 30 dage, regelfilter overholdt).
-    Instant-regler → price_drop.html med et tilfældigt produkt.
+    Kør en notifikationsregel med det samme — omgår scheduler-timing.
+    Digest: sender rigtig digest-email via køen (ankommer inden for 5 min).
+    Instant: sender en price_drop-email for et tilfældigt matchende produkt.
+    Opdaterer last_digest_sent_at og returnerer den opdaterede regel.
     """
     from datetime import datetime, timezone, timedelta
     from app.models.notification_rule import NotificationRule
@@ -232,7 +233,8 @@ async def test_notification_rule(
     from app.models.watch_source import WatchSource
     from app.models.product import Product
     from app.models.source_price_event import SourcePriceEvent
-    from app.services.smtp_service import SMTPService, _render_template
+    from app.models.user import User
+    from app.services.smtp_service import smtp_service, _render_template
     from sqlalchemy import func
 
     rule = await db.scalar(
@@ -244,21 +246,23 @@ async def test_notification_rule(
     if not rule:
         raise HTTPException(status_code=404, detail="Regel ikke fundet")
 
-    svc = SMTPService()
-    cfg = await svc._get_active_config(db)
+    cfg = await smtp_service._get_active_config(db)
     if not cfg:
         raise HTTPException(
             status_code=400,
             detail="Ingen aktiv SMTP-konfiguration — konfigurer SMTP under Admin → SMTP",
         )
 
+    owner = await db.scalar(select(User).where(User.id == user.id))
+    if not owner or not owner.email:
+        raise HTTPException(status_code=400, detail="Brugeren har ingen email-adresse")
+
     rule_label = rule.name or ("Digest" if rule.rule_type == "digest" else "Øjeblikkelig")
-    subject = f"[TEST] {rule_label} — PricePulse"
+    now = datetime.now(timezone.utc)
 
     if rule.rule_type == "digest":
-        # ── Digest-test: hent rigtige events (30-dages vindue) ────────────────
-        now = datetime.now(timezone.utc)
-        since = now - timedelta(days=30)
+        # ── Kør digest-logik for netop denne regel ────────────────────────────
+        since = rule.last_digest_sent_at or (now - timedelta(days=30))
 
         watches_result = await db.execute(
             select(ProductWatch).where(
@@ -282,7 +286,7 @@ async def test_notification_rule(
                     SourcePriceEvent.change_type.notin_(["initial"]),
                 )
                 .order_by(SourcePriceEvent.created_at.desc())
-                .limit(10)
+                .limit(50)
             )
             rows = events_result.all()
             seen: set = set()
@@ -291,7 +295,6 @@ async def test_notification_rule(
                 if key in seen:
                     continue
                 seen.add(key)
-                # Overhold regelens produktfilter
                 filter_mode = rule.filter_mode or "all"
                 if filter_mode == "tags":
                     if not (set(rule.filter_tags or []) & set(product.tags or [])):
@@ -314,20 +317,6 @@ async def test_notification_rule(
                     "watch_id": str(watch.id),
                 })
 
-        # Fallback-data hvis ingen events matcher inden for filter
-        if not template_events:
-            template_events = [{
-                "watch_name": "Eksempel: Gaming Headset",
-                "shop": "eksempel-butik.dk",
-                "change_type": "decrease",
-                "old_price": "999",
-                "new_price": "699",
-                "currency": "DKK",
-                "image_url": None,
-                "product_url": "#",
-                "watch_id": str(uuid.uuid4()),
-            }]
-
         body_html = _render_template("digest.html", {
             "events": template_events,
             "period_label": rule_label,
@@ -335,8 +324,17 @@ async def test_notification_rule(
             "total_watches": len(watches),
         })
 
+        await smtp_service._enqueue(
+            db, rule.user_id, owner.email, "digest",
+            f"{rule_label} digest — PricePulse", body_html,
+        )
+        rule.last_digest_sent_at = now
+        await db.commit()
+        await db.refresh(rule)
+        logger.info("digest_koelagt_manuelt", rule_id=str(rule.id), user_id=str(user.id), events=len(template_events))
+
     else:
-        # ── Instant-test: send price_drop med et tilfældigt produkt ──────────
+        # ── Kør instant for netop denne regel med et tilfældigt produkt ───────
         row = await db.execute(
             select(ProductWatch, WatchSource, Product)
             .join(Product, Product.id == ProductWatch.product_id)
@@ -360,37 +358,32 @@ async def test_notification_rule(
                 .order_by(SourcePriceEvent.created_at.desc())
                 .limit(1)
             )
-            watch_name = pw.name or product.name
-            new_price_val = float(source.last_price)
-            old_price_val = float(prev.old_price) if prev else round(new_price_val * 1.15, 0)
-            currency = source.last_currency or "DKK"
-            image_url = product.image_url
-            product_url = source.url
-            watch_id = pw.id
+            old_price_val = float(prev.old_price) if prev else round(float(source.last_price) * 1.15, 0)
+            await smtp_service.queue_price_drop(
+                db=db,
+                user_id=user.id,
+                to_email=owner.email,
+                watch_name=pw.name or product.name,
+                old_price=old_price_val,
+                new_price=float(source.last_price),
+                currency=source.last_currency or "DKK",
+                watch_id=pw.id,
+                source_id=source.id,
+                image_url=product.image_url,
+                product_url=source.url,
+            )
         else:
-            watch_name = "Eksempel: Gaming Headset"
-            new_price_val, old_price_val = 699.0, 999.0
-            currency, image_url, product_url = "DKK", None, "#"
-            watch_id = uuid.uuid4()
+            # Ingen produkter — send en plain konstatering
+            from app.services.smtp_service import SMTPService
+            svc = SMTPService()
+            await svc._enqueue(
+                db, user.id, owner.email, "instant",
+                f"{rule_label} — PricePulse",
+                "<p>Ingen produkter matcher denne regel endnu.</p>",
+            )
+        logger.info("instant_koelagt_manuelt", rule_id=str(rule.id), user_id=str(user.id))
 
-        body_html = _render_template("price_drop.html", {
-            "watch_name": watch_name,
-            "old_price": f"{old_price_val:,.0f}".replace(",", "."),
-            "new_price": f"{new_price_val:,.0f}".replace(",", "."),
-            "currency": currency,
-            "watch_url": "#",
-            "product_url": product_url,
-            "image_url": image_url,
-            "in_stock": True,
-            "is_test": True,
-        })
-
-    try:
-        await svc.send_email(db, user.email, subject, body_html)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return {"ok": True}
+    return _serialize_rule(rule)
 
 
 @router.delete("/me/notification-rules/{rule_id}", status_code=204, response_model=None)

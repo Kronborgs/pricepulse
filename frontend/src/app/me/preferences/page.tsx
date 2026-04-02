@@ -19,7 +19,7 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
-  FlaskConical,
+  Play,
   Clock,
 } from "lucide-react";
 import { NotificationRule, NotificationRuleWrite } from "@/types";
@@ -363,21 +363,23 @@ interface RuleCardProps {
 }
 
 function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deleting, saving }: RuleCardProps) {
+  const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [optimisticEnabled, setOptimisticEnabled] = useState<boolean | null>(null);
-  const [testSent, setTestSent] = useState(false);
-  const [testError, setTestError] = useState<string | null>(null);
+  const [runSent, setRunSent] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
 
-  const testMutation = useMutation({
-    mutationFn: () => api.notificationRules.test(rule.id),
+  const runMutation = useMutation({
+    mutationFn: () => api.notificationRules.run(rule.id),
     onSuccess: () => {
-      setTestSent(true);
-      setTestError(null);
-      setTimeout(() => setTestSent(false), 4000);
+      queryClient.invalidateQueries({ queryKey: ["me", "notification-rules"] });
+      setRunSent(true);
+      setRunError(null);
+      setTimeout(() => setRunSent(false), 5000);
     },
     onError: (err: Error) => {
-      setTestError(err.message ?? "Fejl ved afsendelse");
-      setTimeout(() => setTestError(null), 5000);
+      setRunError(err.message ?? "Fejl ved afsendelse");
+      setTimeout(() => setRunError(null), 6000);
     },
   });
 
@@ -448,20 +450,20 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
 
         {/* Handlinger */}
         <div className="flex items-center gap-1">
-          {/* Test-knap */}
+          {/* Kør nu-knap */}
           <button
             type="button"
-            title="Send test-email"
-            onClick={() => testMutation.mutate()}
-            disabled={testMutation.isPending}
+            title="Kør nu"
+            onClick={() => runMutation.mutate()}
+            disabled={runMutation.isPending}
             className="rounded p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-700 disabled:opacity-40"
           >
-            {testMutation.isPending ? (
+            {runMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : testSent ? (
+            ) : runSent ? (
               <CheckCircle className="h-4 w-4 text-emerald-400" />
             ) : (
-              <FlaskConical className="h-4 w-4" />
+              <Play className="h-4 w-4" />
             )}
           </button>
           {/* Toggle enabled */}
@@ -498,10 +500,10 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
       </div>
 
       {/* Test feedback */}
-      {(testSent || testError) && (
-        <div className={`mx-4 mb-3 rounded-md px-3 py-2 text-xs flex items-center gap-2 ${testSent ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>
-          {testSent ? <CheckCircle className="h-3.5 w-3.5 shrink-0" /> : null}
-          {testSent ? "Test-email afsendt — tjek din indbakke" : testError}
+      {(runSent || runError) && (
+        <div className={`mx-4 mb-3 rounded-md px-3 py-2 text-xs flex items-center gap-2 ${runSent ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>
+          {runSent && <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
+          {runSent ? "Mail lagt i kø — ankommer inden for 5 min" : runError}
         </div>
       )}
 

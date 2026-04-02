@@ -430,8 +430,8 @@ export const api = {
       }),
     delete: (id: string) =>
       apiFetch<void>(`/me/notification-rules/${id}`, { method: "DELETE" }),
-    test: (id: string) =>
-      apiFetch<{ ok: boolean }>(`/me/notification-rules/${id}/test`, { method: "POST" }),
+    run: (id: string) =>
+      apiFetch<NotificationRule>(`/me/notification-rules/${id}/run`, { method: "POST" }),
   },
 
   // ─── Exchange Rates ───────────────────────────────────────────────────────
