@@ -10,11 +10,13 @@ import { RecentChanges } from "@/components/dashboard/recent-changes";
 import { StatusBadge } from "@/components/watches/status-badge";
 import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useI18n } from "@/lib/i18n";
 
 const LS_KEY = "dashboard_owner_filter";
 
 export default function DashboardPage() {
   const { data: me } = useCurrentUser();
+  const { t } = useI18n();
   const isAdmin = me?.role === "admin";
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
@@ -87,9 +89,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("dashboard_title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Overblik over dine prisovervågninger
+            {t("dashboard_subtitle")}
           </p>
         </div>
         {isAdmin && (usersData?.items ?? []).length > 0 && (
@@ -108,8 +110,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <span className="text-sm font-medium text-red-400">
-              {errorWatches.length} watch{errorWatches.length !== 1 ? "es" : ""}{" "}
-              har fejl
+              {t("dashboard_watches_have_errors", { n: errorWatches.length })}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -136,8 +137,7 @@ export default function DashboardPage() {
         >
           <Flag className="h-4 w-4 text-amber-400 shrink-0" />
           <span className="text-sm text-amber-300">
-            <span className="font-semibold">{unreadReports} ny{unreadReports !== 1 ? "e" : ""} scraper-rapport{unreadReports !== 1 ? "er" : ""}</span>
-            {" "}fra brugere — klik for at se
+            {t("dashboard_new_scraper_reports", { n: unreadReports })}
           </span>
         </Link>
       )}
@@ -160,33 +160,34 @@ function QuickStats({ ownerId }: { ownerId?: string }) {
     queryFn: () => api.dashboard.stats(ownerId),
     refetchInterval: 30_000,
   });
+  const { t } = useI18n();
 
   if (!data) return null;
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-      <h2 className="text-sm font-semibold text-slate-300">Hurtig overblik</h2>
+      <h2 className="text-sm font-semibold text-slate-300">{t("dashboard_quick_overview")}</h2>
       <dl className="space-y-3">
         <div className="flex justify-between text-sm">
-          <dt className="text-muted-foreground">Fejl / Blokeret</dt>
+          <dt className="text-muted-foreground">{t("dashboard_errors_blocked")}</dt>
           <dd className="font-medium tabular-nums">
             {data.error_watches} / {data.blocked_watches}
           </dd>
         </div>
         <div className="flex justify-between text-sm">
-          <dt className="text-muted-foreground">Prisfald i dag</dt>
+          <dt className="text-muted-foreground">{t("dashboard_price_drops")}</dt>
           <dd className="font-medium tabular-nums text-[#8DC63F]">
             {data.price_drops_today}
           </dd>
         </div>
         <div className="flex justify-between text-sm">
-          <dt className="text-muted-foreground">Prisstigninger</dt>
+          <dt className="text-muted-foreground">{t("dashboard_price_increases")}</dt>
           <dd className="font-medium tabular-nums text-red-400">
             {data.price_increases_today}
           </dd>
         </div>
         <div className="flex justify-between text-sm">
-          <dt className="text-muted-foreground">Produkter i alt</dt>
+          <dt className="text-muted-foreground">{t("dashboard_products_total")}</dt>
           <dd className="font-medium tabular-nums">{data.total_products}</dd>
         </div>
       </dl>
@@ -196,7 +197,7 @@ function QuickStats({ ownerId }: { ownerId?: string }) {
         className="flex items-center gap-1.5 text-xs text-[#29ABE2] hover:text-[#29ABE2]/80 mt-2"
       >
         <RefreshCw className="h-3.5 w-3.5" />
-        Se alle watches
+        {t("dashboard_see_all_watches")}
       </Link>
     </div>
   );

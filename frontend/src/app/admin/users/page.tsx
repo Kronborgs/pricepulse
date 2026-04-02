@@ -7,8 +7,10 @@ import { AuthGuard } from "@/components/layout/auth-guard";
 import { User } from "@/types";
 import { Loader2, UserPlus, Trash2, Mail, MonitorPlay } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n";
 
 export default function UsersPage() {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +76,7 @@ export default function UsersPage() {
 
   function handleDeleteUser(user: User) {
     const label = user.display_name ?? user.email;
-    if (!window.confirm(`Slet bruger "${label}"?\n\nHandlingen kan ikke fortrydes.`)) return;
+    if (!window.confirm(`Delete user "${label}"?\n\nThis action cannot be undone.`)) return;
     deleteMutation.mutate(user.id);
   }
 
@@ -88,9 +90,9 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Brugere</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("admin_users_title")}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Administrer systembrugere
+              {t("admin_users_subtitle")}
             </p>
           </div>
           <button
@@ -98,14 +100,14 @@ export default function UsersPage() {
             className="flex items-center gap-2 rounded-md bg-[#29ABE2] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#29ABE2]/90"
           >
             <UserPlus className="h-4 w-4" />
-            Ny bruger
+            {t("admin_users_new")}
           </button>
         </div>
 
         {inviteSent && (
           <div className="flex items-center gap-2 rounded-md bg-green-500/10 border border-green-500/20 px-4 py-3 text-sm text-green-400">
             <Mail className="h-4 w-4 shrink-0" />
-            Invitationsmail sendt til <strong>{inviteSent}</strong>
+            Invitation sent to <strong>{inviteSent}</strong>
           </div>
         )}
 
@@ -118,19 +120,19 @@ export default function UsersPage() {
             }}
             className="rounded-lg border border-slate-700 bg-slate-900 p-4 space-y-3"
           >
-            <h2 className="text-sm font-semibold text-slate-200">Opret bruger</h2>
+            <h2 className="text-sm font-semibold text-slate-200">Create user</h2>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="email"
                 required
-                placeholder="E-mail"
+                placeholder={t("admin_users_email")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               />
               <input
                 type="text"
-                placeholder="Navn (valgfrit)"
+                placeholder={t("admin_users_name")}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
@@ -140,7 +142,7 @@ export default function UsersPage() {
                 onChange={(e) => setRole(e.target.value as "admin" | "superuser" | "user")}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               >
-                <option value="user">Bruger</option>
+                <option value="user">User</option>
                 <option value="superuser">Superuser</option>
                 <option value="admin">Admin</option>
               </select>
@@ -162,7 +164,7 @@ export default function UsersPage() {
                 onClick={() => setShowForm(false)}
                 className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-white hover:bg-white/5"
               >
-                Annuller
+                {t("settings_cancel")}
               </button>
             </div>
           </form>
@@ -174,17 +176,17 @@ export default function UsersPage() {
           </div>
         ) : listError ? (
           <div className="rounded-lg border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-400">
-            Kunne ikke hente brugerliste: {(listError as Error).message}
+            Failed to fetch user list: {(listError as Error).message}
           </div>
         ) : (
           <div className="rounded-lg border border-slate-800 overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-slate-900 border-b border-slate-800">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">Bruger</th>
-                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">Rolle</th>
-                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">Status</th>
-                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">Session-timeout</th>
+                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">User</th>
+                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">{t("admin_users_role")}</th>
+                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">{t("admin_users_status")}</th>
+                  <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium">{t("admin_users_session_timeout")}</th>
                   <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-medium"></th>
                 </tr>
               </thead>
@@ -219,7 +221,7 @@ export default function UsersPage() {
                             ? "bg-green-500/20 text-green-400"
                             : "bg-slate-500/20 text-slate-400"
                         }`}>
-                          {user.is_active ? "Aktiv" : "Inaktiv"}
+                          {user.is_active ? t("admin_users_active") : t("admin_users_inactive")}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -249,19 +251,19 @@ export default function UsersPage() {
                               disabled={updateTimeout.isPending}
                               className="text-xs text-[#29ABE2] hover:text-[#29ABE2]/80 ml-1"
                             >
-                              Gem
+                              {t("admin_users_save")}
                             </button>
                           )}
                         </form>
                         {currentTimeout === 0 && pendingTimeout === undefined && (
-                          <span className="text-xs text-slate-500">ingen timeout</span>
+                          <span className="text-xs text-slate-500">no timeout</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => openUserWatches(user.id)}
-                            title="Se brugerens watches"
+                            title="View user watches"
                             className="text-xs text-slate-400 hover:text-[#29ABE2] border border-slate-700 rounded px-2 py-1 flex items-center gap-1"
                           >
                             <MonitorPlay className="h-3 w-3" />
@@ -273,7 +275,7 @@ export default function UsersPage() {
                             onClick={() => toggleActive.mutate({ id: user.id, is_active: !user.is_active })}
                             className="text-xs text-slate-400 hover:text-slate-200 border border-slate-700 rounded px-2 py-1"
                           >
-                            {user.is_active ? "Deaktiver" : "Aktiver"}
+                            {user.is_active ? t("admin_users_deactivate") : t("admin_users_activate")}
                           </button>
                           )}
                           {/* Superuser må ikke slette admin-brugere */}
@@ -284,7 +286,7 @@ export default function UsersPage() {
                             className="text-xs text-red-400 hover:text-red-300 border border-red-900/50 rounded px-2 py-1 flex items-center gap-1 disabled:opacity-50"
                           >
                             <Trash2 className="h-3 w-3" />
-                            Slet
+                            {t("admin_users_delete")}
                           </button>
                           )}
                         </div>

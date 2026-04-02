@@ -9,6 +9,7 @@ const OWNER_FILTER_KEY = "products_owner_filter";
 const TAG_FILTER_KEY = "products_tag_filter";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { Product } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
@@ -36,6 +37,7 @@ function findDuplicatePairs(products: Product[]): [Product, Product][] {
 }
 
 export default function ProductsPage() {
+  const { t, locale } = useI18n();
   const { data: me } = useCurrentUser();
   const isPrivileged = me?.role === "admin" || me?.role === "superuser";
 
@@ -132,9 +134,9 @@ export default function ProductsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Produkter</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("products_title")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {total} produkter i databasen
+            {t("products_subtitle", { n: total })}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -143,7 +145,7 @@ export default function ProductsPage() {
             className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
           >
             <Eye className="h-4 w-4" />
-            Data webscraper
+            {t("watches_title")}
           </Link>
           <AddWatchDialog />
           {isPrivileged && (
@@ -160,7 +162,7 @@ export default function ProductsPage() {
       {duplicatePairs.length > 0 && !search && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            {duplicatePairs.length} mulig{duplicatePairs.length !== 1 ? "e dubletter" : " dublet"} fundet
+            {t("products_duplicates_found", { n: duplicatePairs.length })}
           </p>
           <div className="space-y-1.5">
             {duplicatePairs.map(([a, b]) => (
@@ -176,7 +178,7 @@ export default function ProductsPage() {
                   href={`/products/${a.id}`}
                   className="ml-auto shrink-0 text-xs text-amber-700 dark:text-amber-400 hover:underline"
                 >
-                  Sammenflet →
+                  {t("products_merge")}
                 </Link>
               </div>
             ))}
@@ -190,7 +192,7 @@ export default function ProductsPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="search"
-            placeholder="Søg på navn eller brand…"
+            placeholder={t("products_search_placeholder")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -224,7 +226,7 @@ export default function ProductsPage() {
                 onClick={() => { setTagFilter([]); setPage(1); }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-1 underline underline-offset-2"
               >
-                Ryd filter
+                {t("products_clear_filter")}
               </button>
             )}
           </div>
@@ -243,12 +245,12 @@ export default function ProductsPage() {
       ) : products.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
           <Package2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Ingen produkter fundet</p>
+          <p className="text-sm">{t("products_none_found")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} showOwner={isPrivileged} />
+            <ProductCard key={product.id} product={product} showOwner={isPrivileged} t={t} locale={locale} />
           ))}
         </div>
       )}
@@ -261,17 +263,17 @@ export default function ProductsPage() {
             onClick={() => setPage((p) => p - 1)}
             className="rounded-md border px-3 py-1.5 disabled:opacity-40 hover:bg-muted transition-colors"
           >
-            Forrige
+            {t("watches_prev")}
           </button>
           <span className="text-muted-foreground">
-            Side {page} / {totalPages}
+            {t("watches_page", { n: page, total: totalPages })}
           </span>
           <button
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
             className="rounded-md border px-3 py-1.5 disabled:opacity-40 hover:bg-muted transition-colors"
           >
-            Næste
+            {t("watches_next")}
           </button>
         </div>
       )}
@@ -279,7 +281,7 @@ export default function ProductsPage() {
   );
 }
 
-function ProductCard({ product, showOwner }: { product: Product; showOwner?: boolean }) {
+function ProductCard({ product, showOwner, t, locale }: { product: Product; showOwner?: boolean; t: (key: string, vars?: Record<string,unknown>) => string; locale: string }) {
   return (
     <Link
       href={`/products/${product.id}`}
@@ -317,13 +319,12 @@ function ProductCard({ product, showOwner }: { product: Product; showOwner?: boo
         </p>
         {product.lowest_price != null && (
           <p className="mt-1.5 text-sm font-semibold text-green-600">
-            Fra {formatPrice(product.lowest_price)}
+            {t("products_from")} {formatPrice(product.lowest_price, undefined, locale)}
           </p>
         )}
         {product.watch_count != null && product.watch_count > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
-            {product.watch_count} butik
-            {product.watch_count !== 1 ? "ker" : ""}
+            {t("products_shops", { n: product.watch_count })}
           </p>
         )}
         {product.tags && product.tags.length > 0 && (

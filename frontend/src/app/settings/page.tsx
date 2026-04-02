@@ -7,8 +7,10 @@ import { api } from "@/lib/api";
 import { Shop } from "@/types";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useI18n } from "@/lib/i18n";
 
 export default function SettingsPage() {
+  const { t } = useI18n();
   const { data: me } = useCurrentUser();
   const readonly = me?.role === "user";
   const superuserReadonly = me?.role === "user" || me?.role === "superuser";
@@ -16,9 +18,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Indstillinger</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("settings_title")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Konfigurer butikker og systemindstillinger
+          {t("settings_subtitle")}
         </p>
       </div>
 
@@ -31,6 +33,7 @@ export default function SettingsPage() {
 }
 
 function HealthCard() {
+  const { t } = useI18n();
   const { data, isLoading, error } = useQuery({
     queryKey: ["health"],
     queryFn: async () => {
@@ -44,18 +47,18 @@ function HealthCard() {
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <h2 className="text-base font-semibold mb-4">Systemstatus</h2>
+      <h2 className="text-base font-semibold mb-4">{t("settings_system_status")}</h2>
       <div className="flex items-start gap-2">
         {isLoading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mt-0.5" />
-            <span className="text-sm text-muted-foreground">Tjekker...</span>
+            <span className="text-sm text-muted-foreground">{t("settings_checking")}</span>
           </>
         ) : error ? (
           <>
             <XCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <span className="text-sm text-destructive font-medium">Backend fejlede</span>
+              <span className="text-sm text-destructive font-medium">{t("settings_backend_error")}</span>
               <p className="text-xs text-muted-foreground mt-0.5 font-mono break-all">
                 {error instanceof Error ? error.message : String(error)}
               </p>
@@ -65,7 +68,7 @@ function HealthCard() {
           <>
             <CheckCircle2 className="h-4 w-4 text-[#8DC63F] flex-shrink-0 mt-0.5" />
             <div>
-              <span className="text-sm font-medium">Backend kører</span>
+              <span className="text-sm font-medium">{t("settings_backend_ok")}</span>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {data?.version ? `v${data.version}` : "OK"}
               </p>
@@ -80,6 +83,7 @@ function HealthCard() {
 // ─── Ollama sektion ───────────────────────────────────────────────────────────
 
 function OllamaSection({ readonly }: { readonly?: boolean }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [editHost, setEditHost] = useState(false);
   const [hostValue, setHostValue] = useState("");
@@ -107,7 +111,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 flex items-center gap-3">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Indlæser Ollama-status…</span>
+        <span className="text-sm text-muted-foreground">{t("settings_checking")}</span>
       </div>
     );
   }
@@ -119,9 +123,9 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
         <div className="flex items-center gap-3">
           <Brain className="h-5 w-5 text-purple-500" />
           <div>
-            <h2 className="text-base font-semibold">Ollama AI</h2>
+            <h2 className="text-base font-semibold">{t("settings_ollama")}</h2>
             <p className="text-xs text-muted-foreground">
-              Lokal sprogmodel til parser-diagnostik og produktnormalisering
+              {t("settings_ollama_desc")}
             </p>
           </div>
         </div>
@@ -130,12 +134,12 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
             onClick={() => refetch()}
             disabled={isRefetching}
             className="p-1.5 rounded hover:bg-white/8 text-muted-foreground transition-colors"
-            title="Genindlæs status"
+            title={t("settings_reload_status")}>
           >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
           {readonly ? (
-            <span title="Kun læsning"><Lock className="h-4 w-4 text-muted-foreground" /></span>
+            <span title={t("settings_read_only")}><Lock className="h-4 w-4 text-muted-foreground" /></span>
           ) : (
             <button
               onClick={() => patchMutation.mutate({ enabled: !status?.enabled })}
@@ -144,7 +148,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
                 status?.enabled ? "bg-green-500" : "bg-muted-foreground/30"
               )}
-              title={status?.enabled ? "Deaktivér Ollama" : "Aktivér Ollama"}
+              title={status?.enabled ? t("settings_disabled") + " Ollama" : t("settings_enabled") + " Ollama"}
             >
               <span className={cn(
                 "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
@@ -154,11 +158,11 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
           )}
           {readonly ? (
             <span className={cn("text-sm font-medium w-20 text-muted-foreground", !status?.enabled && "opacity-60")}>
-              {status?.enabled ? "Aktiveret" : "Deaktiveret"}
+            {status?.enabled ? t("settings_enabled") : t("settings_disabled")}
             </span>
           ) : (
             <span className="text-sm font-medium w-20">
-              {status?.enabled ? "Aktiveret" : "Deaktiveret"}
+              {status?.enabled ? t("settings_enabled") : t("settings_disabled")}
             </span>
           )}
         </div>
@@ -167,7 +171,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
       {/* Connection status */}
       <div className="px-6 py-4">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-          Forbindelsesstatus
+          {t("settings_connection_status")}
         </p>
         <div className="flex items-center gap-2">
           {status?.available ? (
@@ -176,7 +180,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
             <X className="h-4 w-4 text-red-500 flex-shrink-0" />
           )}
           <span className="text-sm font-medium">
-            {status?.available ? "Forbundet" : status?.enabled ? "Ikke tilgængelig" : "Deaktiveret"}
+            {status?.available ? t("settings_connected") : status?.enabled ? t("settings_unavailable") : t("settings_disabled")}
           </span>
         </div>
         {status?.available && status.models.length > 0 && (
@@ -193,10 +197,10 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
       {/* Host */}
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Host</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("settings_host")}</p>
           {!editHost && !readonly && (
             <button onClick={() => { setHostValue(status?.host ?? ""); setEditHost(true); }} className="text-xs text-primary hover:underline">
-              Redigér
+              {t("settings_edit")}
             </button>
           )}
         </div>
@@ -209,33 +213,33 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
               placeholder="http://10.10.80.10:11434"
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <button onClick={() => patchMutation.mutate({ host: hostValue })} disabled={patchMutation.isPending || !hostValue.trim()} className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">Gem</button>
-            <button onClick={() => setEditHost(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">Annuller</button>
+            <button onClick={() => patchMutation.mutate({ host: hostValue })} disabled={patchMutation.isPending || !hostValue.trim()} className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">{t("settings_save")}</button>
+            <button onClick={() => setEditHost(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">{t("settings_cancel")}</button>
           </div>
         ) : (
           <p className="text-sm font-mono mt-1">{status?.host}</p>
         )}
         <p className="text-xs text-muted-foreground mt-1.5">
-          RAM-ændring kun — sæt <code className="bg-muted rounded px-1">OLLAMA_HOST</code> i env-filen for permanent ændring.
+          RAM change only — set <code className="bg-muted rounded px-1">OLLAMA_HOST</code> in the env file for permanent change.
         </p>
       </div>
 
       {/* Models */}
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Modeller</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("settings_models")}</p>
           {!editModels && !readonly && (
             <button onClick={() => { setParserModel(status?.parser_model ?? ""); setNormalizeModel(status?.normalize_model ?? ""); setEmbedModel(status?.embed_model ?? ""); setEditModels(true); }} className="text-xs text-primary hover:underline">
-              Redigér
+              {t("settings_edit")}
             </button>
           )}
         </div>
         {editModels ? (
           <div className="space-y-3">
             {([
-              ["Parser", parserModel, setParserModel],
-              ["Normalisering", normalizeModel, setNormalizeModel],
-              ["Embedding", embedModel, setEmbedModel],
+              [t("settings_parser"), parserModel, setParserModel],
+              [t("settings_normalisation"), normalizeModel, setNormalizeModel],
+              [t("settings_embedding"), embedModel, setEmbedModel],
             ] as [string, string, (v: string) => void][]).map(([label, value, setter]) => (
               <div key={label} className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground w-24 shrink-0">{label}</span>
@@ -243,13 +247,13 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
               </div>
             ))}
             <div className="flex gap-2 pt-1">
-              <button onClick={() => patchMutation.mutate({ parser_model: parserModel || undefined, normalize_model: normalizeModel || undefined, embed_model: embedModel || undefined })} disabled={patchMutation.isPending} className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">Gem</button>
-              <button onClick={() => setEditModels(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">Annuller</button>
+              <button onClick={() => patchMutation.mutate({ parser_model: parserModel || undefined, normalize_model: normalizeModel || undefined, embed_model: embedModel || undefined })} disabled={patchMutation.isPending} className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">{t("settings_save")}</button>
+              <button onClick={() => setEditModels(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">{t("settings_cancel")}</button>
             </div>
           </div>
         ) : (
           <div className="space-y-1.5">
-            {([["Parser", status?.parser_model], ["Normalisering", status?.normalize_model], ["Embedding", status?.embed_model]] as [string, string | undefined][]).map(([label, value]) => (
+            {([          [t("settings_parser"), status?.parser_model], [t("settings_normalisation"), status?.normalize_model], [t("settings_embedding"), status?.embed_model]] as [string, string | undefined][]).map(([label, value]) => (
               <div key={label} className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground w-24 shrink-0">{label}</span>
                 <span className="text-sm font-mono">{value ?? "—"}</span>
@@ -269,6 +273,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
 }
 
 function BackupSection({ readonly }: { readonly?: boolean }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -337,18 +342,18 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
   }
 
   function formatDate(iso: string): string {
-    return new Date(iso).toLocaleString("da-DK", { dateStyle: "short", timeStyle: "short" });
+    return new Date(iso).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
   }
 
   const STAT_LABELS: Record<string, string> = {
-    products: "Produkter",
+    products: t("products_title"),
     v1_watches: "Watches (v1)",
-    v1_price_history: "Prishistorik (v1)",
+    v1_price_history: "Price history (v1)",
     v2_watches: "Watches (v2)",
     v2_watch_sources: "Watch Sources",
-    v2_price_events: "Prisændringer (v2)",
-    users: "Brugere",
-    smtp_restored: "SMTP-opsætning",
+    v2_price_events: "Price events (v2)",
+    users: t("admin_users_title"),
+    smtp_restored: "SMTP setup",
   };
 
   return (
@@ -356,7 +361,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
       {readonly && (
         <div className="px-5 py-2.5 flex items-center gap-2 bg-slate-800/60 rounded-t-lg border-b border-border">
           <Lock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span className="text-xs text-slate-400">Kun administratorer kan ændre backup-indstillinger</span>
+          <span className="text-xs text-slate-400">Only administrators can change backup settings</span>
         </div>
       )}
       {/* Header */}
@@ -364,7 +369,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
         <div className="flex items-center gap-3">
           <HardDrive className="h-5 w-5 text-blue-500" />
           <div>
-            <h2 className="text-base font-semibold">Backup</h2>
+            <h2 className="text-base font-semibold">{t("settings_backup")}</h2>
             <p className="text-xs text-muted-foreground">
               Gemmes i <code className="bg-muted rounded px-1">/app/data/backup</code> · host: <code className="bg-muted rounded px-1">/mnt/user/appdata/pricepulse/backup</code>
             </p>
@@ -375,7 +380,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             onClick={() => refetchList()}
             disabled={isRefetching}
             className="p-1.5 rounded hover:bg-white/8 text-muted-foreground transition-colors"
-            title="Genindlæs liste"
+            title="Reload list">
           >
             <RefreshCw className={cn("h-4 w-4", isRefetching && "animate-spin")} />
           </button>
@@ -390,7 +395,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
           >
             <Upload className="h-3.5 w-3.5" />
-            Importer backup-fil
+            {t("settings_import_backup")}
           </button>
           <button
             onClick={() => runMutation.mutate()}
@@ -398,7 +403,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             className="inline-flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm disabled:opacity-50"
           >
             {runMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
-            Kør backup nu
+            {t("settings_run_backup")}
           </button>
         </div>
       </div>
@@ -406,7 +411,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
       {runMutation.isSuccess && (
         <div className="px-6 py-2 bg-green-500/10 text-green-600 dark:text-green-400 text-xs flex items-center gap-1.5">
           <Check className="h-3.5 w-3.5" />
-          Backup oprettet: {runMutation.data?.filename}
+          Backup created: {runMutation.data?.filename}
         </div>
       )}
       {runMutation.isError && (
@@ -420,7 +425,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
         <div className="px-6 py-3 bg-green-500/10 border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5">
-              <Check className="h-4 w-4" /> Restore gennemført
+              <Check className="h-4 w-4" /> {t("settings_restore_done")}
             </p>
             <button onClick={() => setRestoreResult(null)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
@@ -435,7 +440,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             ))}
           </div>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-            ⚠ SMTP-indstillinger gendannes (deaktiverede) — genindtast <strong>kodeordet</strong> under Mail-indstillinger for at aktivere.
+            ⚠ SMTP settings are restored (disabled) — re-enter the <strong>password</strong> under Mail settings to activate.
           </p>
         </div>
       )}
@@ -444,14 +449,14 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
       {restoreTarget && restoreTarget !== "__upload__" && (
         <div className="px-6 py-4 bg-amber-500/10 space-y-3">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Gendan fra: <span className="font-mono">{restoreTarget}</span>
+            Restore from: <span className="font-mono">{restoreTarget}</span>
           </p>
           <p className="text-xs text-muted-foreground">
-            Data UPSERTS — eksisterende poster opdateres, manglende tilføjes. Intet slettes.
+            Data UPSERTS — existing records are updated, missing ones added. Nothing is deleted.
           </p>
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={importUsers} onChange={(e) => setImportUsers(e.target.checked)} className="rounded" />
-            Importer brugere (inkl. adgangskoder fra backup)
+            Import users (incl. passwords from backup)
           </label>
           {restoreMutation.isError && (
             <p className="text-xs text-destructive">{(restoreMutation.error as Error).message}</p>
@@ -463,10 +468,10 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
               className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
             >
               {restoreMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Gendan
+              {t("settings_restore")}
             </button>
             <button onClick={() => setRestoreTarget(null)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-              Annuller
+              {t("settings_cancel")}
             </button>
           </div>
         </div>
@@ -476,10 +481,10 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
       {restoreTarget === "__upload__" && (
         <div className="px-6 py-4 bg-blue-500/10 space-y-3">
           <p className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-            <Upload className="h-4 w-4" /> Importer backup-fil
+            <Upload className="h-4 w-4" /> {t("settings_import_backup")}
           </p>
           <p className="text-xs text-muted-foreground">
-            Upload en tidligere downloadet <code className="bg-muted rounded px-1">.json.gz</code> backup-fil. Bruges til genoprettelse på ny server.
+            Upload a previously downloaded <code className="bg-muted rounded px-1">.json.gz</code> backup file. Used for restore on a new server.
           </p>
           <input
             ref={fileInputRef}
@@ -489,7 +494,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
             className="block text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-border file:bg-muted file:px-3 file:py-1 file:text-sm file:cursor-pointer"
           />
           {uploadFile && (
-            <p className="text-xs text-muted-foreground">Valgt: <span className="font-mono">{uploadFile.name}</span> ({formatBytes(uploadFile.size)})</p>
+            <p className="text-xs text-muted-foreground">Selected: <span className="font-mono">{uploadFile.name}</span> ({formatBytes(uploadFile.size)})</p>
           )}
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={importUsers} onChange={(e) => setImportUsers(e.target.checked)} className="rounded" />
@@ -505,10 +510,10 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
               className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
             >
               {restoreMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-              Importer og gendan
+              {t("settings_import_and_restore")}
             </button>
             <button onClick={() => { setRestoreTarget(null); setUploadFile(null); }} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
-              Annuller
+              {t("settings_cancel")}
             </button>
           </div>
         </div>
@@ -517,9 +522,9 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
       {/* Config */}
       <div className="px-6 py-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Automatisk backup</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("settings_auto_backup")}</p>
           {!editConfig && (
-            <button onClick={openEdit} className="text-xs text-primary hover:underline">Redigér</button>
+            <button onClick={openEdit} className="text-xs text-primary hover:underline">{t("settings_edit")}</button>
           )}
         </div>
         {configLoading ? (
@@ -527,7 +532,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
         ) : editConfig ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-32 shrink-0">Aktiveret</span>
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{t("settings_backup_enabled")}</span>
               <button
                 onClick={() => setCfgEnabled((v) => !v)}
                 className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", cfgEnabled ? "bg-green-500" : "bg-muted-foreground/30")}
@@ -536,28 +541,28 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-32 shrink-0">Interval (timer)</span>
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{t("settings_backup_interval")}</span>
               <input type="number" min={1} max={8760} value={cfgHours} onChange={(e) => setCfgHours(Number(e.target.value))}
                 className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-32 shrink-0">Behold antal</span>
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{t("settings_backup_keep")}</span>
               <input type="number" min={1} max={365} value={cfgKeep} onChange={(e) => setCfgKeep(Number(e.target.value))}
                 className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => configMutation.mutate({ enabled: cfgEnabled, interval_hours: cfgHours, keep_count: cfgKeep })}
                 disabled={configMutation.isPending}
-                className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">Gem</button>
-              <button onClick={() => setEditConfig(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">Annuller</button>
+                className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50">{t("settings_save")}</button>
+              <button onClick={() => setEditConfig(false)} className="rounded-md border px-3 py-2 text-sm hover:bg-muted">{t("settings_cancel")}</button>
             </div>
           </div>
         ) : (
           <div className="space-y-1.5">
             {([
-              ["Status", config?.enabled ? "Aktiveret" : "Deaktiveret"],
-              ["Interval", `Hver ${config?.interval_hours ?? 24} timer`],
-              ["Behold", `${config?.keep_count ?? 7} seneste`],
+              [t("settings_backup_status"), config?.enabled ? t("settings_enabled") : t("settings_disabled")],
+              [t("settings_backup_interval"), t("settings_backup_interval_label", { n: config?.interval_hours ?? 24 })],
+              [t("settings_backup_keep"), t("settings_backup_keep_label", { n: config?.keep_count ?? 7 })],
             ] as [string, string][]).map(([label, value]) => (
               <div key={label} className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground w-32 shrink-0">{label}</span>
@@ -576,25 +581,21 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
         <div className="space-y-0.5">
           <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
             <Info className="h-3 w-3 text-slate-500" />
-            SMTP-kodeord gemmes ikke i backup
+            {t("settings_smtp_note")}
           </p>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Af sikkerhedsmæssige årsager inkluderer backuppen <strong className="text-slate-400">ikke</strong> dit SMTP-kodeord.
-            Øvrige SMTP-indstillinger (server, port, afsender m.m.) er gemt, men
-            genoplæses som <em>deaktiverede</em> — du skal genindtaste kodeordet
-            under <strong className="text-slate-400">Admin → SMTP</strong> for at
-            aktivere e-mail notifikationer igen.
+            {t("settings_smtp_note_desc")}
           </p>
         </div>
       </div>
 
       {/* Backup list */}
       <div className="px-6 py-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Gemte backups</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">{t("settings_saved_backups")}</p>
         {listLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : !backups || backups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Ingen backups endnu — klik "Kør backup nu".</p>
+          <p className="text-sm text-muted-foreground">{t("settings_backup_none")}</p>
         ) : (
           <div className="divide-y divide-border rounded-md border border-border overflow-hidden">
             {backups.map((b) => (
@@ -606,7 +607,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
                 <button
                   onClick={() => { setRestoreTarget(b.filename); setImportUsers(true); setRestoreResult(null); }}
                   className="p-1.5 rounded hover:bg-amber-500/10 text-muted-foreground hover:text-amber-500 transition-colors"
-                  title="Gendan fra denne backup"
+                  title={t("settings_restore")}
                 >
                   <RotateCcw className="h-4 w-4" />
                 </button>
@@ -622,7 +623,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
                   onClick={() => deleteMutation.mutate(b.filename)}
                   disabled={deleteMutation.isPending}
                   className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                  title="Slet backup"
+                  title="Delete backup"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -636,6 +637,7 @@ function BackupSection({ readonly }: { readonly?: boolean }) {
 }
 
 function ShopsSection({ readonly }: { readonly?: boolean }) {
+  const { t } = useI18n();
   const queryClient = useQueryClient();
 
   const { data: shops, isLoading } = useQuery({
@@ -652,7 +654,7 @@ function ShopsSection({ readonly }: { readonly?: boolean }) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-border bg-card p-5">
-        <h2 className="text-base font-semibold mb-4">Butikker</h2>
+        <h2 className="text-base font-semibold mb-4">{t("settings_shops_title")}</h2>
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -665,15 +667,15 @@ function ShopsSection({ readonly }: { readonly?: boolean }) {
       <div className="px-5 py-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">Butikker</h2>
+            <h2 className="text-base font-semibold">{t("settings_shops_title")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Aktiver eller deaktiver butikker der scrapes
+              {t("settings_shops_desc")}
             </p>
           </div>
           {readonly && (
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
               <Lock className="h-3.5 w-3.5" />
-              Kun læsning
+              {t("settings_read_only")}
             </div>
           )}
         </div>
@@ -692,7 +694,7 @@ function ShopsSection({ readonly }: { readonly?: boolean }) {
         ))}
         {shopList.length === 0 && (
           <p className="px-5 py-6 text-sm text-muted-foreground">
-            Ingen butikker. Kør seed-scriptet for at tilføje dem.
+            {t("settings_no_shops")}
           </p>
         )}
       </div>
@@ -711,6 +713,7 @@ function ShopRow({
   isPending: boolean;
   readonly?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       <div className="flex-1 min-w-0">
@@ -728,7 +731,7 @@ function ShopRow({
             ? "bg-green-500/15 text-green-400"
             : "bg-slate-500/15 text-slate-400"
         )}>
-          {shop.is_active ? "Aktiv" : "Inaktiv"}
+          {shop.is_active ? t("settings_shop_active") : t("settings_shop_inactive")}
         </span>
       ) : (
         <button
@@ -737,7 +740,7 @@ function ShopRow({
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 ${
             shop.is_active ? "bg-primary" : "bg-muted"
           }`}
-          aria-label={shop.is_active ? "Deaktiver butik" : "Aktiver butik"}
+          aria-label={shop.is_active ? t("settings_deactivate_shop") : t("settings_activate_shop")}
         >
           <span
             className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${

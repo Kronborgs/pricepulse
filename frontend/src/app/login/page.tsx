@@ -6,8 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
@@ -38,7 +40,7 @@ export default function LoginPage() {
       }
     },
     onError: (err: Error) => {
-      setError(err.message.includes("401") ? "Forkert e-mail eller adgangskode" : err.message);
+      setError(err.message.includes("401") ? t("login_error") : err.message);
     },
   });
 
@@ -52,7 +54,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-[#29ABE2] to-[#8DC63F] bg-clip-text text-transparent">
             PricePulse
           </h1>
-          <p className="text-sm text-slate-400">Log ind på din konto</p>
+          <p className="text-sm text-slate-400">{t("login_heading")}</p>
         </div>
 
         <form
@@ -65,7 +67,7 @@ export default function LoginPage() {
         >
           <div className="space-y-1">
             <label className="text-xs text-slate-400" htmlFor="email">
-              E-mail
+              {t("login_email")}
             </label>
             <input
               id="email"
@@ -82,13 +84,13 @@ export default function LoginPage() {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="text-xs text-slate-400" htmlFor="password">
-                Adgangskode
+                {t("login_password")}
               </label>
               <Link
                 href="/forgot-password"
                 className="text-xs text-[#29ABE2] hover:underline"
               >
-                Glemt adgangskode?
+                {t("login_forgot_password")}
               </Link>
             </div>
             <input
@@ -114,7 +116,7 @@ export default function LoginPage() {
             className="w-full flex items-center justify-center gap-2 rounded-md bg-[#29ABE2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#29ABE2]/90 disabled:opacity-60 transition-colors"
           >
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Log ind
+            {t("login_submit")}
           </button>
         </form>
       </div>

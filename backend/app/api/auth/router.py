@@ -101,6 +101,7 @@ class UserRead(BaseModel):
     email_verified: bool
     created_at: str
     must_change_password: bool = False
+    locale: str = "en"
 
     model_config = {"from_attributes": True}
 
@@ -128,6 +129,10 @@ class UpdateUserRequest(BaseModel):
     role: str | None = None
     is_active: bool | None = None
     session_timeout_minutes: int | None = None  # 0 = deaktiveret, None = uændret
+
+
+class UpdateMeRequest(BaseModel):
+    locale: str | None = None  # "en" eller "da"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -178,6 +183,7 @@ def _user_to_read(user: User, force_must_change: bool = False) -> dict:
         "session_timeout_minutes": getattr(user, "session_timeout_minutes", None),
         "created_at": user.created_at.isoformat(),
         "must_change_password": force_must_change or _password_expired(user),
+        "locale": getattr(user, "locale", None) or "en",
     }
 
 
@@ -349,6 +355,24 @@ async def refresh_token(
 @router.get("/me", response_model=UserRead)
 async def me(user: CurrentUser) -> dict:
     """Returnerer den aktuelle brugers data."""
+    return _user_to_read(user)
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    body: UpdateMeRequest,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Opdatér den aktuelle brugers egne indstillinger (f.eks. locale)."""
+    if body.locale is not None:
+        allowed_locales = {"en", "da"}
+        if body.locale not in allowed_locales:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail=f"Ukendt locale: {body.locale}")
+        user.locale = body.locale
+    await db.commit()
+    await db.refresh(user)
     return _user_to_read(user)
 
 

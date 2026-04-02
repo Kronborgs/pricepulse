@@ -32,14 +32,15 @@ export function formatPct(pct: number | null | undefined): string {
   return `${sign}${pct.toFixed(1)}%`;
 }
 
-export function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "—";
-  return format(new Date(dateStr), "d. MMM yyyy HH:mm", { locale: da });
+export function formatDate(dateStr: string | null | undefined, locale?: string): string {
+  if (!dateStr) return "\u2014";
+  const pattern = locale === "da" ? "d. MMM yyyy HH:mm" : "d MMM yyyy HH:mm";
+  return format(new Date(dateStr), pattern, { locale: _dateFnsLocale(locale) });
 }
 
-export function formatRelative(dateStr: string | null | undefined): string {
-  if (!dateStr) return "aldrig";
-  return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: da });
+export function formatRelative(dateStr: string | null | undefined, locale?: string, neverLabel = "never"): string {
+  if (!dateStr) return neverLabel;
+  return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: _dateFnsLocale(locale) });
 }
 
 export function getDomain(url: string): string {

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatPrice, formatRelative } from "@/lib/utils";
 import { PriceEvent } from "@/types";
+import { useI18n } from "@/lib/i18n";
 
 export function RecentChanges({ ownerId }: { ownerId?: string }) {
   const { data, isLoading } = useQuery({
@@ -13,12 +14,13 @@ export function RecentChanges({ ownerId }: { ownerId?: string }) {
     queryFn: () => api.dashboard.recentEvents(20, ownerId),
     refetchInterval: 30_000,
   });
+  const { t, locale } = useI18n();
 
   if (isLoading) {
     return (
       <div className="rounded-lg border border-border bg-card p-6">
-        <h2 className="text-base font-semibold mb-4">Seneste ændringer</h2>
-        <p className="text-sm text-muted-foreground">Indlæser…</p>
+        <h2 className="text-base font-semibold mb-4">{t("recent_changes_title")}</h2>
+        <p className="text-sm text-muted-foreground">{t("recent_changes_loading")}</p>
       </div>
     );
   }
@@ -28,17 +30,17 @@ export function RecentChanges({ ownerId }: { ownerId?: string }) {
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-base font-semibold">Seneste ændringer</h2>
+        <h2 className="text-base font-semibold">{t("recent_changes_title")}</h2>
       </div>
 
       {events.length === 0 ? (
         <div className="p-8 text-center text-sm text-muted-foreground">
-          Ingen ændringer endnu
+          {t("recent_changes_empty")}
         </div>
       ) : (
         <ul className="divide-y divide-border">
           {events.map((event) => (
-            <EventRow key={event.id} event={event} />
+            <EventRow key={event.id} event={event} locale={locale} />
           ))}
         </ul>
       )}
@@ -46,14 +48,14 @@ export function RecentChanges({ ownerId }: { ownerId?: string }) {
   );
 }
 
-function EventRow({ event }: { event: PriceEvent }) {
+function EventRow({ event, locale }: { event: PriceEvent; locale: string }) {
   const isDrop = (event.price_delta ?? 0) < 0;
   const isRise = (event.price_delta ?? 0) > 0;
   const displayName = event.watch_title ?? `Watch ${event.watch_id.slice(0, 8)}…`;
 
   return (
     <li className="flex items-center gap-3 px-5 py-3 hover:bg-muted/20 transition-colors">
-      {/* Produkt-miniaturebillede */}
+      {/* Product thumbnail */}}
       <div className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden bg-muted border border-border">
         {event.watch_image_url ? (
           <img
@@ -89,7 +91,7 @@ function EventRow({ event }: { event: PriceEvent }) {
         )}
       </div>
 
-      {/* Pil-indikator (kun vist når der er billede) */}
+      {/* Arrow indicator (only shown when image is present) */}}
       {event.watch_image_url && (
         <div
           className={`flex-shrink-0 rounded-full p-1.5 ${
@@ -117,7 +119,7 @@ function EventRow({ event }: { event: PriceEvent }) {
         </Link>
         <p className="text-xs text-muted-foreground">
           {event.event_type === "price_change"
-            ? `${formatPrice(event.old_price)} → ${formatPrice(event.new_price)}`
+            ? `${formatPrice(event.old_price, "DKK", locale)} → ${formatPrice(event.new_price, "DKK", locale)}`
             : event.event_type === "stock_change"
             ? `${event.old_stock} → ${event.new_stock}`
             : event.event_type}
@@ -132,11 +134,11 @@ function EventRow({ event }: { event: PriceEvent }) {
             }`}
           >
             {isDrop ? "" : "+"}
-            {formatPrice(event.price_delta)}
+            {formatPrice(event.price_delta, "DKK", locale)}
           </p>
         )}
         <p className="text-xs text-muted-foreground">
-          {formatRelative(event.occurred_at)}
+          {formatRelative(event.occurred_at, locale)}
         </p>
       </div>
     </li>

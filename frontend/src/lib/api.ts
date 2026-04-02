@@ -324,6 +324,11 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ old_password, new_password }),
       }),
+    updateMe: (data: { locale?: string }) =>
+      apiFetch<User>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
   },
 
   // ─── Admin: Brugere ───────────────────────────────────────────────────────

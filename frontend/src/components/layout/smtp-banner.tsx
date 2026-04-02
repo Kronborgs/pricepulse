@@ -6,10 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useI18n } from "@/lib/i18n";
 
 export function SmtpBanner() {
   const [dismissed, setDismissed] = useState(false);
   const { data: user } = useCurrentUser();
+  const { t } = useI18n();
 
   const { data: smtp } = useQuery({
     queryKey: ["admin", "smtp"],
@@ -33,11 +35,11 @@ export function SmtpBanner() {
       {/* Text */}
       <div className="flex flex-1 items-center gap-2 min-w-0">
         <span className="text-xs font-semibold text-amber-300">
-          SMTP ikke konfigureret
+          {t("smtp_banner_title")}
         </span>
         <span className="hidden sm:block text-xs text-amber-600">·</span>
         <span className="hidden sm:block text-xs text-amber-500/70 truncate">
-          E-mail notifikationer er slået fra indtil SMTP opsættes
+          {t("smtp_banner_subtitle")}
         </span>
       </div>
 
@@ -46,14 +48,14 @@ export function SmtpBanner() {
         href="/admin/smtp"
         className="flex flex-shrink-0 items-center gap-1.5 rounded-md bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-300 ring-1 ring-amber-500/30 transition-all hover:bg-amber-500/25 hover:text-amber-200"
       >
-        Opsæt SMTP
+        {t("smtp_banner_setup")}
         <ArrowRight className="h-3 w-3" />
       </Link>
 
       {/* Dismiss */}
       <button
         onClick={() => setDismissed(true)}
-        title="Skjul advarsel"
+        title={t("smtp_banner_dismiss")}
         className="flex-shrink-0 rounded-md p-1 text-amber-700 transition-colors hover:bg-amber-500/15 hover:text-amber-400"
       >
         <X className="h-3.5 w-3.5" />

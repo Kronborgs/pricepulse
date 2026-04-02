@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerEvents } from "@/hooks/useServerEvents";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { api } from "@/lib/api";
+import { I18nProvider, LangAttrSync, LocaleSync } from "@/lib/i18n";
 
 /** Mounts the SSE listener once inside the QueryClientProvider scope */
 function SSEMount() {
@@ -15,7 +16,8 @@ function SSEMount() {
   return null;
 }
 
-/** Reads the current user's session_timeout_minutes and starts inactivity timer */
+/** Reads the current user's session_timeout_minutes and starts inactivity timer.
+ *  Also syncs the user's stored locale preference into the i18n context. */
 function InactivityMount() {
   const { data: user } = useQuery({
     queryKey: ["auth", "me"],
@@ -24,7 +26,7 @@ function InactivityMount() {
     staleTime: 5 * 60 * 1000,
   });
   useInactivityLogout(user?.session_timeout_minutes);
-  return null;
+  return <LocaleSync userLocale={user?.locale} />;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -42,13 +44,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <NuqsAdapter>
-      <QueryClientProvider client={queryClient}>
-        <SSEMount />
-        <InactivityMount />
-        {children}
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </NuqsAdapter>
+    <I18nProvider>
+      <LangAttrSync />
+      <NuqsAdapter>
+        <QueryClientProvider client={queryClient}>
+          <SSEMount />
+          <InactivityMount />
+          {children}
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
+      </NuqsAdapter>
+    </I18nProvider>
   );
 }

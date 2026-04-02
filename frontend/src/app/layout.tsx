@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "PricePulse",
-  description: "Self-hosted prisovervågning til danske webshops",
+  description: "Self-hosted price monitoring for web shops",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "PricePulse",
-    description: "Self-hosted prisovervågning til danske webshops",
+    description: "Self-hosted price monitoring for web shops",
     images: [{ url: "/logo.png" }],
   },
 };
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="da" className="dark" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
           <div className="flex flex-col h-screen overflow-hidden bg-background">

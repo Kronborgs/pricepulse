@@ -359,6 +359,7 @@ export interface User {
   session_timeout_minutes: number | null;
   created_at: string;
   must_change_password: boolean;
+  locale: string;
 }
 
 export interface UserList {

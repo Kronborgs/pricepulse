@@ -45,6 +45,8 @@ class User(Base, TimestampMixin):
     session_timeout_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Tidspunkt for seneste password-skift. Bruges til 6-måneders udløbspolitik.
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Foretrukket sprog: "en" (standard) eller "da"
+    locale: Mapped[str] = mapped_column(String(10), default="en", nullable=False, server_default="en")
 
     # Relations
     tokens: Mapped[list["AuthToken"]] = relationship(

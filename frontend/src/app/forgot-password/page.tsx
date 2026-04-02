@@ -5,10 +5,12 @@ import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Loader2, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const mutation = useMutation({
     mutationFn: () => api.auth.forgotPassword(email),
@@ -21,10 +23,10 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-sm space-y-4 p-8 rounded-xl border border-slate-800 bg-slate-900 text-center">
           <CheckCircle className="h-10 w-10 text-green-400 mx-auto" />
           <p className="text-sm text-slate-300">
-            Hvis e-mailen findes i systemet, modtager du snart et link til at nulstille din adgangskode.
+            {t("forgot_password_success")}
           </p>
           <Link href="/login" className="text-xs text-[#29ABE2] hover:underline block">
-            Tilbage til login
+            {t("forgot_password_back_to_login")}
           </Link>
         </div>
       </div>
@@ -36,10 +38,10 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm space-y-6 p-8 rounded-xl border border-slate-800 bg-slate-900">
         <div className="text-center space-y-1">
           <h1 className="text-xl font-bold tracking-tight text-slate-100">
-            Glemt adgangskode
+            {t("forgot_password_title")}
           </h1>
           <p className="text-sm text-slate-400">
-            Skriv din e-mail for at modtage et nulstillingslink
+            {t("forgot_password_subtitle")}
           </p>
         </div>
 
@@ -53,7 +55,7 @@ export default function ForgotPasswordPage() {
         >
           <div className="space-y-1">
             <label className="text-xs text-slate-400" htmlFor="email">
-              E-mail
+              {t("forgot_password_email_label")}
             </label>
             <input
               id="email"
@@ -78,11 +80,11 @@ export default function ForgotPasswordPage() {
             className="w-full flex items-center justify-center gap-2 rounded-md bg-[#29ABE2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#29ABE2]/90 disabled:opacity-60 transition-colors"
           >
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Send nulstillingslink
+            {t("forgot_password_submit")}
           </button>
 
           <Link href="/login" className="block text-center text-xs text-slate-500 hover:text-slate-300">
-            Tilbage til login
+            {t("forgot_password_back_to_login")}
           </Link>
         </form>
       </div>
