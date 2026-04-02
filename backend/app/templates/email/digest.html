@@ -22,6 +22,134 @@
       Her kommer din notifikation fra PricePulse, som du har ønsket.
     </p>
 
+    <!-- ── Prisændringer ──────────────────────────────────────────── -->
+    <h2 style="color:#29ABE2;margin:0 0 4px 0;font-size:16px">{{ period_label }} prisdigest</h2>
+    <p style="color:#6b7280;font-size:12px;margin:0 0 16px 0">Ændringer siden {{ since_label }}</p>
+
+    {% if events %}
+    {% for ev in events %}
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:12px">
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          {% if ev.image_url %}
+          <td style="width:64px;padding-right:10px;vertical-align:top">
+            <img src="{{ ev.image_url }}" alt="{{ ev.watch_name }}" style="width:56px;height:56px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb" />
+          </td>
+          {% endif %}
+          <td style="vertical-align:top">
+            <p style="margin:0 0 5px 0;font-weight:bold;font-size:14px;color:#1a1a1a">{{ ev.watch_name }}</p>
+            {% if ev.change_type == "decrease" %}<span style="display:inline-block;background:#dcfce7;color:#166534;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">&#8595; Prisfald</span>
+            {% elif ev.change_type == "increase" %}<span style="display:inline-block;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">&#8593; Prisstigning</span>
+            {% elif ev.change_type == "back_in_stock" %}<span style="display:inline-block;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">Tilbage på lager</span>
+            {% elif ev.change_type == "unavailable" %}<span style="display:inline-block;background:#f3f4f6;color:#4b5563;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px">Utilgængelig</span>
+            {% endif %}
+          </td>
+          <td style="vertical-align:middle;text-align:right;white-space:nowrap;padding-left:8px">
+            {% if ev.old_price %}<p style="margin:0 0 2px 0;font-size:12px;color:#9ca3af;text-decoration:line-through">{{ ev.old_price }} {{ ev.currency }}</p>{% endif %}
+            {% if ev.new_price %}<p style="margin:0;font-size:19px;font-weight:bold;color:{% if ev.change_type == 'decrease' %}#16a34a{% elif ev.change_type == 'increase' %}#dc2626{% else %}#1a1a1a{% endif %}">{{ ev.new_price }} {{ ev.currency }}</p>{% endif %}
+          </td>
+        </tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;margin-top:10px;border-top:1px solid #f3f4f6">
+        <tr>
+          <td style="padding-top:8px;vertical-align:middle">
+            <span style="font-size:13px;color:#374151;font-weight:600">{{ ev.shop }}</span>
+            {% if ev.stock_status == "in_stock" %}&nbsp;<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">&#10003; På lager</span>
+            {% elif ev.stock_status == "out_of_stock" %}&nbsp;<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">&#10007; Ikke på lager</span>
+            {% elif ev.stock_status %}&nbsp;<span style="background:#f3f4f6;color:#4b5563;font-size:10px;padding:2px 7px;border-radius:9999px">{{ ev.stock_status }}</span>{% endif %}
+          </td>
+          {% if ev.product_url %}
+          <td style="text-align:right;padding-top:8px">
+            <a href="{{ ev.product_url }}" style="display:inline-block;background:#29ABE2;color:#fff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:6px;text-decoration:none">Gå til {{ ev.shop }} &#8594;</a>
+          </td>
+          {% endif %}
+        </tr>
+      </table>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#6b7280;font-size:13px;margin:0 0 20px 0">Ingen prisændringer registreret i perioden.</p>
+    {% endif %}
+
+    <!-- ── Aktuelle priser ───────────────────────────────────────── -->
+    {% if products_with_prices %}
+    <h2 style="color:#1a1a1a;margin:24px 0 4px 0;font-size:16px">Aktuelle priser</h2>
+    <p style="color:#6b7280;font-size:12px;margin:0 0 14px 0">Sammenlign priser på tværs af webshops og køb når prisen er rigtig.</p>
+
+    {% for prod in products_with_prices %}
+    <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
+      <!-- Produkt-header -->
+      <div style="background:#f9fafb;padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <table style="width:100%;border-collapse:collapse"><tr>
+          {% if prod.image_url %}
+          <td style="width:52px;padding-right:10px">
+            <img src="{{ prod.image_url }}" alt="{{ prod.name }}" style="width:44px;height:44px;object-fit:contain;border-radius:4px;border:1px solid #e5e7eb" />
+          </td>
+          {% endif %}
+          <td><p style="margin:0;font-weight:700;font-size:14px;color:#1a1a1a">{{ prod.name }}</p>
+          <p style="margin:2px 0 0 0;font-size:11px;color:#9ca3af">{{ prod.shops | length }} webshop{% if prod.shops | length != 1 %}s{% endif %} overvåget</p></td>
+          <td style="text-align:right;white-space:nowrap">
+            <a href="{{ app_url }}/watches/{{ prod.watch_id }}" style="font-size:11px;color:#9ca3af;text-decoration:none">&#128270; PricePulse</a>
+          </td>
+        </tr></table>
+      </div>
+      <!-- Shop-rækker -->
+      {% for shop in prod.shops %}
+      <div style="padding:10px 14px;border-top:1px solid #f3f4f6{% if loop.index == 1 %};background:#fff{% endif %}">
+        <table style="width:100%;border-collapse:collapse"><tr>
+          <td style="vertical-align:middle">
+            <span style="font-size:13px;font-weight:600;color:#1a1a1a">{{ shop.shop }}</span>
+            {% if shop.stock_status == "in_stock" %}&nbsp;<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">&#10003; På lager</span>
+            {% elif shop.stock_status == "out_of_stock" %}&nbsp;<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">&#10007; Ikke på lager</span>
+            {% elif shop.stock_status %}&nbsp;<span style="background:#f3f4f6;color:#4b5563;font-size:10px;padding:2px 7px;border-radius:9999px">{{ shop.stock_status }}</span>{% endif %}
+          </td>
+          <td style="text-align:right;vertical-align:middle;white-space:nowrap">
+            <span style="font-size:18px;font-weight:bold;color:#1a1a1a;margin-right:12px">{{ shop.price }} {{ shop.currency }}</span>
+            <a href="{{ shop.url }}" style="display:inline-block;background:#0f172a;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;border-radius:6px;text-decoration:none">Køb &#8594;</a>
+          </td>
+        </tr></table>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if total_watches %}
+    <p style="color:#9ca3af;font-size:12px;margin-top:8px">
+      Du overvåger i alt {{ total_watches }} produkt{% if total_watches != 1 %}er{% endif %}.
+    </p>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="color:#9ca3af;font-size:11px;margin:0">
+      PricePulse &mdash; automatisk prisovervågning &nbsp;|&nbsp;
+      <a href="{{ app_url }}/me/preferences" style="color:#9ca3af">Indstillinger</a>
+    </p>
+  </div>
+</body>
+</html>
+<head><meta charset="UTF-8"><title>PricePulse Digest</title></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
+  <!-- Header -->
+  <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">
+    {% if logo_url %}
+    <img src="{{ logo_url }}" alt="PricePulse" style="height:32px;width:auto" />
+    {% else %}
+    <span style="font-size:22px;font-weight:bold;color:#29ABE2">Price</span><span style="font-size:22px;font-weight:bold;color:#8DC63F">Pulse</span>
+    {% endif %}
+  </div>
+
+  <!-- Body -->
+  <div style="background:#fff;padding:28px;border-radius:0 0 8px 8px;color:#1a1a1a">
+
+    <!-- Greeting -->
+    <p style="font-size:15px;color:#1a1a1a;margin:0 0 4px 0">
+      Hej <strong>{{ display_name or "der" }}</strong>,
+    </p>
+    <p style="font-size:14px;color:#4b5563;margin:0 0 24px 0">
+      Her kommer din notifikation fra PricePulse, som du har ønsket.
+    </p>
+
     <h1 style="color:#29ABE2;margin:0 0 4px 0;font-size:18px">{{ period_label }} prisdigest</h1>
     <p style="color:#6b7280;font-size:13px;margin:0 0 20px 0">
       Oversigt over prisændringer siden {{ since_label }}

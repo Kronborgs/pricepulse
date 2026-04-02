@@ -407,6 +407,7 @@ class SMTPService:
                 # Byg event-liste — filtrér efter regelens produktfilter
                 seen: set = set()
                 template_events = []
+                filter_mode = rule.filter_mode or "all"
                 for ev, source, watch, product in rows:
                     key = (source.id, ev.change_type)
                     if key in seen:
@@ -414,7 +415,6 @@ class SMTPService:
                     seen.add(key)
 
                     # Produktfilter
-                    filter_mode = rule.filter_mode or "all"
                     if filter_mode == "tags":
                         rule_tags = set(rule.filter_tags or [])
                         product_tags = set(product.tags or [])
@@ -450,8 +450,47 @@ class SMTPService:
                 rule_name = rule.name or period_label
                 since_fmt = since.strftime("%d/%m/%Y %H:%M")
 
+                # ── Aktuelle priser fra alle shops (altid med i digest) ─────
+                cp_result = await db.execute(
+                    select(ProductWatch, WatchSource, Product)
+                    .join(Product, Product.id == ProductWatch.product_id)
+                    .join(WatchSource, WatchSource.watch_id == ProductWatch.id)
+                    .where(
+                        ProductWatch.owner_id == rule.user_id,
+                        ProductWatch.status.notin_(["archived"]),
+                        WatchSource.status.notin_(["archived"]),
+                        WatchSource.last_price.isnot(None),
+                    )
+                    .order_by(ProductWatch.id, WatchSource.last_price.asc())
+                )
+                seen_products: dict = {}
+                for pw2, src2, prod2 in cp_result.all():
+                    if filter_mode == "tags":
+                        if not (set(rule.filter_tags or []) & set(prod2.tags or [])):
+                            continue
+                    elif filter_mode == "products":
+                        if str(prod2.id) not in {str(p) for p in (rule.filter_product_ids or [])}:
+                            continue
+                    pid = str(prod2.id)
+                    if pid not in seen_products:
+                        seen_products[pid] = {
+                            "name": pw2.name or prod2.name,
+                            "image_url": prod2.image_url,
+                            "watch_id": str(pw2.id),
+                            "shops": [],
+                        }
+                    seen_products[pid]["shops"].append({
+                        "shop": src2.shop,
+                        "price": f"{float(src2.last_price):,.0f}".replace(",", "."),
+                        "currency": src2.last_currency or "DKK",
+                        "url": src2.url,
+                        "stock_status": src2.last_stock_status,
+                    })
+                products_with_prices = list(seen_products.values())
+
                 body = _render_template("digest.html", {
                     "events": template_events,
+                    "products_with_prices": products_with_prices,
                     "period_label": rule_name,
                     "since_label": since_fmt,
                     "total_watches": total_watches,
