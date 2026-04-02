@@ -1,12 +1,10 @@
 "use client";
 
-import { Fragment } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
-  Eye,
   Flag,
   LayoutDashboard,
   LogOut,
@@ -88,34 +86,19 @@ export function Sidebar() {
               ? pathname.startsWith("/products") || watchesActive
               : pathname.startsWith(href);
           return (
-            <Fragment key={href}>
-              <Link
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                  active
-                    ? "bg-[#29ABE2]/15 text-[#29ABE2] ring-1 ring-[#29ABE2]/30 shadow-sm"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
-                )}
-              >
-                <Icon className={cn("h-4 w-4", active ? "text-[#29ABE2]" : "text-slate-500")} />
-                {label}
-              </Link>
-              {href === "/products" && (
-                <Link
-                  href="/watches"
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg ml-5 pl-2 pr-3 py-2 text-sm transition-all duration-150",
-                    watchesActive
-                      ? "bg-[#29ABE2]/15 text-[#29ABE2] ring-1 ring-[#29ABE2]/30 shadow-sm"
-                      : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
-                  )}
-                >
-                  <Eye className={cn("h-3.5 w-3.5", watchesActive ? "text-[#29ABE2]" : "text-slate-600")} />
-                  Data webscraper
-                </Link>
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                active
+                  ? "bg-[#29ABE2]/15 text-[#29ABE2] ring-1 ring-[#29ABE2]/30 shadow-sm"
+                  : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
               )}
-            </Fragment>
+            >
+              <Icon className={cn("h-4 w-4", active ? "text-[#29ABE2]" : "text-slate-500")} />
+              {label}
+            </Link>
           );
         })}
 

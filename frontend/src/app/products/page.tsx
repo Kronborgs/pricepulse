@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { Product } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { UserFilterDropdown } from "@/components/ui/user-filter-dropdown";
+import { AddWatchDialog } from "@/components/watches/add-watch-dialog";
 
 function wordSimilarity(a: string, b: string): number {
   const words = (s: string) =>
@@ -144,6 +145,7 @@ export default function ProductsPage() {
             <Eye className="h-4 w-4" />
             Data webscraper
           </Link>
+          <AddWatchDialog />
           {isPrivileged && (
             <UserFilterDropdown
               users={usersData?.items ?? []}
