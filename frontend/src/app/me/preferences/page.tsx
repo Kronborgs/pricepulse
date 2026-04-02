@@ -378,7 +378,14 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
       setTimeout(() => setRunSent(false), 5000);
     },
     onError: (err: Error) => {
-      setRunError(err.message ?? "Fejl ved afsendelse");
+      const code = err.message;
+      const friendly =
+        code === "no_events"
+          ? "Ingen prisændringer i perioden — mail ikke sendt"
+          : code === "no_products"
+          ? "Ingen produkter matcher denne regel endnu"
+          : "Fejl ved afsendelse";
+      setRunError(friendly);
       setTimeout(() => setRunError(null), 6000);
     },
   });
@@ -503,7 +510,7 @@ function RuleCard({ rule, allTags, products, onToggle, onSave, onDelete, deletin
       {(runSent || runError) && (
         <div className={`mx-4 mb-3 rounded-md px-3 py-2 text-xs flex items-center gap-2 ${runSent ? "bg-emerald-900/40 text-emerald-300" : "bg-red-900/40 text-red-300"}`}>
           {runSent && <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
-          {runSent ? "Mail lagt i kø — ankommer inden for 5 min" : runError}
+          {runSent ? "Mail sendt!" : runError}
         </div>
       )}
 

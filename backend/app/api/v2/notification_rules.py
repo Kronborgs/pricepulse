@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser
+from app.config import settings
 from app.database import get_db
 
 logger = structlog.get_logger(__name__)
@@ -317,6 +318,12 @@ async def run_notification_rule_now(
                     "watch_id": str(watch.id),
                 })
 
+        if not template_events:
+            raise HTTPException(
+                status_code=422,
+                detail="no_events",
+            )
+
         body_html = _render_template("digest.html", {
             "events": template_events,
             "period_label": rule_label,
@@ -324,14 +331,16 @@ async def run_notification_rule_now(
             "total_watches": len(watches),
         })
 
-        await smtp_service._enqueue(
-            db, rule.user_id, owner.email, "digest",
-            f"{rule_label} digest — PricePulse", body_html,
+        # Send direkte — omgår køen så mailen ankommer med det samme
+        await smtp_service.send_email(
+            db, owner.email,
+            f"{rule_label} digest — PricePulse",
+            body_html,
         )
         rule.last_digest_sent_at = now
         await db.commit()
         await db.refresh(rule)
-        logger.info("digest_koelagt_manuelt", rule_id=str(rule.id), user_id=str(user.id), events=len(template_events))
+        logger.info("digest_sendt_manuelt", rule_id=str(rule.id), user_id=str(user.id), events=len(template_events))
 
     else:
         # ── Kør instant for netop denne regel med et tilfældigt produkt ───────
@@ -359,29 +368,29 @@ async def run_notification_rule_now(
                 .limit(1)
             )
             old_price_val = float(prev.old_price) if prev else round(float(source.last_price) * 1.15, 0)
-            await smtp_service.queue_price_drop(
-                db=db,
-                user_id=user.id,
-                to_email=owner.email,
-                watch_name=pw.name or product.name,
-                old_price=old_price_val,
-                new_price=float(source.last_price),
-                currency=source.last_currency or "DKK",
-                watch_id=pw.id,
-                source_id=source.id,
-                image_url=product.image_url,
-                product_url=source.url,
+            # Send direkte — omgår køen så mailen ankommer med det samme
+            body_html = _render_template("price_drop.html", {
+                "watch_name": pw.name or product.name,
+                "old_price": f"{old_price_val:,.0f}".replace(",", "."),
+                "new_price": f"{float(source.last_price):,.0f}".replace(",", "."),
+                "currency": source.last_currency or "DKK",
+                "watch_url": f"{settings.cors_origins.split(',')[0]}/watches/{pw.id}",
+                "product_url": source.url,
+                "image_url": product.image_url,
+                "in_stock": True,
+                "is_test": False,
+            })
+            await smtp_service.send_email(
+                db, owner.email,
+                f"Prisfald: {pw.name or product.name} — PricePulse",
+                body_html,
             )
         else:
-            # Ingen produkter — send en plain konstatering
-            from app.services.smtp_service import SMTPService
-            svc = SMTPService()
-            await svc._enqueue(
-                db, user.id, owner.email, "instant",
-                f"{rule_label} — PricePulse",
-                "<p>Ingen produkter matcher denne regel endnu.</p>",
+            raise HTTPException(
+                status_code=422,
+                detail="no_products",
             )
-        logger.info("instant_koelagt_manuelt", rule_id=str(rule.id), user_id=str(user.id))
+        logger.info("instant_sendt_manuelt", rule_id=str(rule.id), user_id=str(user.id))
 
     return _serialize_rule(rule)
 
