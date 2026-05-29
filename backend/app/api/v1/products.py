@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,6 +18,11 @@ from app.models.watch import Watch
 from app.schemas.product import MergeProductRequest, ProductCreate, ProductList, ProductRead, ProductUpdate
 
 router = APIRouter()
+
+_UPLOAD_DIR = Path("/app/data/uploads/products")
+_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_EXT_MAP = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 def _is_privileged(user: User) -> bool:
@@ -255,4 +261,71 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
     _assert_ownership(product, user)
     await db.delete(product)
+    await db.commit()
+
+
+@router.post("/{product_id}/image", response_model=ProductRead)
+async def upload_product_image(
+    product_id: uuid.UUID,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+) -> ProductRead:
+    """Upload et brugerdefineret produktbillede (JPEG/PNG/WebP/GIF, maks 5 MB)."""
+    product = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+    _assert_ownership(product, user)
+
+    if file.content_type not in _ALLOWED_TYPES:
+        raise HTTPException(status_code=400, detail="Filtype ikke tilladt. Brug JPEG, PNG, WebP eller GIF.")
+
+    content = await file.read()
+    if len(content) > _MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Filen er for stor (maks 5 MB).")
+
+    ext = _EXT_MAP[file.content_type]
+
+    # Slet evt. eksisterende upload for dette produkt (andet format)
+    for old_ext in _EXT_MAP.values():
+        old_path = _UPLOAD_DIR / f"{product_id}.{old_ext}"
+        if old_path.exists():
+            old_path.unlink()
+
+    _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _UPLOAD_DIR / f"{product_id}.{ext}"
+    dest.write_bytes(content)
+
+    from app.config import settings
+    base = settings.backend_url.rstrip("/") if settings.backend_url else str(request.base_url).rstrip("/")
+    product.image_url = f"{base}/uploads/products/{product_id}.{ext}"
+
+    await db.commit()
+    await db.refresh(product)
+
+    pr = ProductRead.model_validate(product)
+    pr.watch_count = 0
+    pr.lowest_price = None
+    return pr
+
+
+@router.delete("/{product_id}/image", status_code=204, response_model=None)
+async def delete_product_image(
+    product_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user: User = Depends(get_current_user),
+) -> None:
+    """Fjern uploadet produktbillede og nulstil image_url."""
+    product = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    if not product:
+        raise HTTPException(status_code=404, detail="Produkt ikke fundet")
+    _assert_ownership(product, user)
+
+    for ext in _EXT_MAP.values():
+        path = _UPLOAD_DIR / f"{product_id}.{ext}"
+        if path.exists():
+            path.unlink()
+
+    product.image_url = None
     await db.commit()

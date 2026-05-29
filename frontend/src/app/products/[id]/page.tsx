@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, KeyboardEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Loader2, Plus, Merge, Search, Tag, X } from "lucide-react";
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Flag, Loader2, Plus, Merge, Search, Tag, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -55,6 +55,37 @@ export default function ProductDetailPage({
   // Tags
   const [tagInput, setTagInput] = useState("");
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  // Image upload
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImageUploading(true);
+    try {
+      await api.products.uploadImage(id, file);
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+    } catch {
+      // silent — image just won't update
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  async function handleDeleteImage() {
+    setImageUploading(true);
+    try {
+      await api.products.deleteImage(id);
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+    } catch {
+      // silent
+    } finally {
+      setImageUploading(false);
+    }
+  }
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -210,23 +241,60 @@ export default function ProductDetailPage({
           )}
         </div>
         <div className="flex items-start gap-4 flex-1 min-w-0">
-          {product.image_url ? (
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="h-20 w-20 rounded-lg border border-border object-contain bg-muted/20 p-1 shrink-0"
-              onError={(e) => {
-                const el = e.currentTarget as HTMLImageElement;
-                el.onerror = null;
-                el.src = "/logo.png";
-                el.className = "h-20 w-20 rounded-lg border border-border bg-muted/20 p-2.5 shrink-0 opacity-60";
-              }}
+          {/* Image with upload overlay */}
+          <div className="relative h-20 w-20 shrink-0 group">
+            {imageUploading ? (
+              <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="h-20 w-20 rounded-lg border border-border object-contain bg-muted/20 p-1 shrink-0"
+                onError={(e) => {
+                  const el = e.currentTarget as HTMLImageElement;
+                  el.onerror = null;
+                  el.src = "/logo.png";
+                  el.className = "h-20 w-20 rounded-lg border border-border bg-muted/20 p-2.5 shrink-0 opacity-60";
+                }}
+              />
+            ) : (
+              <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center shrink-0">
+                <img src="/logo.png" alt="PricePulse" className="h-16 w-16 object-contain opacity-60" />
+              </div>
+            )}
+
+            {/* Upload overlay */}
+            {!imageUploading && (
+              <div
+                className="absolute inset-0 rounded-lg bg-black/55 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                onClick={() => imageInputRef.current?.click()}
+                title="Upload billede"
+              >
+                <Camera className="h-6 w-6 text-white" />
+              </div>
+            )}
+
+            {/* Delete button */}
+            {product.image_url && !imageUploading && (
+              <button
+                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                onClick={handleDeleteImage}
+                title="Fjern billede"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={handleImageUpload}
             />
-          ) : (
-            <div className="h-20 w-20 rounded-lg border border-border bg-muted/20 flex items-center justify-center shrink-0">
-              <img src="/logo.png" alt="PricePulse" className="h-16 w-16 object-contain opacity-60" />
-            </div>
-          )}
+          </div>
           <div className="min-w-0 flex-1">
             {product.brand && (
               <p className="text-sm text-muted-foreground">{product.brand}</p>

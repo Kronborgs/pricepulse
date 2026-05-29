@@ -185,6 +185,17 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ source_product_id: sourceProductId }),
       }),
+    uploadImage: (id: string, file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      return apiFetch<Product>(`/products/${id}/image`, {
+        method: "POST",
+        body: fd,
+        headers: {},
+      });
+    },
+    deleteImage: (id: string) =>
+      apiFetch<void>(`/products/${id}/image`, { method: "DELETE" }),
   },
 
   // ─── Shops ───────────────────────────────────────────────────────────────────

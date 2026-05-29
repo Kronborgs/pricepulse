@@ -5,10 +5,13 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from pathlib import Path
+
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
@@ -123,6 +126,11 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(api_router, prefix="/api/v1")
+
+    # Serve uploadede produktbilleder
+    _upload_dir = Path("/app/data/uploads")
+    _upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_upload_dir)), name="uploads")
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
