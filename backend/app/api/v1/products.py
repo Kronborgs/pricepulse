@@ -299,7 +299,7 @@ async def upload_product_image(
 
     from app.config import settings
     base = settings.backend_url.rstrip("/") if settings.backend_url else str(request.base_url).rstrip("/")
-    product.image_url = f"{base}/uploads/products/{product_id}.{ext}"
+    product.image_url = f"{base}/api/uploads/products/{product_id}.{ext}"
 
     await db.commit()
     await db.refresh(product)
