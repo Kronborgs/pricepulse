@@ -65,6 +65,9 @@
           {% endif %}
         </tr>
       </table>
+      <p style="margin:10px 0 0 0">
+        <a href="{{ app_url }}/watches/{{ ev.watch_id }}" style="font-size:11px;color:#9ca3af;text-decoration:none">&#128270; Se overvågning i PricePulse</a>
+      </p>
     </div>
     {% endfor %}
     {% else %}
@@ -152,7 +155,6 @@
   </div>
 </body>
 </html>
-<head><meta charset="UTF-8"><title>PricePulse Digest</title></head>
 <body style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#f4f6f8;padding:0">
   <!-- Header -->
   <div style="background:#0f172a;border-radius:8px 8px 0 0;padding:20px 28px">

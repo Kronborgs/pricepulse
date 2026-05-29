@@ -94,6 +94,13 @@ def decrypt_password(enc: str) -> str:
     return _get_fernet().decrypt(enc.encode()).decode()
 
 
+def _safe_image_url(url: str | None) -> str | None:
+    """Returnér URL kun hvis det er en absolut http/https-URL. Ellers None."""
+    if url and isinstance(url, str) and url.strip().startswith(("http://", "https://")):
+        return url.strip()
+    return None
+
+
 def _is_digest_due(pref: Any, now: datetime) -> bool:
     """Returnér True hvis digest-e-mailen er forfalden for denne præference."""
     if not pref.last_digest_sent_at:
@@ -449,7 +456,7 @@ class SMTPService:
                         "old_price": f"{old_p:,.0f}".replace(",", ".") if old_p else None,
                         "new_price": f"{new_p:,.0f}".replace(",", ".") if new_p else None,
                         "currency": watch_obj.current_currency or "DKK",
-                        "image_url": product.image_url or watch_obj.image_url,
+                        "image_url": _safe_image_url(product.image_url or watch_obj.image_url),
                         "product_url": watch_obj.url,
                         "watch_id": str(watch_obj.id),
                         "stock_status": ev.new_stock or watch_obj.current_stock_status,
@@ -494,7 +501,7 @@ class SMTPService:
                     if pid not in seen_products:
                         seen_products[pid] = {
                             "name": prod.name or w.title,
-                            "image_url": prod.image_url or w.image_url,
+                            "image_url": _safe_image_url(prod.image_url or w.image_url),
                             "watch_id": str(w.id),
                             "shops": [],
                         }
