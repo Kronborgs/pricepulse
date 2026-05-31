@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import urljoin
 
 import structlog
 from sqlalchemy import func, select
@@ -144,7 +145,11 @@ class PriceService:
         if parse_result.title and not watch.title:
             watch.title = parse_result.title
         if parse_result.image_url and not watch.image_url:
-            watch.image_url = parse_result.image_url
+            img = parse_result.image_url
+            # Gør relative URLs absolutte ved at bruge watch-URL som base
+            if not img.startswith(("http://", "https://")):
+                img = urljoin(watch.url, img)
+            watch.image_url = img
 
         # Auto-link til Product baseret på titel (selvhelende)
         if watch.title and not watch.product_id:

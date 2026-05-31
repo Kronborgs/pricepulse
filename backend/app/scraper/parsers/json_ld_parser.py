@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from urllib.parse import urljoin
 
 import structlog
 from bs4 import BeautifulSoup
@@ -66,6 +67,9 @@ class JsonLdParser(PriceParser):
             image = image[0] if image else None
         if isinstance(image, dict):
             image = image.get("url")
+        # Gør relative image-URLs absolutte
+        if image and isinstance(image, str) and not image.startswith(("http://", "https://")):
+            image = urljoin(url, image)
 
         ean = data.get("gtin13") or data.get("gtin8") or data.get("ean")
 
