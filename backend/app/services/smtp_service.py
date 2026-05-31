@@ -95,9 +95,16 @@ def decrypt_password(enc: str) -> str:
 
 
 def _safe_image_url(url: str | None) -> str | None:
-    """Returnér URL kun hvis det er en absolut http/https-URL. Ellers None."""
-    if url and isinstance(url, str) and url.strip().startswith(("http://", "https://")):
-        return url.strip()
+    """Returnér URL kun hvis det er en absolut http/https-URL eller et lokalt upload.
+    Lokale uploads (/api/uploads/) får _app_url() som prefix."""
+    if not url or not isinstance(url, str):
+        return None
+    url = url.strip()
+    if url.startswith(("http://", "https://")):
+        return url
+    if url.startswith("/api/uploads/"):
+        base = _app_url()
+        return f"{base}{url}" if base else None
     return None
 
 

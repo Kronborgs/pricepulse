@@ -39,11 +39,6 @@ class Settings(BaseSettings):
     # Hvis tom bruges første cors_origins-opslag som fallback.
     frontend_url: str = ""
 
-    # Bruges til at bygge absolutte URLs til uploadede produktbilleder.
-    # Sæt til den URL backend-API'et er tilgængeligt fra browseren,
-    # fx http://10.10.80.21:8000. Hvis tom bruges request.base_url ved upload.
-    backend_url: str = ""
-
     # ─── Auth / JWT ───────────────────────────────────────────
     # Access token: kortlivet (15 min). Refresh token: 30 dage.
     jwt_access_token_expire_minutes: int = 15

@@ -4,7 +4,7 @@ import uuid
 from pathlib import Path
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -267,7 +267,6 @@ async def delete_product(
 @router.post("/{product_id}/image", response_model=ProductRead)
 async def upload_product_image(
     product_id: uuid.UUID,
-    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
@@ -297,9 +296,9 @@ async def upload_product_image(
     dest = _UPLOAD_DIR / f"{product_id}.{ext}"
     dest.write_bytes(content)
 
-    from app.config import settings
-    base = settings.backend_url.rstrip("/") if settings.backend_url else str(request.base_url).rstrip("/")
-    product.image_url = f"{base}/api/uploads/products/{product_id}.{ext}"
+    # Gem som relativ sti — browseren resolver den mod sit eget origin,
+    # og reverse proxy'en router /api/ til backend
+    product.image_url = f"/api/uploads/products/{product_id}.{ext}"
 
     await db.commit()
     await db.refresh(product)
