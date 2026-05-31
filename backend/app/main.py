@@ -127,10 +127,11 @@ def create_app() -> FastAPI:
     # Routers
     app.include_router(api_router, prefix="/api/v1")
 
-    # Serve uploadede produktbilleder (under /api/uploads så reverse proxy router korrekt)
+    # Serve uploadede produktbilleder under /api/v1/uploads så reverse proxy
+    # sikkert router til backend (samme rule som alle andre /api/v1/ kald)
     _upload_dir = Path("/app/data/uploads")
     _upload_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/api/uploads", StaticFiles(directory=str(_upload_dir)), name="uploads")
+    app.mount("/api/v1/uploads", StaticFiles(directory=str(_upload_dir)), name="uploads")
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:

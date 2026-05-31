@@ -58,6 +58,7 @@ export default function ProductDetailPage({
 
   // Image upload
   const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -65,11 +66,12 @@ export default function ProductDetailPage({
     if (!file) return;
     e.target.value = "";
     setImageUploading(true);
+    setImageError("");
     try {
       await api.products.uploadImage(id, file);
       queryClient.invalidateQueries({ queryKey: ["product", id] });
-    } catch {
-      // silent — image just won't update
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Upload fejlede");
     } finally {
       setImageUploading(false);
     }
@@ -77,11 +79,12 @@ export default function ProductDetailPage({
 
   async function handleDeleteImage() {
     setImageUploading(true);
+    setImageError("");
     try {
       await api.products.deleteImage(id);
       queryClient.invalidateQueries({ queryKey: ["product", id] });
-    } catch {
-      // silent
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Slet fejlede");
     } finally {
       setImageUploading(false);
     }
@@ -295,6 +298,9 @@ export default function ProductDetailPage({
               onChange={handleImageUpload}
             />
           </div>
+          {imageError && (
+            <p className="text-xs text-destructive mt-1 self-end">{imageError}</p>
+          )}
           <div className="min-w-0 flex-1">
             {product.brand && (
               <p className="text-sm text-muted-foreground">{product.brand}</p>

@@ -296,9 +296,9 @@ async def upload_product_image(
     dest = _UPLOAD_DIR / f"{product_id}.{ext}"
     dest.write_bytes(content)
 
-    # Gem som relativ sti — browseren resolver den mod sit eget origin,
-    # og reverse proxy'en router /api/ til backend
-    product.image_url = f"/api/uploads/products/{product_id}.{ext}"
+    # Gem som relativ sti under /api/v1/uploads/ — sikrer at reverse proxy
+    # router korrekt (samme regel som alle andre /api/v1/ kald)
+    product.image_url = f"/api/v1/uploads/products/{product_id}.{ext}"
 
     await db.commit()
     await db.refresh(product)
