@@ -31,4 +31,12 @@ async def event_stream(
         async for chunk in sse_manager.stream(user_id):
             yield chunk
 
-    return EventSourceResponse(generator())
+    return EventSourceResponse(
+        generator(),
+        headers={
+            # Disable proxy/Cloudflare buffering so SSE frames arrive immediately.
+            # Also prevents Cloudflare QUIC from holding the stream open incorrectly.
+            "X-Accel-Buffering": "no",
+            "Cache-Control": "no-cache, no-transform",
+        },
+    )
