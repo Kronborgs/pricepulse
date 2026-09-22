@@ -13,6 +13,7 @@ from app.api.deps import AdminUser
 from app.config import settings
 from app.database import get_db
 from app.schemas.v2 import OllamaAnalyzeRequest, OllamaConfigPatch, OllamaNormalizeRequest, OllamaStatusResponse
+from app.services.ollama_config import save_persisted_config
 from app.services.ollama_service import ollama_service
 
 logger = structlog.get_logger(__name__)
@@ -37,7 +38,7 @@ async def ollama_status() -> OllamaStatusResponse:
 
 @router.patch("/config")
 async def update_ollama_config(body: OllamaConfigPatch, _admin: AdminUser) -> OllamaStatusResponse:
-    """Opdatér Ollama-config i runtime (gemmes ikke til disk — sæt env-vars for persistens)."""
+    """Opdatér og gem Ollama-konfigurationen permanent på app-data-mountet."""
     if body.enabled is not None:
         settings.ollama_enabled = body.enabled
     if body.host is not None:
@@ -49,6 +50,7 @@ async def update_ollama_config(body: OllamaConfigPatch, _admin: AdminUser) -> Ol
         settings.ollama_normalize_model = body.normalize_model
     if body.embed_model is not None:
         settings.ollama_embed_model = body.embed_model
+    await save_persisted_config()
     # Return updated status
     available = settings.ollama_enabled and await ollama_service.is_available()
     models = await ollama_service.list_models() if available else []

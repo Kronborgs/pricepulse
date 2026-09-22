@@ -219,7 +219,7 @@ function OllamaSection({ readonly }: { readonly?: boolean }) {
           <p className="text-sm font-mono mt-1">{status?.host}</p>
         )}
         <p className="text-xs text-muted-foreground mt-1.5">
-          RAM change only — set <code className="bg-muted rounded px-1">OLLAMA_HOST</code> in the env file for permanent change.
+          Saved permanently in the PricePulse app-data folder and survives container restarts.
         </p>
       </div>
 

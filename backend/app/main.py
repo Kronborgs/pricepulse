@@ -18,6 +18,7 @@ from app.api.v1.router import api_router
 from app.config import settings
 from app.database import engine, Base
 from app.scheduler.jobs import start_scheduler, stop_scheduler
+from app.services.ollama_config import apply_persisted_config
 from app.services.ollama_queue import process_queue_forever
 
 logger = structlog.get_logger()
@@ -30,6 +31,7 @@ _VERSION = os.getenv("PRICEPULSE_VERSION", "dev")
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: startup → yield → shutdown."""
     logger.info("PricePulse starting up", environment=settings.environment)
+    await apply_persisted_config()
 
     # Opret tabeller hvis de ikke eksisterer (migrations håndterer dette i prod)
     async with engine.begin() as conn:
