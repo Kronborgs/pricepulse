@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>pricepulse-backend</Name>
-  <Repository>registry.kronborgs.dk/kronborgs-lab/pricepulse-backend:latest</Repository>
+  <Repository>registry.kronborgs.dk/kronborgs-lab/pricepulse/backend:latest</Repository>
   <Registry>https://gitlab.kronborgs.dk/kronborgs-lab/pricepulse/-/container_registries</Registry>
   <Network>dockernet</Network>
   <MyIP/>

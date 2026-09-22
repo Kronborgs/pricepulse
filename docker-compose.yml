@@ -1,7 +1,7 @@
 services:
   # ─── Backend (FastAPI + APScheduler) ─────────────────────────────────────────
   backend:
-    image: registry.kronborgs.dk/kronborgs-lab/pricepulse-backend:latest
+    image: registry.kronborgs.dk/kronborgs-lab/pricepulse/backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -41,7 +41,7 @@ services:
 
   # ─── Frontend (Next.js) ───────────────────────────────────────────────────────
   frontend:
-    image: registry.kronborgs.dk/kronborgs-lab/pricepulse-frontend:latest
+    image: registry.kronborgs.dk/kronborgs-lab/pricepulse/frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
