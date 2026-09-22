@@ -96,7 +96,7 @@ export function LlmInsightPanel({ sourceId, existing }: Props) {
 
         {!advice ? (
           <p className="text-sm text-muted-foreground">
-            Ingen AI-analyse tilgængelig endnu. Klik "Kør analyse" for at starte.
+            Ingen AI-analyse tilgængelig endnu. Klik &quot;Kør analyse&quot; for at starte.
           </p>
         ) : (
           <div className="space-y-4">

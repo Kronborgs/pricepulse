@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useQuery } from "@tanstack/react-query";
 import { DashboardStats } from "@/types";
@@ -62,7 +62,6 @@ export function StatsRow({ ownerId }: { ownerId?: string }) {
     refetchInterval: 30_000,
   });
   const { t } = useI18n();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const statCards = useStatCards(stats, t as any);
 
   return (
