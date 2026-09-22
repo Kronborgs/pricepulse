@@ -92,7 +92,7 @@ export default function AdminDataPage() {
     refetchOnWindowFocus: false,
   });
 
-  const makeMutation = (fn: () => Promise<unknown>) =>
+  const useAdminMutation = (fn: () => Promise<unknown>) =>
     useMutation({
       mutationFn: fn,
       onSuccess: () => {
@@ -102,11 +102,11 @@ export default function AdminDataPage() {
       },
     });
 
-  const deleteWatches = makeMutation(() => api.adminData.deleteWatches());
-  const deleteProducts = makeMutation(() => api.adminData.deleteProducts());
-  const deletePriceHistory = makeMutation(() => api.adminData.deletePriceHistory());
-  const deleteAiJobs = makeMutation(() => api.adminData.deleteAiJobs());
-  const deleteEmailQueue = makeMutation(() => api.adminData.deleteEmailQueue());
+  const deleteWatches = useAdminMutation(() => api.adminData.deleteWatches());
+  const deleteProducts = useAdminMutation(() => api.adminData.deleteProducts());
+  const deletePriceHistory = useAdminMutation(() => api.adminData.deletePriceHistory());
+  const deleteAiJobs = useAdminMutation(() => api.adminData.deleteAiJobs());
+  const deleteEmailQueue = useAdminMutation(() => api.adminData.deleteEmailQueue());
 
   const claimOrphaned = useMutation({
     mutationFn: () => api.adminData.claimOrphaned(),
@@ -118,7 +118,7 @@ export default function AdminDataPage() {
     },
   });
 
-  const mutations: Record<string, ReturnType<typeof makeMutation>> = {
+  const mutations: Record<string, ReturnType<typeof useAdminMutation>> = {
     deleteWatches,
     deleteProducts,
     deletePriceHistory,
