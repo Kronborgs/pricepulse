@@ -20,7 +20,6 @@ Design:
 """
 from __future__ import annotations
 
-import base64
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -112,7 +111,6 @@ def _is_digest_due(pref: Any, now: datetime) -> bool:
     """Returnér True hvis digest-e-mailen er forfalden for denne præference."""
     if not pref.last_digest_sent_at:
         return True
-    from datetime import timedelta
     delta = now - pref.last_digest_sent_at
     freq = pref.digest_frequency
     if freq == "hourly":
@@ -152,7 +150,7 @@ class SMTPService:
         """Hent aktiv SMTP-konfiguration fra DB."""
         from app.models.smtp_settings import SMTPSettings
         result = await db.scalar(
-            select(SMTPSettings).where(SMTPSettings.is_active == True).limit(1)
+            select(SMTPSettings).where(SMTPSettings.is_active is True).limit(1)
         )
         return result
 
@@ -359,9 +357,6 @@ class SMTPService:
         from datetime import timedelta
         from app.database import AsyncSessionLocal
         from app.models.notification_rule import NotificationRule
-        from app.models.product_watch import ProductWatch
-        from app.models.source_price_event import SourcePriceEvent
-        from app.models.watch_source import WatchSource
         from app.models.watch import Watch
         from app.models.shop import Shop
         from app.models.product import Product
@@ -377,7 +372,7 @@ class SMTPService:
                 select(NotificationRule)
                 .where(
                     NotificationRule.rule_type == "digest",
-                    NotificationRule.enabled == True,
+                    NotificationRule.enabled is True,
                 )
             )
             rules = rules_result.scalars().all()
@@ -397,7 +392,7 @@ class SMTPService:
                 watches_result = await db.execute(
                     select(Watch).where(
                         Watch.owner_id == rule.user_id,
-                        Watch.is_active == True,
+                        Watch.is_active is True,
                         Watch.status.notin_(["archived"]),
                     )
                 )
@@ -486,7 +481,7 @@ class SMTPService:
                     .outerjoin(Shop, Shop.id == Watch.shop_id)
                     .where(
                         Watch.owner_id == rule.user_id,
-                        Watch.is_active == True,
+                        Watch.is_active is True,
                         Watch.status.notin_(["archived"]),
                         Watch.product_id.isnot(None),
                     )

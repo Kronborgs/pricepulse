@@ -20,7 +20,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import structlog
-from sqlalchemy import text
 
 logger = structlog.get_logger(__name__)
 
@@ -332,7 +331,7 @@ async def create_backup() -> str:
     cfg = load_config()
     _prune_old_backups(cfg.get("keep_count", 7))
 
-    total_history = len(v1_history) + len(v2_events)
+    len(v1_history) + len(v2_events)
     logger.info(
         "Backup oprettet (v2)",
         filename=filename,
@@ -357,7 +356,7 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
     with gzip.open(filepath, "rt", encoding="utf-8") as fh:
         data = json.load(fh)
 
-    version = data.get("version", 1)
+    data.get("version", 1)
     stats: dict[str, int] = {}
 
     from app.database import AsyncSessionLocal

@@ -444,7 +444,7 @@ class SourceService:
                 select(NotificationRule).where(
                     NotificationRule.user_id == watch.owner_id,
                     NotificationRule.rule_type == "instant",
-                    NotificationRule.enabled == True,
+                    NotificationRule.enabled is True,
                 )
             )
             instant_rules = rules_result.scalars().all()

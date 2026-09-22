@@ -5,14 +5,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import AdminUser, SuperOrAdmin, CurrentUser
+from app.api.deps import AdminUser, SuperOrAdmin
 from app.database import get_db
 from app.services.ai_job_service import AIJobService
 

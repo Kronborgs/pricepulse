@@ -23,12 +23,10 @@ from app.models.user import User
 from app.models.watch_source import WatchSource
 from app.models.watch_timeline_event import WatchTimelineEvent
 from app.schemas.v2 import (
-    ProductWatchCreate,
     ProductWatchList,
     ProductWatchRead,
     ProductWatchUpdate,
     SourceCheckList,
-    SourceCheckRead,
     SourcePriceEventRead,
     TimelineEventRead,
     WatchSourceCreate,
@@ -299,7 +297,7 @@ async def _run_ollama_diagnose(source_id: uuid.UUID, url: str) -> None:
     async with AsyncSessionLocal() as db:
         stmt = (
             select(SourceCheck)
-            .where(SourceCheck.source_id == source_id, SourceCheck.success == False)
+            .where(SourceCheck.source_id == source_id, SourceCheck.success is False)
             .order_by(SourceCheck.checked_at.desc())
             .limit(1)
         )

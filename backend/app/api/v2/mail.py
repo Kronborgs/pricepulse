@@ -4,7 +4,6 @@ SMTP admin endpoints og email preferences.
 from __future__ import annotations
 
 import uuid
-from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -83,7 +82,7 @@ async def get_smtp_settings(
     db: AsyncSession = Depends(get_db),
     _admin: AdminUser = None,
 ) -> dict:
-    row = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active == True).limit(1))
+    row = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active is True).limit(1))
     if not row:
         return {"configured": False}
     # Verificér at kodeordet kan dekrypteres med den aktuelle nøgle
@@ -102,7 +101,7 @@ async def save_smtp_settings(
     admin: AdminUser = None,
 ) -> dict:
     # Hent eksisterende aktiv konfiguration (bevar kodeord hvis ikke ændret)
-    existing = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active == True).limit(1))
+    existing = await db.scalar(select(SMTPSettings).where(SMTPSettings.is_active is True).limit(1))
 
     if not body.password.strip() and not existing:
         raise HTTPException(status_code=400, detail="Adgangskode er påkrævet ved første opsætning")

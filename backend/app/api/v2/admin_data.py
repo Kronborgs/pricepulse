@@ -6,7 +6,7 @@ Bulk-sletning er kun for admin.
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -153,12 +153,12 @@ async def claim_orphaned_resources(
 
     watches_result = await db.execute(
         update(ProductWatch)
-        .where(ProductWatch.owner_id == None)
+        .where(ProductWatch.owner_id is None)
         .values(owner_id=admin.id)
     )
     products_result = await db.execute(
         update(Product)
-        .where(Product.owner_id == None)
+        .where(Product.owner_id is None)
         .values(owner_id=admin.id)
     )
     await db.commit()

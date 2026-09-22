@@ -36,7 +36,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(Base.metadata.create_all)
 
     # Start APScheduler (tilføjer email-job her)
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
     await start_scheduler()
     _register_email_job()
 

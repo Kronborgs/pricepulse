@@ -9,11 +9,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import AnyUser, SuperOrAdmin, get_current_user
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.models.watch import Watch
-from app.models.shop import Shop
 from app.schemas.watch import (
     WatchCreate,
     WatchDetectResult,

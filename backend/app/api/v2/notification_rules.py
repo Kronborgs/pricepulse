@@ -274,7 +274,7 @@ async def run_notification_rule_now(
         watches_result = await db.execute(
             select(Watch).where(
                 Watch.owner_id == user.id,
-                Watch.is_active == True,
+                Watch.is_active is True,
                 Watch.status.notin_(["archived"]),
                 Watch.product_id.isnot(None),
             )
@@ -343,7 +343,7 @@ async def run_notification_rule_now(
             .outerjoin(Shop, Shop.id == Watch.shop_id)
             .where(
                 Watch.owner_id == user.id,
-                Watch.is_active == True,
+                Watch.is_active is True,
                 Watch.status.notin_(["archived"]),
                 Watch.product_id.isnot(None),
             )

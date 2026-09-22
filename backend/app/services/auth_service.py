@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
-from jose import JWTError, jwt
+from jose import jwt
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -205,7 +205,7 @@ class AuthService:
         Returnerer raw token (sendes via mail) eller None hvis email ikke findes.
         """
         user = await self.db.scalar(
-            select(User).where(User.email == email.lower().strip(), User.is_active == True)
+            select(User).where(User.email == email.lower().strip(), User.is_active is True)
         )
         if not user:
             return None

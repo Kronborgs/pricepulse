@@ -12,7 +12,6 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.watch_source import WatchSource
-    from app.models.product import Product
     from app.models.user import User
 
 

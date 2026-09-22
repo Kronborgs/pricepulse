@@ -29,7 +29,7 @@ async def start_scheduler() -> None:
     )
 
     # ── Backup-job ────────────────────────────────────────────
-    from app.services.backup_service import load_config, create_backup
+    from app.services.backup_service import load_config
 
     backup_cfg = load_config()
     if backup_cfg.get("enabled"):
@@ -125,10 +125,10 @@ async def _run_v1_watches_legacy() -> None:
     async with AsyncSessionLocal() as db:
         now = datetime.now(timezone.utc)
         stmt = select(Watch).where(
-            Watch.is_active == True,
+            Watch.is_active is True,
             Watch.status.in_(["active", "pending", "ai_active"]),
             or_(
-                Watch.last_checked_at == None,
+                Watch.last_checked_at is None,
                 Watch.last_checked_at <= now.replace(second=0, microsecond=0),
             ),
         )

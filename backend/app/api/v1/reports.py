@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_role, SuperOrAdmin
+from app.api.deps import get_current_user, require_role
 from app.database import get_db
 from app.models.scraper_report import ScraperReport
 from app.models.user import User

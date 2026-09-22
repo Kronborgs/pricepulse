@@ -18,9 +18,9 @@ import asyncio
 import hashlib
 import json
 import re
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 from typing import Any
 
 import httpx
@@ -30,6 +30,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.llm_analysis_result import LlmAnalysisResult
+
+if TYPE_CHECKING:
+    from app.scraper.providers.base import ParseResult
 
 logger = structlog.get_logger(__name__)
 

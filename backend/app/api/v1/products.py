@@ -9,7 +9,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import SuperOrAdmin, get_current_user
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.product import Product
 from app.models.product_watch import ProductWatch

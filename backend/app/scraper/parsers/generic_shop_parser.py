@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 GenericShopParser — bredt net af selectors og heuristikker baseret på erfaring
 fra alle eksisterende shop-parsers. Bruges som step 5 fallback for ukendte shops.
@@ -11,6 +9,8 @@ Strategi (kører i rækkefølge, returnerer ved første hit):
   D. bred CSS scan: klasser med "price" i navn → regexp-validering
   E. side-tekst regexp med kr/DKK kontekst
 """
+
+from __future__ import annotations
 
 import re
 from bs4 import BeautifulSoup

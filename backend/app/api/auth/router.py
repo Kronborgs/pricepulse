@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Request, Response, UploadFile, status
-from pydantic import BaseModel, EmailStr, field_validator
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile, status
+from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_optional_user

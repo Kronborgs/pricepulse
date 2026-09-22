@@ -3,11 +3,10 @@ API v1 — Ollama integration endpoints
 """
 from __future__ import annotations
 
-import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import AdminUser

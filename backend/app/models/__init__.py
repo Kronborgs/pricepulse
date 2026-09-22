@@ -58,6 +58,7 @@ __all__ = [
     "SMTPSettings",
     "EmailPreference",
     "EmailQueue",
+    "NotificationRule",
     # scraper reports
     "ScraperReport",
 ]
