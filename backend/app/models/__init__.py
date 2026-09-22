@@ -1,5 +1,6 @@
 # Legacy v1 models
-from app.models.base import Base, TimestampMixin
+from app.database import Base
+from app.models.base import TimestampMixin
 from app.models.shop import Shop
 from app.models.product import Product
 from app.models.watch import Watch
