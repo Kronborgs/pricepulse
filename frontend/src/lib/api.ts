@@ -175,6 +175,8 @@ export const api = {
       return apiFetch<ProductList>(`/products?${qs}`);
     },
     get: (id: string) => apiFetch<Product>(`/products/${id}`),
+    delete: (id: string) =>
+      apiFetch<void>(`/products/${id}`, { method: "DELETE" }),
     patch: (id: string, data: { tags?: string[] | null }) =>
       apiFetch<Product>(`/products/${id}`, {
         method: "PATCH",

@@ -69,6 +69,8 @@ const da: Record<TranslationKey, string> = {
   products_none_found: "Ingen produkter fundet",
   products_shops: "{n} butik(ker)",
   products_from: "Fra",
+  product_delete: "Slet produkt",
+  product_delete_confirm: "Vil du slette dette produkt og dets overvågninger permanent? Handlingen kan ikke fortrydes.",
 
   // ── Watches page ─────────────────────────────────────────────────────────────
   watches_title: "Data webscraper",

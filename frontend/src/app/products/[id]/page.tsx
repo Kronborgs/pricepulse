@@ -12,6 +12,8 @@ import { MultiPriceChartMUI } from "@/components/products/multi-price-chart-mui"
 import { ReportIssueDialog } from "@/components/watches/report-issue-dialog";
 import { Product, Watch } from "@/types";
 import { formatPrice } from "@/lib/utils";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Word-overlap similarity (0-1) ──────────────────────────────────────────
 function similarity(a: string, b: string): number {
@@ -31,6 +33,8 @@ export default function ProductDetailPage({
   const { id } = params;
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: currentUser } = useCurrentUser();
+  const { t } = useI18n();
 
   const [showAddStore, setShowAddStore] = useState(false);
   const [addUrl, setAddUrl] = useState("");
@@ -51,6 +55,7 @@ export default function ProductDetailPage({
   const [mergeSearch, setMergeSearch] = useState("");
   const [mergeTarget, setMergeTarget] = useState<Product | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   // Tags
   const [tagInput, setTagInput] = useState("");
@@ -167,6 +172,23 @@ export default function ProductDetailPage({
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api.products.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products-all-for-dups"] });
+      queryClient.invalidateQueries({ queryKey: ["products-all"] });
+      router.push("/products");
+    },
+    onError: (error: Error) => setDeleteError(error.message),
+  });
+
+  function handleDeleteProduct() {
+    if (!window.confirm(t("product_delete_confirm"))) return;
+    setDeleteError("");
+    deleteMutation.mutate();
+  }
+
   function addTag(raw: string) {
     const tag = raw.trim().toLowerCase().replace(/\s+/g, "-");
     if (!tag) return;
@@ -211,6 +233,10 @@ export default function ProductDetailPage({
   }
 
   const suggestedDuplicates = otherProducts.filter((p) => p.score >= 0.45);
+  const canDeleteProduct =
+    currentUser?.role === "admin" ||
+    currentUser?.role === "superuser" ||
+    currentUser?.id === product.owner_id;
 
   return (
     <div className="space-y-6">
@@ -367,9 +393,27 @@ export default function ProductDetailPage({
                 Rapportér
               </button>
             )}
+            {canDeleteProduct && (
+              <button
+                onClick={handleDeleteProduct}
+                disabled={deleteMutation.isPending}
+                className="inline-flex items-center gap-1.5 rounded-md border border-destructive/60 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                {t("product_delete")}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {deleteError && (
+        <p className="text-sm text-destructive">{deleteError}</p>
+      )}
 
       {/* Duplicate suggestion banner */}
       {!showMerge && suggestedDuplicates.length > 0 && (

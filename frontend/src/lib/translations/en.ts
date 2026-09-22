@@ -67,6 +67,8 @@ const en = {
   products_none_found: "No products found",
   products_shops: "{n} shop(s)",
   products_from: "From",
+  product_delete: "Delete product",
+  product_delete_confirm: "Delete this product and its watches permanently? This action cannot be undone.",
 
   // ── Watches page ─────────────────────────────────────────────────────────────
   watches_title: "Data scraper",

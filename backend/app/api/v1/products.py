@@ -260,6 +260,20 @@ async def delete_product(
     if not product:
         raise HTTPException(status_code=404, detail="Produkt ikke fundet")
     _assert_ownership(product, user)
+
+    # Fjern alle overvågninger knyttet til produktet, så de ikke fortsætter alene.
+    legacy_watches = (await db.execute(
+        select(Watch).where(Watch.product_id == product_id)
+    )).scalars().all()
+    for watch in legacy_watches:
+        await db.delete(watch)
+
+    product_watches = (await db.execute(
+        select(ProductWatch).where(ProductWatch.product_id == product_id)
+    )).scalars().all()
+    for product_watch in product_watches:
+        await db.delete(product_watch)
+
     await db.delete(product)
     await db.commit()
 
