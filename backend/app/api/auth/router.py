@@ -5,7 +5,8 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 from __future__ import annotations
 
 import re
-import tempfile
+import aiofiles.os
+import aiofiles.tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -238,18 +239,15 @@ async def setup_restore(
 
     # Begræns filstørrelse til 100 MB for at forhindre DoS
     MAX_UPLOAD_BYTES = 100 * 1024 * 1024
-    with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
+    async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
         received = 0
         while chunk := await file.read(65536):
             received += len(chunk)
             if received > MAX_UPLOAD_BYTES:
-                tmp.close()
-                import os as _os
-                _os.unlink(tmp.name)
+                await aiofiles.os.remove(tmp.name)
                 raise HTTPException(status_code=413, detail="Fil er for stor (max 100 MB)")
-            tmp.write(chunk)
+            await tmp.write(chunk)
         tmp_path = tmp.name
-
     try:
         from app.services.backup_service import restore_from_backup
         stats = await restore_from_backup(Path(tmp_path), import_users=True)
@@ -259,9 +257,8 @@ async def setup_restore(
         logger.error("setup_restore_fejlede", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        import os
         try:
-            os.unlink(tmp_path)
+            await aiofiles.os.remove(tmp_path)
         except Exception:
             pass
 
