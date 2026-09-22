@@ -150,7 +150,7 @@ class SMTPService:
         """Hent aktiv SMTP-konfiguration fra DB."""
         from app.models.smtp_settings import SMTPSettings
         result = await db.scalar(
-            select(SMTPSettings).where(SMTPSettings.is_active is True).limit(1)
+            select(SMTPSettings).where(SMTPSettings.is_active.is_(True)).limit(1)
         )
         return result
 
