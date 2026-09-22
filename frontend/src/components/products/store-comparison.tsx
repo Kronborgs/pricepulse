@@ -1,11 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ExternalLink, LineChart } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink, LineChart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { formatPrice, formatRelative } from "@/lib/utils";
 import { Watch } from "@/types";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useI18n } from "@/lib/i18n";
 
 interface StoreComparisonProps {
   productId: string;
@@ -13,6 +15,17 @@ interface StoreComparisonProps {
 }
 
 export function StoreComparison({ productId, watches: watchesProp }: StoreComparisonProps) {
+  const queryClient = useQueryClient();
+  const { data: currentUser } = useCurrentUser();
+  const { t } = useI18n();
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.watches.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product-watches", productId] });
+      queryClient.invalidateQueries({ queryKey: ["product", productId] });
+    },
+  });
   const { data, isLoading } = useQuery({
     queryKey: ["product-watches", productId],
     queryFn: () => api.watches.list({ product_id: productId }),
@@ -62,6 +75,12 @@ export function StoreComparison({ productId, watches: watchesProp }: StoreCompar
           {watches.map((watch) => {
             const isCheapest =
               minPrice != null && watch.current_price === minPrice;
+            const canDelete = Boolean(
+              currentUser &&
+              (currentUser.role === "admin" ||
+                currentUser.role === "superuser" ||
+                currentUser.id === watch.owner_id)
+            );
             return (
               <tr
                 key={watch.id}
@@ -94,6 +113,20 @@ export function StoreComparison({ productId, watches: watchesProp }: StoreCompar
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(t("watch_table_delete_confirm_body"))) {
+                            deleteMutation.mutate(watch.id);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-40"
+                        title={t("watch_table_delete")}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <Link
                       href={`/watches/${watch.id}`}
                       className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
