@@ -111,6 +111,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.environment != "production" else None,
     )
 
+    # Sikkerhedsheadere
+    app.add_middleware(_SecurityHeadersMiddleware)
+
     # CORS
     app.add_middleware(
         CORSMiddleware,
@@ -119,9 +122,6 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
     )
-
-    # Sikkerhedsheadere
-    app.add_middleware(_SecurityHeadersMiddleware)
 
     # Routers
     app.include_router(api_router, prefix="/api/v1")
