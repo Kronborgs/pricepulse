@@ -5,8 +5,8 @@ Kun tilgængelig for admin-brugere.
 from __future__ import annotations
 
 import re
-import shutil
-import tempfile
+import aiofiles.os
+import aiofiles.tempfile
 
 import structlog
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -130,10 +130,10 @@ async def upload_and_restore(
         raise HTTPException(status_code=400, detail="Filen skal være en .json.gz backup-fil")
 
     # Skriv uploadet fil til en midlertidig placering
-    with tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
-        shutil.copyfileobj(file.file, tmp)
+    async with aiofiles.tempfile.NamedTemporaryFile(suffix=".json.gz", delete=False) as tmp:
+        while chunk := await file.read(65536):
+            await tmp.write(chunk)
         tmp_path = tmp.name
-
     try:
         from pathlib import Path
         stats = await restore_from_backup(Path(tmp_path), import_users=import_users)
@@ -142,9 +142,8 @@ async def upload_and_restore(
         logger.error("Upload-restore fejlede", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        import os
         try:
-            os.unlink(tmp_path)
+            await aiofiles.os.remove(tmp_path)
         except Exception:
             pass
 
