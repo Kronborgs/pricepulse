@@ -28,6 +28,11 @@ backend:validate:
         - backend/requirements.txt
     paths:
       - .cache/pip
+  artifacts:
+    when: always
+    paths:
+      - coverage.xml
+    expire_in: 1 day
   variables:
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   before_script:
@@ -38,7 +43,7 @@ backend:validate:
     - ruff check backend/app
     - |
       if [ -d backend/tests ]; then
-        pytest backend/tests -q
+        PYTHONPATH=backend pytest --cov=backend/app --cov-report=xml:coverage.xml backend/tests -q
       else
         echo "No backend/tests directory found; skipping pytest."
       fi
@@ -84,6 +89,7 @@ sonarqube:
         -Dsonar.sources=backend/app,frontend/src \
         -Dsonar.exclusions="**/__pycache__/**,**/node_modules/**,**/.next/**,**/dist/**" \
         -Dsonar.python.version=3.12 \
+        -Dsonar.python.coverage.reportPaths=coverage.xml \
         -Dsonar.typescript.tsconfigPath=frontend/tsconfig.json \
         -Dsonar.host.url="$SONAR_HOST_URL" \
         -Dsonar.token="$SONAR_TOKEN" \
