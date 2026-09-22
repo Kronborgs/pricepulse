@@ -1,5 +1,6 @@
 stages:
   - validate
+  - quality
   - build
   - publish
 
@@ -53,6 +54,36 @@ frontend:validate:
     - npm run lint
     - npm run build
 
+sonarqube:
+  stage: quality
+  image:
+    name: sonarsource/sonar-scanner-cli:5.0.1
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
+  cache:
+    key: sonar
+    paths:
+      - .sonar/cache
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - |
+      PROJECT_KEY="${SONAR_PROJECT_KEY:-$CI_PROJECT_PATH_SLUG}"
+      sonar-scanner \
+        -Dsonar.projectKey="$PROJECT_KEY" \
+        -Dsonar.projectName="$CI_PROJECT_PATH" \
+        -Dsonar.projectVersion="$CI_COMMIT_SHORT_SHA" \
+        -Dsonar.sources=backend/app,frontend/src \
+        -Dsonar.exclusions="**/__pycache__/**,**/node_modules/**,**/.next/**,**/dist/**" \
+        -Dsonar.python.version=3.12 \
+        -Dsonar.typescript.tsconfigPath=frontend/tsconfig.json \
+        -Dsonar.host.url="$SONAR_HOST_URL" \
+        -Dsonar.token="$SONAR_TOKEN" \
+        -Dsonar.qualitygate.wait=true
 docker:build:
   stage: build
   image: docker:27.5.1
