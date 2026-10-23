@@ -27,6 +27,7 @@ from app.services.auth_service import AuthService, create_access_token
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
+_USER_NOT_FOUND = "Bruger ikke fundet"
 
 _LOGIN_RATE_LIMIT = Depends(make_rate_limiter(10, 60))
 _FORGOT_RATE_LIMIT = Depends(make_rate_limiter(5, 60))
@@ -522,7 +523,15 @@ async def create_user(
     return _user_to_read(user)
 
 
-@router.patch("/admin/users/{user_id}", response_model=UserRead)
+@router.patch(
+    "/admin/users/{user_id}",
+    response_model=UserRead,
+    responses={
+        400: {"description": "Ugyldig rolle"},
+        403: {"description": "Utilstrækkelige rettigheder for denne bruger"},
+        404: {"description": "Bruger ikke fundet"},
+    },
+)
 async def update_user(
     user_id: uuid.UUID,
     body: UpdateUserRequest,
@@ -531,7 +540,7 @@ async def update_user(
 ) -> dict:
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     # Superuser må kun ændre brugere med rollen 'user'
     if caller.role == "superuser" and user.role != "user":
         raise HTTPException(status_code=403, detail="Superuser kan kun ændre brugere med rollen 'user'")
@@ -555,7 +564,16 @@ async def update_user(
     return _user_to_read(user)
 
 
-@router.post("/admin/users/{user_id}/reset-link")
+@router.post(
+    "/admin/users/{user_id}/reset-link",
+    responses={
+        400: {"description": "Brugeren er deaktiveret eller kan ikke nulstille kodeord"},
+        403: {"description": "Utilstrækkelige rettigheder for denne bruger"},
+        404: {"description": "Bruger ikke fundet"},
+        502: {"description": "Reset-mailen kunne ikke sendes"},
+        503: {"description": "Frontend-URL mangler i serverkonfigurationen"},
+    },
+)
 async def resend_user_reset_link(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -563,7 +581,7 @@ async def resend_user_reset_link(
 ) -> dict:
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if caller.role == "superuser" and user.role != "user":
         raise HTTPException(status_code=403, detail="Superuser kan kun hjælpe brugere med rollen 'user'")
     if not user.is_active:
@@ -620,7 +638,13 @@ async def resend_user_reset_link(
     return {"ok": True}
 
 
-@router.post("/admin/users/{user_id}/password")
+@router.post(
+    "/admin/users/{user_id}/password",
+    responses={
+        403: {"description": "Utilstrækkelige rettigheder for denne bruger"},
+        404: {"description": "Bruger ikke fundet"},
+    },
+)
 async def admin_set_user_password(
     user_id: uuid.UUID,
     body: AdminPasswordRequest,
@@ -629,7 +653,7 @@ async def admin_set_user_password(
 ) -> dict:
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if caller.role == "superuser" and user.role != "user":
         raise HTTPException(status_code=403, detail="Superuser kan kun ændre kodeord for brugere med rollen 'user'")
 
@@ -654,7 +678,14 @@ async def admin_set_user_password(
     return {"ok": True}
 
 
-@router.delete("/admin/users/{user_id}", status_code=200)
+@router.delete(
+    "/admin/users/{user_id}",
+    status_code=200,
+    responses={
+        403: {"description": "Utilstrækkelige rettigheder for denne bruger"},
+        404: {"description": "Bruger ikke fundet"},
+    },
+)
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -671,7 +702,7 @@ async def delete_user(
 
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
 
     # Superuser må ikke slette admin-brugere
     if caller.role == "superuser" and user.role != "user":

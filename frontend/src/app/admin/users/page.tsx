@@ -144,9 +144,9 @@ export default function UsersPage() {
         )}
 
         {statusMessage && (
-          <div role="status" className="rounded-md border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+          <output className="block rounded-md border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-300">
             {statusMessage}
-          </div>
+          </output>
         )}
         {actionError && (
           <div role="alert" className="rounded-md border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -273,8 +273,8 @@ export default function UsersPage() {
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
-                            const mins = parseInt(pendingTimeout ?? String(currentTimeout), 10);
-                            updateTimeout.mutate({ id: user.id, minutes: isNaN(mins) ? 0 : mins });
+                            const mins = Number.parseInt(pendingTimeout ?? String(currentTimeout), 10);
+                            updateTimeout.mutate({ id: user.id, minutes: Number.isNaN(mins) ? 0 : mins });
                           }}
                           className="flex items-center gap-1"
                         >
@@ -375,7 +375,7 @@ export default function UsersPage() {
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-slate-300">{user.role}</span>
                   <label className="flex items-center gap-2 text-slate-400">
-                    Timeout
+                    <span>Timeout</span>
                     <input
                       type="number"
                       min={0}
@@ -384,12 +384,12 @@ export default function UsersPage() {
                       value={editingTimeout[user.id] ?? String(user.session_timeout_minutes ?? 0)}
                       onChange={(event) => setEditingTimeout((prev) => ({ ...prev, [user.id]: event.target.value }))}
                       onBlur={(event) => {
-                        const mins = parseInt(event.target.value, 10);
-                        if (editingTimeout[user.id] !== undefined) updateTimeout.mutate({ id: user.id, minutes: isNaN(mins) ? 0 : mins });
+                        const mins = Number.parseInt(event.target.value, 10);
+                        if (editingTimeout[user.id] !== undefined) updateTimeout.mutate({ id: user.id, minutes: Number.isNaN(mins) ? 0 : mins });
                       }}
                       className="w-16 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-100"
                     />
-                    min
+                    <span>min</span>
                   </label>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -437,7 +437,7 @@ export default function UsersPage() {
         )}
 
         {passwordUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="presentation">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -450,6 +450,8 @@ export default function UsersPage() {
               }}
               className="w-full max-w-md space-y-4 rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-xl"
               aria-labelledby="admin-password-title"
+              role="dialog"
+              aria-modal="true"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
