@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -75,13 +75,14 @@ async def run_due_watches() -> None:
 
 async def _run_v2_sources() -> None:
     """v2-scheduler: find WatchSources der er klar (next_check_at <= now)."""
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.product_watch import ProductWatch
     from app.models.watch_source import WatchSource
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stmt = (
             select(WatchSource)
             .join(ProductWatch, WatchSource.watch_id == ProductWatch.id)
@@ -118,12 +119,13 @@ async def _run_source_check(source_id: object) -> None:
 
 async def _run_v1_watches_legacy() -> None:
     """v1-scheduler: legacy watches der stadig ikke er migreret."""
+    from sqlalchemy import or_, select
+
     from app.database import AsyncSessionLocal
     from app.models.watch import Watch
-    from sqlalchemy import select, or_
 
     async with AsyncSessionLocal() as db:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stmt = select(Watch).where(
             Watch.is_active is True,
             Watch.status.in_(["active", "pending", "ai_active"]),
@@ -139,7 +141,7 @@ async def _run_v1_watches_legacy() -> None:
         if w.last_checked_at is None:
             due.append(w.id)
         else:
-            elapsed = (datetime.now(timezone.utc) - w.last_checked_at).total_seconds() / 60
+            elapsed = (datetime.now(UTC) - w.last_checked_at).total_seconds() / 60
             if elapsed >= w.check_interval:
                 due.append(w.id)
 
@@ -155,8 +157,8 @@ async def _run_v1_watches_legacy() -> None:
 
 
 async def _scrape_watch(watch_id: object) -> None:
-    from app.services.watch_service import WatchService
     from app.database import AsyncSessionLocal
+    from app.services.watch_service import WatchService
 
     async with AsyncSessionLocal() as db:
         service = WatchService(db)

@@ -21,7 +21,7 @@ Design:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -241,6 +241,7 @@ class SMTPService:
     async def queue_password_reset(self, db: AsyncSession, email: str, token: str) -> None:
         """Kø password-reset mail."""
         from sqlalchemy import select
+
         from app.models.user import User
         user = await db.scalar(select(User).where(User.email == email))
         if not user:
@@ -318,7 +319,7 @@ class SMTPService:
             if not config:
                 return
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             items = await db.execute(
                 select(EmailQueue).where(
                     EmailQueue.status == "pending",
@@ -333,7 +334,7 @@ class SMTPService:
                 try:
                     await self.send_email(db, item.to_email, item.subject or "", item.body_html or "")
                     item.status = "sent"
-                    item.sent_at = datetime.now(timezone.utc)
+                    item.sent_at = datetime.now(UTC)
                     logger.info("email_sendt_fra_koe", to=item.to_email, type=item.email_type)
                 except Exception as exc:
                     err = str(exc)
@@ -355,19 +356,20 @@ class SMTPService:
         Find notification_rules med rule_type='digest' der er forfaldne og send digest.
         """
         from datetime import timedelta
+
         from app.database import AsyncSessionLocal
         from app.models.notification_rule import NotificationRule
-        from app.models.watch import Watch
-        from app.models.shop import Shop
         from app.models.product import Product
+        from app.models.shop import Shop
         from app.models.user import User
+        from app.models.watch import Watch
 
         async with AsyncSessionLocal() as db:
             config = await self._get_active_config(db)
             if not config:
                 return
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             rules_result = await db.execute(
                 select(NotificationRule)
                 .where(

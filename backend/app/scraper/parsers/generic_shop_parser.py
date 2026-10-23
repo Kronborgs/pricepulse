@@ -13,8 +13,9 @@ Strategi (kører i rækkefølge, returnerer ved første hit):
 from __future__ import annotations
 
 import re
-from bs4 import BeautifulSoup
+
 import structlog
+from bs4 import BeautifulSoup
 
 from app.scraper.parsers.inline_json_parser import _clean_price, _normalize_stock
 from app.scraper.providers.base import ParseResult, PriceParser

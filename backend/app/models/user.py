@@ -9,13 +9,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.base import TimestampMixin
-
 from app.models.notification_rule import NotificationRule
 
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
-    from app.models.product_watch import ProductWatch
     from app.models.email_preference import EmailPreference
+    from app.models.product_watch import ProductWatch
 
 
 class User(Base, TimestampMixin):
@@ -49,17 +48,17 @@ class User(Base, TimestampMixin):
     locale: Mapped[str] = mapped_column(String(10), default="en", nullable=False, server_default="en")
 
     # Relations
-    tokens: Mapped[list["AuthToken"]] = relationship(
+    tokens: Mapped[list[AuthToken]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    watches: Mapped[list["ProductWatch"]] = relationship(
+    watches: Mapped[list[ProductWatch]] = relationship(
         back_populates="owner",
         foreign_keys="ProductWatch.owner_id",
         lazy="select",
     )
-    email_preference: Mapped["EmailPreference | None"] = relationship(
+    email_preference: Mapped[EmailPreference | None] = relationship(
         back_populates="user",
         uselist=False,
         cascade="all, delete-orphan",

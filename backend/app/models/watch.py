@@ -83,15 +83,15 @@ class Watch(Base, TimestampMixin):
         return None
 
     # Relations
-    owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
-    product: Mapped["Product | None"] = relationship(back_populates="watches")
-    shop: Mapped["Shop | None"] = relationship(back_populates="watches")
-    price_history: Mapped[list["PriceHistory"]] = relationship(
+    owner: Mapped[User | None] = relationship(foreign_keys=[owner_id], lazy="select")
+    product: Mapped[Product | None] = relationship(back_populates="watches")
+    shop: Mapped[Shop | None] = relationship(back_populates="watches")
+    price_history: Mapped[list[PriceHistory]] = relationship(
         back_populates="watch",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    price_events: Mapped[list["PriceEvent"]] = relationship(
+    price_events: Mapped[list[PriceEvent]] = relationship(
         back_populates="watch",
         cascade="all, delete-orphan",
         lazy="select",

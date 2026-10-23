@@ -106,6 +106,7 @@ async def trigger_source_diagnose(
 ) -> dict:
     """Trigger manuel parser-diagnose for en WatchSource."""
     from sqlalchemy import select
+
     from app.models.watch_source import WatchSource
     from app.services.ollama_queue import OllamaJob, enqueue
 
@@ -141,6 +142,7 @@ async def ai_stats(
 ) -> dict:
     """Statistik over AI-job forbrug."""
     from sqlalchemy import func, select
+
     from app.models.ai_job import AIJob
 
     rows = await db.execute(

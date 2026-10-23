@@ -20,7 +20,8 @@ class PlaywrightProvider(FetchProvider):
         opts = options or FetchOptions()
 
         try:
-            from playwright.async_api import async_playwright, TimeoutError as PWTimeout
+            from playwright.async_api import TimeoutError as PWTimeout
+            from playwright.async_api import async_playwright
         except ImportError:
             return FetchResult(
                 provider=self.provider_name,

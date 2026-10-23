@@ -5,9 +5,9 @@ Kun tilgængelig for admin-brugere.
 from __future__ import annotations
 
 import re
+
 import aiofiles.os
 import aiofiles.tempfile
-
 import structlog
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -165,8 +165,9 @@ async def delete_backup(filename: str, _admin: AdminUser = None) -> dict:
 
 def _apply_scheduler(cfg: dict) -> None:
     try:
-        from app.scheduler.jobs import scheduler
         from apscheduler.triggers.interval import IntervalTrigger
+
+        from app.scheduler.jobs import scheduler
 
         if not scheduler or not scheduler.running:
             return

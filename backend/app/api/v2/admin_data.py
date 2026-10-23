@@ -28,15 +28,15 @@ async def data_stats(
     _user: SuperOrAdmin = None,
 ) -> dict:
     """Returner antal poster i de vigtigste tabeller. Tilgængelig for admin + superuser."""
-    from app.models.watch import Watch
-    from app.models.product_watch import ProductWatch
-    from app.models.product import Product
-    from app.models.price_history import PriceHistory
-    from app.models.source_price_event import SourcePriceEvent
     from app.models.ai_job import AIJob
     from app.models.email_queue import EmailQueue
+    from app.models.price_history import PriceHistory
+    from app.models.product import Product
+    from app.models.product_watch import ProductWatch
     from app.models.source_check import SourceCheck
+    from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
+    from app.models.watch import Watch
 
     return {
         "watches_v1": await _count(db, Watch),
@@ -57,11 +57,11 @@ async def delete_all_watches(
     _user: AdminUser = None,
 ) -> dict:
     """Slet alle watches (v1 + v2) inkl. relaterede data."""
-    from app.models.watch import Watch
-    from app.models.product_watch import ProductWatch
     from app.models.price_history import PriceHistory
-    from app.models.watch_timeline_event import WatchTimelineEvent
+    from app.models.product_watch import ProductWatch
+    from app.models.watch import Watch
     from app.models.watch_source import WatchSource
+    from app.models.watch_timeline_event import WatchTimelineEvent
 
     # Slet i rækkefølge der respekterer FK-afhængigheder
     await db.execute(delete(WatchTimelineEvent))
@@ -97,8 +97,8 @@ async def delete_all_price_history(
 ) -> dict:
     """Slet al prishistorik (v1 price_history + v2 source_price_events + source_checks)."""
     from app.models.price_history import PriceHistory
-    from app.models.source_price_event import SourcePriceEvent
     from app.models.source_check import SourceCheck
+    from app.models.source_price_event import SourcePriceEvent
 
     await db.execute(delete(SourcePriceEvent))
     await db.execute(delete(SourceCheck))
@@ -147,9 +147,10 @@ async def claim_orphaned_resources(
     Tildel alle watches og produkter med owner_id=NULL til den aktuelle admin.
     Bruges til at overtage ejerskab af 'System'-ressourcer.
     """
-    from app.models.product_watch import ProductWatch
-    from app.models.product import Product
     from sqlalchemy import update
+
+    from app.models.product import Product
+    from app.models.product_watch import ProductWatch
 
     watches_result = await db.execute(
         update(ProductWatch)

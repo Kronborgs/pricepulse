@@ -65,4 +65,4 @@ class EmailQueue(Base):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(foreign_keys=[user_id], lazy="select")
+    user: Mapped[User] = relationship(foreign_keys=[user_id], lazy="select")

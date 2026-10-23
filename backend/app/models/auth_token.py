@@ -45,4 +45,4 @@ class AuthToken(Base):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(back_populates="tokens")
+    user: Mapped[User] = relationship(back_populates="tokens")

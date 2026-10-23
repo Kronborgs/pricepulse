@@ -4,7 +4,7 @@ Ingen autentificering krævet (public data).
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -19,5 +19,5 @@ async def exchange_rates() -> dict:
     return {
         "base": "DKK",
         "rates": rates,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }

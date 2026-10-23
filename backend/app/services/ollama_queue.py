@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -136,7 +136,7 @@ async def _run_source_job(job: OllamaJob) -> None:
             error=None,
         )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         restore_status = (
             job.previous_status
             if job.previous_status != "ai_analyzing"
@@ -197,8 +197,8 @@ async def _run_watch_job(job: OllamaJob) -> None:
 
     from app.database import AsyncSessionLocal
     from app.models.watch import Watch
-    from app.services.watch_service import WatchService
     from app.services.ai_job_service import AIJobService
+    from app.services.watch_service import WatchService
 
     async with AsyncSessionLocal() as db:
         svc = WatchService(db)

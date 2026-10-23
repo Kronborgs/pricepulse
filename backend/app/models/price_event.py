@@ -54,4 +54,4 @@ class PriceEvent(Base):
     extra_data: Mapped[dict | None] = mapped_column(JSONB)
 
     # Relations
-    watch: Mapped["Watch"] = relationship(back_populates="price_events")
+    watch: Mapped[Watch] = relationship(back_populates="price_events")

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import gzip
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
@@ -63,7 +63,7 @@ def list_backups() -> list[dict]:
         result.append({
             "filename": f.name,
             "size_bytes": stat.st_size,
-            "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            "created_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
         })
     return result
 
@@ -98,17 +98,18 @@ async def create_backup() -> str:
     Inkluderer v1 Watch + PriceHistory, v2 ProductWatch + WatchSource + SourcePriceEvent,
     Produkter, Brugere (inkl. password_hash) og SMTP-config.
     """
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
-    from app.models.watch import Watch
     from app.models.price_history import PriceHistory
-    from app.models.product_watch import ProductWatch
-    from app.models.watch_source import WatchSource
     from app.models.product import Product
+    from app.models.product_watch import ProductWatch
     from app.models.shop import Shop
+    from app.models.smtp_settings import SMTPSettings
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
-    from app.models.smtp_settings import SMTPSettings
-    from sqlalchemy import select
+    from app.models.watch import Watch
+    from app.models.watch_source import WatchSource
 
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -167,7 +168,7 @@ async def create_backup() -> str:
 
         # ─── Brugere ──────────────────────────────────────────────────────────
         users = list(
-            (await db.execute(select(User).where(User.is_active == True))).scalars().all()  # noqa: E712
+            (await db.execute(select(User).where(User.is_active == True))).scalars().all()
         )
 
         # ─── SMTP ─────────────────────────────────────────────────────────────
@@ -176,7 +177,7 @@ async def create_backup() -> str:
         )
 
     payload: dict = {
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "version": 2,
         "shops": [
             {
@@ -321,7 +322,7 @@ async def create_backup() -> str:
         ],
     }
 
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M")
+    now_str = datetime.now(UTC).strftime("%Y-%m-%d_%H%M")
     filename = f"backup_{now_str}.json.gz"
     filepath = BACKUP_DIR / filename
 
@@ -359,19 +360,19 @@ async def restore_from_backup(filepath: Path, import_users: bool = True) -> dict
     data.get("version", 1)
     stats: dict[str, int] = {}
 
-    from app.database import AsyncSessionLocal
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
     from sqlalchemy import text as sa_text
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-    from app.models.product import Product
-    from app.models.shop import Shop
-    from app.models.watch import Watch
+    from app.database import AsyncSessionLocal
     from app.models.price_history import PriceHistory
+    from app.models.product import Product
     from app.models.product_watch import ProductWatch
-    from app.models.watch_source import WatchSource
+    from app.models.shop import Shop
+    from app.models.smtp_settings import SMTPSettings
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
-    from app.models.smtp_settings import SMTPSettings
+    from app.models.watch import Watch
+    from app.models.watch_source import WatchSource
 
     def _uuid(v) -> str | None:
         return str(v) if v else None

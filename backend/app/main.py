@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-
 from pathlib import Path
 
 import structlog
@@ -16,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
-from app.database import engine, Base
+from app.database import Base, engine
 from app.scheduler.jobs import start_scheduler, stop_scheduler
 from app.services.ollama_config import apply_persisted_config
 from app.services.ollama_queue import process_queue_forever

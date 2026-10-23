@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.price_history import PriceHistory
 from app.models.price_event import PriceEvent
-from app.schemas.shop import PriceHistoryPoint, PriceEventRead
+from app.models.price_history import PriceHistory
+from app.schemas.shop import PriceEventRead, PriceHistoryPoint
 
 router = APIRouter()
 

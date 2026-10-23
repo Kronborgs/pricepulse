@@ -40,4 +40,4 @@ class ProductSnapshot(Base):
     active_shops: Mapped[int | None] = mapped_column(Integer)
 
     # Relations
-    watch: Mapped["ProductWatch"] = relationship(back_populates="snapshots")
+    watch: Mapped[ProductWatch] = relationship(back_populates="snapshots")

@@ -13,9 +13,9 @@ from app.models.base import TimestampMixin
 if TYPE_CHECKING:
     from app.models.product import Product
     from app.models.product_snapshot import ProductSnapshot
+    from app.models.user import User
     from app.models.watch_source import WatchSource
     from app.models.watch_timeline_event import WatchTimelineEvent
-    from app.models.user import User
 
 
 class ProductWatch(Base, TimestampMixin):
@@ -64,31 +64,31 @@ class ProductWatch(Base, TimestampMixin):
     price_threshold: Mapped[float | None] = mapped_column(Numeric(10, 2))  # notify kun hvis under
 
     # Relations
-    product: Mapped["Product"] = relationship(
+    product: Mapped[Product] = relationship(
         back_populates="product_watches",
         lazy="select",
     )
-    owner: Mapped["User | None"] = relationship(
+    owner: Mapped[User | None] = relationship(
         foreign_keys="ProductWatch.owner_id",
         lazy="select",
     )
-    sources: Mapped[list["WatchSource"]] = relationship(
+    sources: Mapped[list[WatchSource]] = relationship(
         back_populates="watch",
         foreign_keys="WatchSource.watch_id",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    snapshots: Mapped[list["ProductSnapshot"]] = relationship(
+    snapshots: Mapped[list[ProductSnapshot]] = relationship(
         back_populates="watch",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    timeline: Mapped[list["WatchTimelineEvent"]] = relationship(
+    timeline: Mapped[list[WatchTimelineEvent]] = relationship(
         back_populates="watch",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    last_best_source: Mapped["WatchSource | None"] = relationship(
+    last_best_source: Mapped[WatchSource | None] = relationship(
         foreign_keys=[last_best_source_id],
         lazy="select",
         viewonly=True,

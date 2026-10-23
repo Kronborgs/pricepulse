@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import structlog
@@ -68,13 +68,13 @@ async def get_dkk_rates() -> dict[str, float]:
     """
     global _CACHE, _CACHE_TS
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if _CACHE is not None and _CACHE_TS is not None and (now - _CACHE_TS) < _TTL:
         return _CACHE
 
     async with _LOCK:
         # Double-check inside lock
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if _CACHE is not None and _CACHE_TS is not None and (now - _CACHE_TS) < _TTL:
             return _CACHE
 

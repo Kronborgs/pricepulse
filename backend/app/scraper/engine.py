@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import structlog
@@ -9,8 +9,11 @@ import structlog
 from app.config import settings
 from app.models.watch import Watch
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
+from app.scraper.parsers.generic_shop_parser import GenericShopParser
 from app.scraper.parsers.inline_json_parser import InlineJsonParser
 from app.scraper.parsers.json_ld_parser import JsonLdParser
+from app.scraper.parsers.shops.amazon import AmazonParser
+from app.scraper.parsers.shops.biltema import BiltemaParser
 from app.scraper.parsers.shops.compumail import CompumailParser
 from app.scraper.parsers.shops.computersalg import (
     ComputersalgParser,
@@ -18,13 +21,10 @@ from app.scraper.parsers.shops.computersalg import (
     HappiiParser,
     KomplettParser,
 )
-from app.scraper.parsers.shops.amazon import AmazonParser
-from app.scraper.parsers.shops.biltema import BiltemaParser
 from app.scraper.parsers.shops.elgigant import ElgigantParser
 from app.scraper.parsers.shops.jemogfix import JemogfixParser
 from app.scraper.parsers.shops.proshop import ProshopParser
 from app.scraper.parsers.shops.woocommerce import WooCommerceParser
-from app.scraper.parsers.generic_shop_parser import GenericShopParser
 from app.scraper.providers.base import (
     ErrorType,
     FetchOptions,
@@ -242,7 +242,7 @@ def _build_diagnostic(
     parse_result: ParseResult | None,
     error_type: ErrorType | None,
 ) -> dict:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     fetch_info: dict = {
         "status_code": fetch_result.status_code if fetch_result else 0,
@@ -502,8 +502,9 @@ def _html_analysis_hint(content: str) -> str:
     Analysér HTML-strukturen og returnér et konkret hint til hvad der skal tilpasses.
     Bruges i last_diagnostic.recommended_action når ingen parser lykkedes.
     """
-    from bs4 import BeautifulSoup
     import re
+
+    from bs4 import BeautifulSoup
 
     if not content or len(content) < 200:
         return "Siden returnerede meget lidt HTML — prøv Browser/JS provider (Playwright)."
@@ -556,7 +557,7 @@ def _html_analysis_hint(content: str) -> str:
         for el in soup.find_all(True):
             classes = el.get("class", [])
             for c in classes:
-                if re.search(r"price|pris|amount|kost", c, re.I):
+                if re.search(r"price|pris|amount|kost", c, re.IGNORECASE):
                     candidates.add(f".{c}")
         if candidates:
             hints.append(f"Mulige pris-CSS-selectors: {', '.join(list(candidates)[:5])}")

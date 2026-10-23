@@ -4,7 +4,17 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -59,4 +69,4 @@ class SourceCheck(Base):
     raw_diagnostic: Mapped[dict | None] = mapped_column(JSONB)
 
     # Relations
-    source: Mapped["WatchSource"] = relationship(back_populates="checks")
+    source: Mapped[WatchSource] = relationship(back_populates="checks")

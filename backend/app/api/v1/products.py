@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, or_, select, update
@@ -15,7 +15,13 @@ from app.models.product import Product
 from app.models.product_watch import ProductWatch
 from app.models.user import User
 from app.models.watch import Watch
-from app.schemas.product import MergeProductRequest, ProductCreate, ProductList, ProductRead, ProductUpdate
+from app.schemas.product import (
+    MergeProductRequest,
+    ProductCreate,
+    ProductList,
+    ProductRead,
+    ProductUpdate,
+)
 
 router = APIRouter()
 
@@ -53,8 +59,8 @@ async def list_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
-    owner_ids: List[uuid.UUID] = Query(default=[]),
-    tags: List[str] = Query(default=[]),
+    owner_ids: list[uuid.UUID] = Query(default=[]),
+    tags: list[str] = Query(default=[]),
 ) -> ProductList:
     stmt = select(Product).options(selectinload(Product.owner)).order_by(Product.name)
 

@@ -6,7 +6,11 @@ import structlog
 from bs4 import BeautifulSoup
 
 from app.scraper.parsers.css_selector_parser import CssSelectorParser, SelectorConfig
-from app.scraper.parsers.inline_json_parser import _clean_price, _detect_currency, _has_currency_indicator
+from app.scraper.parsers.inline_json_parser import (
+    _clean_price,
+    _detect_currency,
+    _has_currency_indicator,
+)
 from app.scraper.providers.base import ErrorType, ParseResult, PriceParser
 
 logger = structlog.get_logger()

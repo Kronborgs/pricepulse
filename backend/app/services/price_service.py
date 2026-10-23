@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urljoin
 
 import structlog
@@ -39,7 +39,7 @@ class PriceService:
         """
         from app.services.exchange_rate_service import get_dkk_rates
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         raw_price = parse_result.price
         new_stock = parse_result.stock_status
 
@@ -179,7 +179,7 @@ class PriceService:
         self, watch: Watch, error: str, status_code: int = 0, diagnostic: dict | None = None
     ) -> None:
         """Registrér fejl og opdatér watch-status."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         watch.last_checked_at = now
         watch.last_error = error
         watch.error_count = (watch.error_count or 0) + 1

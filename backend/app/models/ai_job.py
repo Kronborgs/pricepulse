@@ -11,8 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.models.watch_source import WatchSource
     from app.models.user import User
+    from app.models.watch_source import WatchSource
 
 
 class AIJob(Base):
@@ -81,9 +81,9 @@ class AIJob(Base):
     )
 
     # Relations (ingen cascade — vi sletter aldrig ai_jobs)
-    source: Mapped["WatchSource | None"] = relationship(
+    source: Mapped[WatchSource | None] = relationship(
         foreign_keys=[source_id], lazy="select"
     )
-    triggered_by_user: Mapped["User | None"] = relationship(
+    triggered_by_user: Mapped[User | None] = relationship(
         foreign_keys=[triggered_by], lazy="select"
     )

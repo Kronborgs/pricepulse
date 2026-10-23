@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select, and_
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -37,7 +37,7 @@ async def get_dashboard_stats(
     user: User = Depends(get_current_user),
     owner_id: uuid.UUID | None = Query(None),
 ) -> DashboardStats:
-    today_start = datetime.now(timezone.utc).replace(
+    today_start = datetime.now(UTC).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
 

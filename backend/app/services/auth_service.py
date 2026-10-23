@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
@@ -50,7 +50,7 @@ def _hash_token(raw: str) -> str:
 
 
 def create_access_token(user_id: uuid.UUID, role: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         minutes=settings.jwt_access_token_expire_minutes
     )
     payload: dict[str, Any] = {
@@ -112,7 +112,7 @@ class AuthService:
             password_hash=hash_password(password),
             role=role,
             display_name=display_name or email.split("@")[0],
-            password_changed_at=datetime.now(timezone.utc),
+            password_changed_at=datetime.now(UTC),
         )
         self.db.add(user)
         await self.db.commit()
@@ -130,7 +130,7 @@ class AuthService:
         if not verify_password(password, user.password_hash):
             return None
         # Opdatér last_login_at
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = datetime.now(UTC)
         await self.db.commit()
         return user
 
@@ -142,7 +142,7 @@ class AuthService:
     async def create_refresh_token(self, user_id: uuid.UUID) -> str:
         """Opretter nyt refresh token, gemmer hash i DB, returnerer raw token."""
         raw = secrets.token_urlsafe(48)
-        expires = datetime.now(timezone.utc) + timedelta(
+        expires = datetime.now(UTC) + timedelta(
             days=settings.jwt_refresh_token_expire_days
         )
         token = AuthToken(
@@ -161,7 +161,7 @@ class AuthService:
         Returner (user, new_raw_refresh) eller None ved ugyldig token.
         """
         hashed = _hash_token(raw_refresh)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         token_row = await self.db.scalar(
             select(AuthToken).where(
                 AuthToken.token_hash == hashed,
@@ -195,7 +195,7 @@ class AuthService:
                 AuthToken.token_type == "refresh",
                 AuthToken.revoked_at.is_(None),
             )
-            .values(revoked_at=datetime.now(timezone.utc))
+            .values(revoked_at=datetime.now(UTC))
         )
         await self.db.commit()
 
@@ -211,7 +211,7 @@ class AuthService:
             return None
 
         raw = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(hours=2)
+        expires = datetime.now(UTC) + timedelta(hours=2)
         self.db.add(AuthToken(
             user_id=user.id,
             token_hash=_hash_token(raw),
@@ -224,7 +224,7 @@ class AuthService:
     async def create_invitation_token(self, user_id: uuid.UUID) -> str:
         """Opretter invitationstoken (7 dage) til ny bruger."""
         raw = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(days=7)
+        expires = datetime.now(UTC) + timedelta(days=7)
         self.db.add(AuthToken(
             user_id=user_id,
             token_hash=_hash_token(raw),
@@ -240,7 +240,7 @@ class AuthService:
         Returnerer True ved succes, False ved ugyldigt/udløbet token.
         """
         hashed = _hash_token(raw_token)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         token_row = await self.db.scalar(
             select(AuthToken).where(
                 AuthToken.token_hash == hashed,
@@ -276,7 +276,7 @@ class AuthService:
         """
         if not verify_password(old_password, user.password_hash):
             return False
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         user.password_hash = hash_password(new_password)
         user.password_changed_at = now
         await self.db.commit()
@@ -291,7 +291,7 @@ class AuthService:
         from sqlalchemy import delete
         result = await self.db.execute(
             delete(AuthToken).where(
-                AuthToken.expires_at < datetime.now(timezone.utc)
+                AuthToken.expires_at < datetime.now(UTC)
             )
         )
         await self.db.commit()

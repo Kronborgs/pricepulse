@@ -4,17 +4,26 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 """
 from __future__ import annotations
 
-import re
 import hashlib
-import aiofiles.os
-import aiofiles.tempfile
+import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
+import aiofiles.os
+import aiofiles.tempfile
 import structlog
-from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Depends,
+    File,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from pydantic import BaseModel, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -180,7 +189,7 @@ def _password_expired(user: User) -> bool:
     changed_at = getattr(user, "password_changed_at", None)
     if changed_at is None:
         return False
-    cutoff = datetime.now(timezone.utc) - timedelta(days=_PASSWORD_EXPIRY_DAYS)
+    cutoff = datetime.now(UTC) - timedelta(days=_PASSWORD_EXPIRY_DAYS)
     return changed_at < cutoff
 
 
@@ -398,7 +407,7 @@ async def forgot_password(
     raw_token = await svc.create_password_reset_token(body.email)
     if raw_token:
         try:
-            from app.services.smtp_service import smtp_service, _app_url
+            from app.services.smtp_service import _app_url, smtp_service
             base = _app_url()
             reset_url = f"{base}/reset-password?token={raw_token}"
             body_html = f"""<!DOCTYPE html>
@@ -456,7 +465,7 @@ async def list_users(
     db: AsyncSession = Depends(get_db),
     _caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
     result = await db.execute(select(User).offset(skip).limit(limit))
     users = result.scalars().all()
     total = await db.scalar(select(func.count(User.id)))
@@ -485,7 +494,7 @@ async def create_user(
 
     # Send invitationsmail (med link til at sætte kodeord)
     try:
-        from app.services.smtp_service import smtp_service, _app_url
+        from app.services.smtp_service import _app_url, smtp_service
         inv_token = await svc.create_invitation_token(user.id)
         base = _app_url()
         invite_url = f"{base}/reset-password?token={inv_token}&invite=1"
@@ -551,10 +560,10 @@ async def update_user(
             raise HTTPException(status_code=400, detail="Ugyldig rolle")
         user.role = body.role
     if body.is_active is not None:
-        from datetime import datetime, timezone
+        from datetime import datetime
         user.is_active = body.is_active
         if not body.is_active:
-            user.deactivated_at = datetime.now(timezone.utc)
+            user.deactivated_at = datetime.now(UTC)
     if body.session_timeout_minutes is not None:
         user.session_timeout_minutes = (
             None if body.session_timeout_minutes == 0 else body.session_timeout_minutes
@@ -592,9 +601,10 @@ async def resend_user_reset_link(
     if not raw_token:
         raise HTTPException(status_code=400, detail="Brugeren kan ikke nulstille kodeord")
 
-    from app.models.auth_token import AuthToken
     from sqlalchemy import update
-    from app.services.smtp_service import smtp_service, _app_url
+
+    from app.models.auth_token import AuthToken
+    from app.services.smtp_service import _app_url, smtp_service
     base = _app_url()
     if not base:
         raise HTTPException(status_code=503, detail="Frontend-URL mangler i serverkonfigurationen")
@@ -617,7 +627,7 @@ async def resend_user_reset_link(
         await db.execute(
             update(AuthToken)
             .where(AuthToken.token_hash == hashlib.sha256(raw_token.encode()).hexdigest())
-            .values(revoked_at=datetime.now(timezone.utc))
+            .values(revoked_at=datetime.now(UTC))
         )
         await db.commit()
         logger.warning("admin_password_reset_mail_fejl", user_id=str(user.id), error=repr(exc))
@@ -631,7 +641,7 @@ async def resend_user_reset_link(
             AuthToken.revoked_at.is_(None),
             AuthToken.token_hash != hashlib.sha256(raw_token.encode()).hexdigest(),
         )
-        .values(revoked_at=datetime.now(timezone.utc))
+        .values(revoked_at=datetime.now(UTC))
     )
     await db.commit()
     logger.info("admin_password_reset_mail_sendt", user_id=str(user.id))
@@ -657,11 +667,12 @@ async def admin_set_user_password(
     if caller.role == "superuser" and user.role != "user":
         raise HTTPException(status_code=403, detail="Superuser kan kun ændre kodeord for brugere med rollen 'user'")
 
-    from app.services.auth_service import hash_password
-    from app.models.auth_token import AuthToken
     from sqlalchemy import update
+
+    from app.models.auth_token import AuthToken
+    from app.services.auth_service import hash_password
     user.password_hash = hash_password(body.password)
-    user.password_changed_at = datetime.now(timezone.utc)
+    user.password_changed_at = datetime.now(UTC)
     await db.commit()
     await AuthService(db).revoke_all_refresh_tokens(user.id)
     await db.execute(
@@ -671,7 +682,7 @@ async def admin_set_user_password(
             AuthToken.token_type.in_(["password_reset", "invitation"]),
             AuthToken.revoked_at.is_(None),
         )
-        .values(revoked_at=datetime.now(timezone.utc))
+        .values(revoked_at=datetime.now(UTC))
     )
     await db.commit()
     logger.info("admin_password_changed", user_id=str(user.id), changed_by=str(caller.id))
@@ -698,6 +709,7 @@ async def delete_user(
     Hvis ingen brugere er tilbage, returnerer /setup-status setup_required=True igen.
     """
     from sqlalchemy import delete as sa_delete
+
     from app.models.auth_token import AuthToken
 
     user = await db.get(User, user_id)

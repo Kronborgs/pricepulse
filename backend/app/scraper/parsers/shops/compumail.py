@@ -104,7 +104,7 @@ class CompumailParser(PriceParser):
         """
         soup = BeautifulSoup(html, "lxml")
         # Prioritér tekst nær buy-knapper
-        for buy in soup.find_all(string=re.compile(r"Køb|Add to cart|buy", re.I))[:5]:
+        for buy in soup.find_all(string=re.compile(r"Køb|Add to cart|buy", re.IGNORECASE))[:5]:
             parent = buy.parent
             for _ in range(4):
                 if parent is None:

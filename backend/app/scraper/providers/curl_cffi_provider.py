@@ -8,7 +8,12 @@ from urllib.parse import urlparse
 import structlog
 
 from app.config import settings
-from app.scraper.providers.base import ErrorType, FetchOptions, FetchProvider, FetchResult
+from app.scraper.providers.base import (
+    ErrorType,
+    FetchOptions,
+    FetchProvider,
+    FetchResult,
+)
 
 logger = structlog.get_logger()
 

@@ -4,6 +4,7 @@ Notification rules — per-bruger notifikationsregler med produktfiltre og inter
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 from typing import Any
 
 import structlog
@@ -228,18 +229,20 @@ async def run_notification_rule_now(
     Instant: sender en price_drop-email for et tilfældigt matchende produkt.
     Opdaterer last_digest_sent_at og returnerer den opdaterede regel.
     """
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
+
+    from sqlalchemy import func, nullslast
+
     from app.models.notification_rule import NotificationRule
-    from app.models.product_watch import ProductWatch
-    from app.models.watch_source import WatchSource
-    from app.models.watch import Watch
-    from app.models.shop import Shop
     from app.models.product import Product
+    from app.models.product_watch import ProductWatch
+    from app.models.shop import Shop
     from app.models.source_price_event import SourcePriceEvent
     from app.models.user import User
-    from app.services.smtp_service import smtp_service, _render_template
-    from sqlalchemy import func, nullslast
+    from app.models.watch import Watch
+    from app.models.watch_source import WatchSource
+    from app.services.smtp_service import _render_template, smtp_service
     _TZ = ZoneInfo("Europe/Copenhagen")
 
     rule = await db.scalar(
@@ -263,7 +266,7 @@ async def run_notification_rule_now(
         raise HTTPException(status_code=400, detail="Brugeren har ingen email-adresse")
 
     rule_label = rule.name or ("Digest" if rule.rule_type == "digest" else "Øjeblikkelig")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if rule.rule_type == "digest":
         # ── Kør digest-logik for netop denne regel ────────────────────────────

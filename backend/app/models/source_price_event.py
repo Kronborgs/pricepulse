@@ -42,4 +42,4 @@ class SourcePriceEvent(Base):
     )
 
     # Relations
-    source: Mapped["WatchSource"] = relationship(back_populates="price_events")
+    source: Mapped[WatchSource] = relationship(back_populates="price_events")

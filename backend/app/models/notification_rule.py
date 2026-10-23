@@ -67,4 +67,4 @@ class NotificationRule(Base, TimestampMixin):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(back_populates="notification_rules")
+    user: Mapped[User] = relationship(back_populates="notification_rules")

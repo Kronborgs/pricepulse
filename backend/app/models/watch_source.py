@@ -60,17 +60,17 @@ class WatchSource(Base, TimestampMixin):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     # Relations
-    watch: Mapped["ProductWatch"] = relationship(
+    watch: Mapped[ProductWatch] = relationship(
         back_populates="sources",
         foreign_keys="WatchSource.watch_id",
         lazy="select",
     )
-    checks: Mapped[list["SourceCheck"]] = relationship(
+    checks: Mapped[list[SourceCheck]] = relationship(
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="select",
     )
-    price_events: Mapped[list["SourcePriceEvent"]] = relationship(
+    price_events: Mapped[list[SourcePriceEvent]] = relationship(
         back_populates="source",
         cascade="all, delete-orphan",
         lazy="select",

@@ -6,7 +6,6 @@ from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-
 class TimestampMixin:
     """Tilføjer created_at og updated_at til alle modeller."""
 

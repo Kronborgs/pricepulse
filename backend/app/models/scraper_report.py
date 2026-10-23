@@ -44,5 +44,5 @@ class ScraperReport(Base):
     )
 
     # Relations
-    watch: Mapped["Watch"] = relationship("Watch", lazy="joined")
-    reporter: Mapped["User"] = relationship("User", lazy="joined")
+    watch: Mapped[Watch] = relationship("Watch", lazy="joined")
+    reporter: Mapped[User] = relationship("User", lazy="joined")

@@ -14,7 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import AdminUser, CurrentUser
 from app.database import get_db
 from app.models.smtp_settings import SMTPSettings
-from app.services.smtp_service import SMTPService, encrypt_password, decrypt_password, _app_url
+from app.services.smtp_service import (
+    SMTPService,
+    _app_url,
+    decrypt_password,
+    encrypt_password,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -223,13 +228,14 @@ async def send_test_notification(
     Send en test-prisfald-e-mail direkte til den loggede brugers email.
     Prøver v2 ProductWatch → v1 Watch → fiktiv fallback (aldrig fejl).
     """
-    from app.models.product_watch import ProductWatch
-    from app.models.watch_source import WatchSource
-    from app.models.product import Product
-    from app.models.watch import Watch
-    from app.models.source_price_event import SourcePriceEvent
-    from app.services.smtp_service import SMTPService, _render_template
     from sqlalchemy import func
+
+    from app.models.product import Product
+    from app.models.product_watch import ProductWatch
+    from app.models.source_price_event import SourcePriceEvent
+    from app.models.watch import Watch
+    from app.models.watch_source import WatchSource
+    from app.services.smtp_service import SMTPService, _render_template
 
     svc = SMTPService()
     cfg = await svc._get_active_config(db)

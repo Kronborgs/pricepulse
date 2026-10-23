@@ -42,4 +42,4 @@ class WatchTimelineEvent(Base):
     )
 
     # Relations
-    watch: Mapped["ProductWatch"] = relationship(back_populates="timeline")
+    watch: Mapped[ProductWatch] = relationship(back_populates="timeline")

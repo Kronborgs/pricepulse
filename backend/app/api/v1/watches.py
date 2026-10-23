@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, List
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -47,7 +47,7 @@ async def list_watches(
     shop_id: uuid.UUID | None = Query(None),
     product_id: uuid.UUID | None = Query(None),
     search: str | None = Query(None),
-    owner_ids: List[uuid.UUID] = Query(default=[]),
+    owner_ids: list[uuid.UUID] = Query(default=[]),
 ) -> WatchList:
     stmt = (
         select(Watch)

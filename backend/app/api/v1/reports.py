@@ -5,7 +5,7 @@ Admin/superuser kan se og håndtere rapporterne.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -57,7 +57,7 @@ class ReportOut(BaseModel):
 
 
 class ReportList(BaseModel):
-    items: List[ReportOut]
+    items: list[ReportOut]
     total: int
     unread: int
 

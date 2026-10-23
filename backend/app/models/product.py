@@ -53,12 +53,12 @@ class Product(Base, TimestampMixin):
     normalization_data: Mapped[dict | None] = mapped_column(JSONB)
 
     # Relations — v2
-    product_watches: Mapped[list["ProductWatch"]] = relationship(
+    product_watches: Mapped[list[ProductWatch]] = relationship(
         back_populates="product",
         lazy="select",
     )
     # Ejerskab
-    owner: Mapped["User | None"] = relationship(foreign_keys=[owner_id], lazy="select")
+    owner: Mapped[User | None] = relationship(foreign_keys=[owner_id], lazy="select")
 
     @property
     def owner_name(self) -> str | None:
@@ -67,7 +67,7 @@ class Product(Base, TimestampMixin):
         return None
 
     # Relations — v1 legacy
-    watches: Mapped[list["Watch"]] = relationship(
+    watches: Mapped[list[Watch]] = relationship(
         back_populates="product",
         lazy="select",
     )

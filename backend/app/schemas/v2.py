@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel, field_validator
 
-
 # ── WatchSource schemas ───────────────────────────────────────────────────────
 
 class WatchSourceCreate(BaseModel):

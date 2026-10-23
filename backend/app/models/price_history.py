@@ -43,4 +43,4 @@ class PriceHistory(Base):
     raw_data: Mapped[dict | None] = mapped_column(JSONB)
 
     # Relations
-    watch: Mapped["Watch"] = relationship(back_populates="price_history")
+    watch: Mapped[Watch] = relationship(back_populates="price_history")

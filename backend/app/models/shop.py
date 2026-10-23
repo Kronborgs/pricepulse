@@ -32,7 +32,7 @@ class Shop(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relations
-    watches: Mapped[list["Watch"]] = relationship(
+    watches: Mapped[list[Watch]] = relationship(
         back_populates="shop",
         lazy="select",
     )

@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import structlog
 
@@ -86,7 +86,7 @@ class SSEManager:
                 try:
                     payload = await asyncio.wait_for(q.get(), timeout=_KEEPALIVE_INTERVAL)
                     yield f"data: {payload}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Keepalive — forhindrer proxy-timeout
                     yield ": keepalive\n\n"
         finally:

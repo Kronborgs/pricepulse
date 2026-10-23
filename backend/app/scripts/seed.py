@@ -7,9 +7,10 @@ from __future__ import annotations
 import asyncio
 import uuid
 
+from sqlalchemy import select
+
 from app.database import AsyncSessionLocal
 from app.models.shop import Shop
-from sqlalchemy import select
 
 SHOPS = [
     {

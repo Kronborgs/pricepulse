@@ -6,7 +6,7 @@ Bruges af OllamaQueue og API-endpoints til at logge alle Ollama-kald.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -60,7 +60,7 @@ class AIJobService:
         if job:
             job.status = "processing"
             job.model_used = model_used
-            job.started_at = datetime.now(timezone.utc)
+            job.started_at = datetime.now(UTC)
             await self.db.commit()
 
     async def mark_completed(
@@ -80,7 +80,7 @@ class AIJobService:
             job.prompt_tokens = prompt_tokens
             job.response_tokens = response_tokens
             job.duration_ms = duration_ms
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await self.db.commit()
 
     async def mark_failed(self, job_id: uuid.UUID, error: str) -> None:
@@ -88,7 +88,7 @@ class AIJobService:
         if job:
             job.status = "failed"
             job.error_message = error
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             await self.db.commit()
 
     async def list_jobs(

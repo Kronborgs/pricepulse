@@ -19,9 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import structlog
-from bs4 import BeautifulSoup, Tag
-
-from app.scraper.providers.base import ParseResult
+from bs4 import BeautifulSoup
 
 logger = structlog.get_logger()
 

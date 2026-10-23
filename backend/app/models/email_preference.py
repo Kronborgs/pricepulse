@@ -59,4 +59,4 @@ class EmailPreference(Base, TimestampMixin):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(back_populates="email_preference")
+    user: Mapped[User] = relationship(back_populates="email_preference")
