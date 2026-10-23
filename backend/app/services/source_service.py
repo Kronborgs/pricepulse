@@ -4,7 +4,7 @@ SourceService — håndterer WatchSource CRUD og check-logik.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import structlog
@@ -17,8 +17,10 @@ from app.models.source_check import SourceCheck
 from app.models.source_price_event import SourcePriceEvent
 from app.models.watch_source import WatchSource
 from app.models.watch_timeline_event import WatchTimelineEvent
-from app.scraper.engine import PLAYWRIGHT_REQUIRED_DOMAINS, scraper_engine
 from app.schemas.v2 import WatchSourceCreate, WatchSourceUpdate
+from app.scraper.engine import PLAYWRIGHT_REQUIRED_DOMAINS, scraper_engine
+from app.services.ollama_service import OllamaService
+
 logger = structlog.get_logger(__name__)
 
 # Backoff-tabel: (consecutive_errors_min, multiplier, max_minutes)
@@ -55,7 +57,7 @@ class SourceService:
             provider=provider,
             scraper_config=data.scraper_config,
             currency_hint=data.currency_hint if data.currency_hint and data.currency_hint != "DKK" else None,
-            next_check_at=datetime.now(timezone.utc),  # klar til straks
+            next_check_at=datetime.now(UTC),  # klar til straks
         )
         self.db.add(source)
 
@@ -114,7 +116,7 @@ class SourceService:
         if source.status == "archived":
             return source
         source.status = "paused"
-        source.paused_at = datetime.now(timezone.utc)
+        source.paused_at = datetime.now(UTC)
         source.next_check_at = None
         self.db.add(WatchTimelineEvent(
             watch_id=source.watch_id,
@@ -131,7 +133,7 @@ class SourceService:
             return source
         source.status = "active"
         source.paused_at = None
-        source.next_check_at = datetime.now(timezone.utc)
+        source.next_check_at = datetime.now(UTC)
         self.db.add(WatchTimelineEvent(
             watch_id=source.watch_id,
             source_id=source.id,
@@ -144,7 +146,7 @@ class SourceService:
 
     async def archive_source(self, source: WatchSource) -> WatchSource:
         source.status = "archived"
-        source.archived_at = datetime.now(timezone.utc)
+        source.archived_at = datetime.now(UTC)
         source.next_check_at = None
         self.db.add(WatchTimelineEvent(
             watch_id=source.watch_id,
@@ -160,7 +162,7 @@ class SourceService:
 
     async def pause_watch(self, watch: ProductWatch) -> ProductWatch:
         watch.status = "paused"
-        watch.paused_at = datetime.now(timezone.utc)
+        watch.paused_at = datetime.now(UTC)
         self.db.add(WatchTimelineEvent(
             watch_id=watch.id,
             event_type="watch_paused",
@@ -185,7 +187,7 @@ class SourceService:
         )
         sources = (await self.db.execute(stmt)).scalars().all()
         for s in sources:
-            s.next_check_at = datetime.now(timezone.utc)
+            s.next_check_at = datetime.now(UTC)
         await self.db.commit()
         return watch
 
@@ -219,7 +221,7 @@ class SourceService:
 
         scrape_result, parse_result = await scraper_engine.scrape(fake_watch)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         source.last_check_at = now
 
         # Afgør fejltype — parser_mismatch sendes til sekventiel Ollama-kø
@@ -227,7 +229,8 @@ class SourceService:
         ollama_queued = False
 
         if not scrape_result.success and scrape_result.fetch_ok and scrape_result.html_snippet and error_type == "parser_mismatch":
-            from app.services.ollama_queue import OllamaJob, enqueue as ollama_enqueue
+            from app.services.ollama_queue import OllamaJob
+            from app.services.ollama_queue import enqueue as ollama_enqueue
             ollama_enqueue(OllamaJob(
                 entity_type="source",
                 entity_id=source.id,
@@ -472,9 +475,7 @@ class SourceService:
                             wants = True
                     else:
                         wants = True
-                elif is_back_in_stock and watch.notify_on_back_in_stock and rule.notify_back_in_stock:
-                    wants = True
-                elif rule.notify_on_change and change_type in ("increase", "unavailable", "decrease", "back_in_stock"):
+                elif is_back_in_stock and watch.notify_on_back_in_stock and rule.notify_back_in_stock or rule.notify_on_change and change_type in ("increase", "unavailable", "decrease", "back_in_stock"):
                     wants = True
 
                 if not wants:
@@ -533,7 +534,6 @@ class SourceService:
         4. CPU-baseret fallback (ingen AI) — kører altid som sidste udvej
         """
         from app.config import settings
-        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
 
         if not settings.ollama_enabled:
             # Ollama slået fra — brug CPU-fallback direkte
@@ -578,8 +578,6 @@ class SourceService:
         parse_result,
     ):
         """Kerne AI-logic — adskilt fra health-check for renere error handling."""
-        from app.services.ollama_service import OllamaAdvice
-
         # Trin 1: CSS-selektor-forslag
         advice = await ollama.analyze_parser(
             db=self.db,
@@ -727,7 +725,7 @@ class SourceService:
         if watch:
             watch.last_best_price = best.last_price
             watch.last_best_source_id = best.id
-            watch.last_checked_at = datetime.now(timezone.utc)
+            watch.last_checked_at = datetime.now(UTC)
 
     async def _update_watch_status(self, watch_id: uuid.UUID) -> None:
         """Beregn aggregeret watch-status fra sources."""

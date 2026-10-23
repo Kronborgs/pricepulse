@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import structlog
@@ -12,6 +12,7 @@ from app.models.shop import Shop
 from app.models.watch import Watch
 from app.schemas.watch import WatchCreate, WatchDetectResult
 from app.scraper.engine import PLAYWRIGHT_REQUIRED_DOMAINS, scraper_engine
+from app.services.ollama_service import OllamaService
 from app.services.price_service import PriceService
 
 logger = structlog.get_logger()
@@ -94,7 +95,8 @@ class WatchService:
             diag = scrape_result.diagnostic or {}
             error_type = diag.get("error_type")
             if scrape_result.fetch_ok and scrape_result.html_snippet and error_type == "parser_mismatch":
-                from app.services.ollama_queue import OllamaJob, enqueue as ollama_enqueue
+                from app.services.ollama_queue import OllamaJob
+                from app.services.ollama_queue import enqueue as ollama_enqueue
                 ollama_enqueue(OllamaJob(
                     entity_type="watch",
                     entity_id=watch.id,
@@ -106,7 +108,7 @@ class WatchService:
                     diagnostic=scrape_result.diagnostic,
                     previous_status=watch.status,
                 ))
-                watch.last_checked_at = datetime.now(timezone.utc)
+                watch.last_checked_at = datetime.now(UTC)
                 # Gem diagnostik nu så UI viser fejltype mens Ollama arbejder
                 if scrape_result.diagnostic:
                     watch.last_diagnostic = scrape_result.diagnostic
@@ -135,14 +137,13 @@ class WatchService:
         Returnerer True ved succes, False ved fejl, None hvis Ollama var optaget (skip).
         """
         from app.config import settings
-        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
 
         if not settings.ollama_enabled:
             # Ollama slået fra — brug CPU-fallback direkte
             return await self._try_cpu_fallback(watch, scrape_result, parse_result)
 
         # Hurtig health-check af Ollama før vi sender jobs til køen
-        from app.services.ollama_service import OllamaService, is_ollama_busy
+        from app.services.ollama_service import is_ollama_busy
 
         # Tjek om Ollama allerede kører et kald — undgår timeout-kaskade
         if is_ollama_busy():
@@ -188,8 +189,6 @@ class WatchService:
         prev_status: str,
     ):
         """Kerne AI-logic — adskilt fra health-check for renere error handling."""
-        from app.services.ollama_service import is_ollama_busy
-
         _status_is_analysing = True
         try:
             # Trin 1: CSS-selektor-forslag

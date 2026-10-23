@@ -19,9 +19,8 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import structlog
@@ -308,7 +307,7 @@ class OllamaService:
     async def _get_cached(
         self, db: AsyncSession, key: str
     ) -> LlmAnalysisResult | None:
-        ttl_cutoff = datetime.now(timezone.utc) - timedelta(seconds=settings.ollama_cache_ttl)
+        ttl_cutoff = datetime.now(UTC) - timedelta(seconds=settings.ollama_cache_ttl)
         stmt = select(LlmAnalysisResult).where(
             LlmAnalysisResult.cache_key == key,
             LlmAnalysisResult.created_at >= ttl_cutoff,
@@ -456,7 +455,7 @@ class OllamaService:
         html: str,
         watch_id: str | None = None,
         source_id: str | None = None,
-    ) -> "ParseResult | None":
+    ) -> ParseResult | None:
         """
         Brug LLM som tekstbaseret browser til direkte at udtrække
         pris og lager fra rå HTML-tekst — ingen CSS-selektorer.
