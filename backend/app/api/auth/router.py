@@ -5,6 +5,7 @@ Cookies sættes som httpOnly, Secure (i prod), SameSite=Lax.
 from __future__ import annotations
 
 import re
+import hashlib
 import aiofiles.os
 import aiofiles.tempfile
 import uuid
@@ -134,6 +135,15 @@ class UpdateUserRequest(BaseModel):
 
 class UpdateMeRequest(BaseModel):
     locale: str | None = None  # "en" eller "da"
+
+
+class AdminPasswordRequest(BaseModel):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -543,6 +553,105 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return _user_to_read(user)
+
+
+@router.post("/admin/users/{user_id}/reset-link")
+async def resend_user_reset_link(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
+) -> dict:
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+    if caller.role == "superuser" and user.role != "user":
+        raise HTTPException(status_code=403, detail="Superuser kan kun hjælpe brugere med rollen 'user'")
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Brugeren er deaktiveret")
+
+    svc = AuthService(db)
+    raw_token = await svc.create_password_reset_token(user.email)
+    if not raw_token:
+        raise HTTPException(status_code=400, detail="Brugeren kan ikke nulstille kodeord")
+
+    from app.models.auth_token import AuthToken
+    from sqlalchemy import update
+    from app.services.smtp_service import smtp_service, _app_url
+    base = _app_url()
+    if not base:
+        raise HTTPException(status_code=503, detail="Frontend-URL mangler i serverkonfigurationen")
+
+    try:
+        reset_url = f"{base}/reset-password?token={raw_token}"
+        body_html = f"""<!DOCTYPE html><html><body>
+<h1>Nulstil dit kodeord</h1>
+<p>Klik på linket for at vælge et nyt kodeord. Linket er gyldigt i 2 timer.</p>
+<p><a href="{reset_url}">Nulstil kodeord</a></p>
+<p>{reset_url}</p>
+</body></html>"""
+        await smtp_service.send_email(
+            db,
+            to_email=user.email,
+            subject="Nulstil dit kodeord — PricePulse",
+            body_html=body_html,
+        )
+    except Exception as exc:
+        await db.execute(
+            update(AuthToken)
+            .where(AuthToken.token_hash == hashlib.sha256(raw_token.encode()).hexdigest())
+            .values(revoked_at=datetime.now(timezone.utc))
+        )
+        await db.commit()
+        logger.warning("admin_password_reset_mail_fejl", user_id=str(user.id), error=repr(exc))
+        raise HTTPException(status_code=502, detail="Reset-mailen kunne ikke sendes. Kontrollér SMTP-indstillingerne.") from exc
+
+    await db.execute(
+        update(AuthToken)
+        .where(
+            AuthToken.user_id == user.id,
+            AuthToken.token_type == "password_reset",
+            AuthToken.revoked_at.is_(None),
+            AuthToken.token_hash != hashlib.sha256(raw_token.encode()).hexdigest(),
+        )
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+    await db.commit()
+    logger.info("admin_password_reset_mail_sendt", user_id=str(user.id))
+    return {"ok": True}
+
+
+@router.post("/admin/users/{user_id}/password")
+async def admin_set_user_password(
+    user_id: uuid.UUID,
+    body: AdminPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
+) -> dict:
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Bruger ikke fundet")
+    if caller.role == "superuser" and user.role != "user":
+        raise HTTPException(status_code=403, detail="Superuser kan kun ændre kodeord for brugere med rollen 'user'")
+
+    from app.services.auth_service import hash_password
+    from app.models.auth_token import AuthToken
+    from sqlalchemy import update
+    user.password_hash = hash_password(body.password)
+    user.password_changed_at = datetime.now(timezone.utc)
+    await db.commit()
+    await AuthService(db).revoke_all_refresh_tokens(user.id)
+    await db.execute(
+        update(AuthToken)
+        .where(
+            AuthToken.user_id == user.id,
+            AuthToken.token_type.in_(["password_reset", "invitation"]),
+            AuthToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+    await db.commit()
+    logger.info("admin_password_changed", user_id=str(user.id), changed_by=str(caller.id))
+    return {"ok": True}
 
 
 @router.delete("/admin/users/{user_id}", status_code=200)

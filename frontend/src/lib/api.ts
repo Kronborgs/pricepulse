@@ -362,6 +362,15 @@ export const api = {
         method: "PATCH",
         body: JSON.stringify(data),
       }),
+    resendResetLink: (id: string) =>
+      apiFetch<{ ok: boolean }>(`/auth/admin/users/${id}/reset-link`, {
+        method: "POST",
+      }),
+    setPassword: (id: string, password: string) =>
+      apiFetch<{ ok: boolean }>(`/auth/admin/users/${id}/password`, {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      }),
     delete: (id: string) =>
       fetch(`${BASE_URL}/api/v1/auth/admin/users/${id}`, {
         method: "DELETE",
