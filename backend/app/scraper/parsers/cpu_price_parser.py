@@ -168,7 +168,8 @@ class CpuPriceParser:
         for script in soup.find_all("script", type="application/ld+json"):
             if not script.string:
                 continue
-            try: offers_json = __import__("json").loads(script.string)
+            try:
+                offers_json = __import__("json").loads(script.string)
             except Exception:
                 continue
 

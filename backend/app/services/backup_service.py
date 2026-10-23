@@ -168,7 +168,7 @@ async def create_backup() -> str:
 
         # ─── Brugere ──────────────────────────────────────────────────────────
         users = list(
-            (await db.execute(select(User).where(User.is_active == True))).scalars().all()
+            (await db.execute(select(User).where(User.is_active))).scalars().all()
         )
 
         # ─── SMTP ─────────────────────────────────────────────────────────────
