@@ -446,6 +446,22 @@ export default function UsersPage() {
               onSubmit={(event) => {
                 event.preventDefault();
                 setPasswordError(null);
+                if (newPassword.length < 10) {
+                  setPasswordError("Password must be at least 10 characters.");
+                  return;
+                }
+                if (!/[A-Z]/.test(newPassword)) {
+                  setPasswordError("Password must include at least one uppercase letter.");
+                  return;
+                }
+                if (!/\d/.test(newPassword)) {
+                  setPasswordError("Password must include at least one number.");
+                  return;
+                }
+                if (!Array.from("!@#$%^&*()_+-=[]{}|;':,./<>?").some((character) => newPassword.includes(character))) {
+                  setPasswordError("Password must include at least one special character, such as ! or #.");
+                  return;
+                }
                 if (newPassword !== confirmPassword) {
                   setPasswordError("Passwords do not match.");
                   return;
@@ -471,7 +487,7 @@ export default function UsersPage() {
                 aria-label="New password"
                 placeholder="New password (10+ characters)"
                 value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
+                onChange={(event) => { setNewPassword(event.target.value); setPasswordError(null); }}
                 className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               />
               <input
@@ -482,7 +498,7 @@ export default function UsersPage() {
                 aria-label="Confirm new password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
+                onChange={(event) => { setConfirmPassword(event.target.value); setPasswordError(null); }}
                 className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#29ABE2]"
               />
               <p className="text-xs text-slate-400">Must include an uppercase letter, a number, and a special character.</p>
