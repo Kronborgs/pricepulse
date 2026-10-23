@@ -437,7 +437,11 @@ export default function UsersPage() {
         )}
 
         {passwordUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <dialog
+            open
+            aria-labelledby="admin-password-title"
+            className="fixed inset-0 z-50 m-0 flex h-full w-full max-w-none items-center justify-center border-0 bg-black/70 p-4"
+          >
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -449,9 +453,6 @@ export default function UsersPage() {
                 setPasswordMutation.mutate();
               }}
               className="w-full max-w-md space-y-4 rounded-lg border border-slate-700 bg-slate-900 p-5 shadow-xl"
-              aria-labelledby="admin-password-title"
-              role="dialog"
-              aria-modal="true"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -494,7 +495,7 @@ export default function UsersPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </dialog>
         )}
       </div>
     </AuthGuard>
