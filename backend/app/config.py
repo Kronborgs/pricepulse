@@ -67,12 +67,12 @@ class Settings(BaseSettings):
     playwright_enabled: bool = False           # kræver Playwright installation
 
     # ─── Ollama ────────────────────────────────────────────────
-    ollama_enabled: bool = True
+    ollama_enabled: bool = False           # Slået FRA som default — AI er valgfrit
     ollama_host: str = "http://10.10.80.10:11434"
     ollama_parser_model: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_normalize_model: str = "qwen2.5:7b-instruct-q4_K_M"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_timeout: int = 120
+    ollama_timeout: int = 5                # Hurtig timeout (5s) — undgå lange waits når AI er offline
     # Cache LLM-resultater i antal sekunder (24 timer standard)
     ollama_cache_ttl: int = 86400
 

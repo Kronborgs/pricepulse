@@ -187,6 +187,22 @@ class OllamaService:
         except Exception:
             return False
 
+    async def check_health(self, db: AsyncSession | None = None, timeout: int = 5) -> bool:
+        """Hurtig health-check af Ollama med konfigurerbar timeout.
+        
+        Returnerer True hvis Ollama er tilgængelig og klar til at modtage requests.
+        Bruges før vi sender jobs til køen for at undgå lange waits.
+        """
+        if not settings.ollama_enabled:
+            return False
+        try:
+            client = httpx.AsyncClient(base_url=settings.ollama_host, timeout=timeout)
+            await client.get("/api/tags")
+            await client.aclose()
+            return True
+        except Exception:
+            return False
+
     async def list_models(self) -> list[str]:
         """Returner navne på tilgængelige modeller."""
         try:

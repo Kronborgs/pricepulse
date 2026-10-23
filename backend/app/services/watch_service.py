@@ -126,28 +126,70 @@ class WatchService:
         scrape_result,
         parse_result,
     ) -> bool | None:
-        """Ollama fallback i to trin:
-        1. CSS-selektor-forslag → retry scrape
-        2. Direkte tekst-udtræk fra HTML via LLM
+        """Ollama fallback i to trin med CPU-fallback:
+        1. Hurtig health-check af Ollama (5 sek timeout)
+        2. CSS-selektor-forslag → retry scrape
+        3. Direkte tekst-udtræk fra HTML via LLM
+        4. CPU-baseret fallback (ingen AI) — kører altid som sidste udvej
+        
         Returnerer True ved succes, False ved fejl, None hvis Ollama var optaget (skip).
         """
         from app.config import settings
-        from app.services.ollama_service import OllamaService, is_ollama_busy
+        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
 
         if not settings.ollama_enabled:
-            return False
+            # Ollama slået fra — brug CPU-fallback direkte
+            return await self._try_cpu_fallback(watch, scrape_result, parse_result)
 
-        # Hvis Ollama allerede kører et kald, spring over — undgår timeout-kaskade
+        # Hurtig health-check af Ollama før vi sender jobs til køen
+        from app.services.ollama_service import OllamaService, is_ollama_busy
+
+        # Tjek om Ollama allerede kører et kald — undgår timeout-kaskade
         if is_ollama_busy():
             logger.info("ollama_skip_busy", watch_id=str(watch.id))
             return None
 
         ollama = OllamaService()
-        prev_status = watch.status
-        watch.status = "ai_analyzing"
-        await self.db.commit()
-        # Gem status i lokal variabel — ORM-objektet er expired efter commit
-        # og lazy-load virker ikke i background-task kontekst
+        try:
+            # Tjek om Ollama er tilgængelig (5 sek timeout)
+            is_healthy = await ollama.check_health(db=self.db, timeout=5)
+            if not is_healthy:
+                logger.info("ollama_ikke_tilgængelig", watch_id=str(watch.id),
+                            host=settings.ollama_host)
+                # Ollama offline — brug CPU-fallback uden at vente på timeout
+                return await self._try_cpu_fallback(watch, scrape_result, parse_result)
+
+            # Ollama er online — prøv AI-assisteret parsing
+            prev_status = watch.status
+            watch.status = "ai_analyzing"
+            await self.db.commit()
+            _status_is_analysing = True
+            try:
+                await self._try_ollama_ai(
+                    ollama=ollama, watch=watch, scrape_result=scrape_result,
+                    parse_result=parse_result, prev_status=prev_status,
+                )
+            except Exception as ai_exc:
+                logger.warning("ollama_ai_fejl, fallback til CPU",
+                              watch_id=str(watch.id), error=str(ai_exc))
+                # AI fejlede — prøv CPU-fallback
+                return await self._try_cpu_fallback(watch, scrape_result, parse_result)
+
+        finally:
+            await ollama.close()
+        return False
+
+    async def _try_ollama_ai(
+        self,
+        ollama: OllamaService,
+        watch: Watch,
+        scrape_result,
+        parse_result,
+        prev_status: str,
+    ):
+        """Kerne AI-logic — adskilt fra health-check for renere error handling."""
+        from app.services.ollama_service import is_ollama_busy
+
         _status_is_analysing = True
         try:
             # Trin 1: CSS-selektor-forslag
@@ -237,7 +279,59 @@ class WatchService:
             if _status_is_analysing:
                 watch.status = prev_status
                 await self.db.commit()
-            await ollama.close()
+
+    async def _try_cpu_fallback(
+        self,
+        watch: Watch,
+        scrape_result,
+        parse_result,
+    ) -> bool:
+        """CPU-baseret fallback — ren Python/regex, ingen AI.
+        
+        Bruges når Ollama er offline eller slået fra.
+        Scanner HTML'en lokalt med flere strategier for at finde priser.
+        Returnerer True ved succes, False ved fejl.
+        """
+        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
+
+        if not scrape_result.html_snippet:
+            logger.debug("cpu_fallback_ingen_html", watch_id=str(watch.id))
+            return False
+
+        try:
+            cpu_result = CpuPriceParser.parse(
+                content=scrape_result.html_snippet,
+                url=watch.url,
+            )
+            if cpu_result and cpu_result.price:
+                logger.info(
+                    "cpu_fallback_pris",
+                    watch_id=str(watch.id),
+                    price=cpu_result.price,
+                    parser=cpu_result.parser_used,
+                    extractors=cpu_result.extractors_tried,
+                )
+                # Indpak i ParseResult-lignende objekt
+                from types import SimpleNamespace
+                cpu_parse = SimpleNamespace(
+                    success=True,
+                    price=cpu_result.price,
+                    currency=cpu_result.currency or "DKK",
+                    title=cpu_result.title,
+                    stock_status=cpu_result.stock_status,
+                    image_url=cpu_result.image_url,
+                    parser_used=cpu_result.parser_used,
+                    extractors_tried=cpu_result.extractors_tried or [],
+                )
+                await self.price_service.process_scraped_data(watch, cpu_parse, scrape_result.diagnostic)
+                await self.db.commit()
+                return True
+            else:
+                logger.debug("cpu_fallback_ingen_pris", watch_id=str(watch.id))
+        except Exception as exc:
+            logger.warning("cpu_fallback_fejl", watch_id=str(watch.id), error=str(exc))
+
+        # CPU-fallback fejlede — returner False (original fejl håndteres udenfor)
         return False
 
     async def detect_from_url(self, url: str) -> WatchDetectResult:

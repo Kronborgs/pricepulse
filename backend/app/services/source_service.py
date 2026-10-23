@@ -526,102 +526,186 @@ class SourceService:
         scrape_result,
         parse_result,
     ):
-        """Ollama fallback i to trin:
-        1. CSS-selektor-forslag → retry scrape
-        2. Direkte tekst-udtræk fra HTML via LLM
+        """Ollama fallback i to trin med CPU-fallback:
+        1. Hurtig health-check af Ollama (5 sek timeout)
+        2. CSS-selektor-forslag → retry scrape
+        3. Direkte tekst-udtræk fra HTML via LLM
+        4. CPU-baseret fallback (ingen AI) — kører altid som sidste udvej
         """
         from app.config import settings
-        from app.services.ollama_service import OllamaService
+        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
 
         if not settings.ollama_enabled:
-            return scrape_result, parse_result
+            # Ollama slået fra — brug CPU-fallback direkte
+            return await self._try_cpu_fallback(source, fake_watch, scrape_result, parse_result)
 
+        # Hurtig health-check af Ollama før vi sender jobs til køen
+        from app.services.ollama_service import OllamaService
         ollama = OllamaService()
         try:
-            # Trin 1: CSS-selektor-forslag
-            advice = await ollama.analyze_parser(
-                db=self.db,
-                url=fake_watch.url,
-                html_snippet=scrape_result.html_snippet,
-                html_title=(parse_result.title or "") if parse_result else "",
-                status_code=scrape_result.status_code,
-                failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
-                source_id=str(source.id),
-            )
-            if advice and not (advice.price_selector and advice.confidence >= 0.5):
-                logger.info("ollama_ingen_selector", source_id=str(source.id),
-                            selector=advice.price_selector, confidence=advice.confidence)
+            # Tjek om Ollama er tilgængelig (5 sek timeout)
+            is_healthy = await ollama.check_health(db=self.db, timeout=5)
+            if not is_healthy:
+                logger.info("ollama_ikke_tilgængelig", source_id=str(source.id),
+                            host=settings.ollama_host)
+                # Ollama offline — brug CPU-fallback uden at vente på timeout
+                return await self._try_cpu_fallback(source, fake_watch, scrape_result, parse_result)
 
-            if advice:
-                # Gem råd i diagnostik uanset om CSS-retry lykkes — UI viser forklaringen
-                ollama_advice_dict = {
-                    "reasoning": advice.reasoning,
-                    "recommended_action": advice.recommended_action,
-                    "price_selector": advice.price_selector,
-                    "stock_selector": advice.stock_selector,
-                    "requires_js": advice.requires_js,
-                    "likely_bot_protection": advice.likely_bot_protection,
-                    "confidence": advice.confidence,
-                    "page_type": advice.page_type,
-                }
-                if scrape_result.diagnostic:
-                    scrape_result.diagnostic["ollama_advice"] = ollama_advice_dict
-                    if advice.recommended_action:
-                        scrape_result.diagnostic["recommended_action"] = advice.recommended_action
-                    if advice.requires_js and scrape_result.diagnostic.get("error_type") == "parser_mismatch":
-                        scrape_result.diagnostic["error_type"] = "js_render_required"
-                        scrape_result.diagnostic["recommended_action"] = (
-                            "Aktivér Playwright-provider i source-indstillinger (Ollama: siden kræver JS-rendering)"
-                        )
-
-            if advice and advice.price_selector and advice.confidence >= 0.5:
-                logger.info("ollama_css_forslag", source_id=str(source.id),
-                            selector=advice.price_selector, confidence=advice.confidence)
-                new_config = {
-                    **(fake_watch.scraper_config or {}),
-                    "price_selector": advice.price_selector,
-                    **({"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
-                }
-                fake_watch.scraper_config = new_config
-                source.scraper_config = new_config
-                retry_result, retry_parse = await scraper_engine.scrape(fake_watch)
-                if retry_result.success and retry_parse:
-                    return retry_result, retry_parse
-                # CSS fejlede også — nulstil
-                source.scraper_config = (
-                    {k: v for k, v in (source.scraper_config or {}).items()
-                     if k not in ("price_selector", "stock_selector")} or None
+            # Ollama er online — prøv AI-assisteret parsing
+            try:
+                await self._try_ollama_ai(
+                    ollama=ollama, source=source, fake_watch=fake_watch,
+                    scrape_result=scrape_result, parse_result=parse_result,
+                )
+            except Exception as ai_exc:
+                logger.warning("ollama_ai_fejl, fallback til CPU",
+                              source_id=str(source.id), error=str(ai_exc))
+                # AI fejlede — prøv CPU-fallback
+                return await self._try_cpu_fallback(
+                    source, fake_watch, scrape_result, parse_result
                 )
 
-            # Trin 2: Direkte tekst-udtræk
-            text_result = await ollama.extract_price_from_text(
-                db=self.db,
-                url=fake_watch.url,
-                html=scrape_result.html_snippet,
-                source_id=str(source.id),
-            )
-            if text_result and text_result.success:
-                logger.info("ollama_tekst_udtræk", source_id=str(source.id), price=text_result.price)
-                # Indpak i ScrapeResult-lignende objekt
-                from types import SimpleNamespace
-                ok_result = SimpleNamespace(
-                    success=True,
-                    fetch_ok=True,
-                    status_code=scrape_result.status_code,
-                    diagnostic=scrape_result.diagnostic,
-                    html_snippet=None,
-                    error=None,
-                )
-                return ok_result, text_result
+        finally:
+            await ollama.close()
+        return scrape_result, parse_result
 
-        except Exception as exc:
-            logger.warning("ollama_retry_fejl", source_id=str(source.id), error=str(exc))
+    async def _try_ollama_ai(
+        self,
+        ollama: OllamaService,
+        source: WatchSource,
+        fake_watch,
+        scrape_result,
+        parse_result,
+    ):
+        """Kerne AI-logic — adskilt fra health-check for renere error handling."""
+        from app.services.ollama_service import OllamaAdvice
+
+        # Trin 1: CSS-selektor-forslag
+        advice = await ollama.analyze_parser(
+            db=self.db,
+            url=fake_watch.url,
+            html_snippet=scrape_result.html_snippet,
+            html_title=(parse_result.title or "") if parse_result else "",
+            status_code=scrape_result.status_code,
+            failed_extractors=(parse_result.extractors_tried or []) if parse_result else [],
+            source_id=str(source.id),
+        )
+        if advice and not (advice.price_selector and advice.confidence >= 0.5):
+            logger.info("ollama_ingen_selector", source_id=str(source.id),
+                        selector=advice.price_selector, confidence=advice.confidence)
+
+        if advice:
+            # Gem råd i diagnostik uanset om CSS-retry lykkes — UI viser forklaringen
+            ollama_advice_dict = {
+                "reasoning": advice.reasoning,
+                "recommended_action": advice.recommended_action,
+                "price_selector": advice.price_selector,
+                "stock_selector": advice.stock_selector,
+                "requires_js": advice.requires_js,
+                "likely_bot_protection": advice.likely_bot_protection,
+                "confidence": advice.confidence,
+                "page_type": advice.page_type,
+            }
+            if scrape_result.diagnostic:
+                scrape_result.diagnostic["ollama_advice"] = ollama_advice_dict
+                if advice.recommended_action:
+                    scrape_result.diagnostic["recommended_action"] = advice.recommended_action
+                if advice.requires_js and scrape_result.diagnostic.get("error_type") == "parser_mismatch":
+                    scrape_result.diagnostic["error_type"] = "js_render_required"
+                    scrape_result.diagnostic["recommended_action"] = (
+                        "Aktivér Playwright-provider i source-indstillinger (Ollama: siden kræver JS-rendering)"
+                    )
+
+        if advice and advice.price_selector and advice.confidence >= 0.5:
+            logger.info("ollama_css_forslag", source_id=str(source.id),
+                        selector=advice.price_selector, confidence=advice.confidence)
+            new_config = {
+                **(fake_watch.scraper_config or {}),
+                "price_selector": advice.price_selector,
+                **({"stock_selector": advice.stock_selector} if advice.stock_selector else {}),
+            }
+            fake_watch.scraper_config = new_config
+            source.scraper_config = new_config
+            retry_result, retry_parse = await scraper_engine.scrape(fake_watch)
+            if retry_result.success and retry_parse:
+                return retry_result, retry_parse
+            # CSS fejlede også — nulstil
             source.scraper_config = (
                 {k: v for k, v in (source.scraper_config or {}).items()
                  if k not in ("price_selector", "stock_selector")} or None
             )
-        finally:
-            await ollama.close()
+
+        # Trin 2: Direkte tekst-udtræk
+        text_result = await ollama.extract_price_from_text(
+            db=self.db,
+            url=fake_watch.url,
+            html=scrape_result.html_snippet,
+            source_id=str(source.id),
+        )
+        if text_result and text_result.success:
+            logger.info("ollama_tekst_udtræk", source_id=str(source.id), price=text_result.price)
+            # Indpak i ScrapeResult-lignende objekt
+            from types import SimpleNamespace
+            ok_result = SimpleNamespace(
+                success=True,
+                fetch_ok=True,
+                status_code=scrape_result.status_code,
+                diagnostic=scrape_result.diagnostic,
+                html_snippet=None,
+                error=None,
+            )
+            return ok_result, text_result
+
+    async def _try_cpu_fallback(
+        self,
+        source: WatchSource,
+        fake_watch,
+        scrape_result,
+        parse_result,
+    ):
+        """CPU-baseret fallback — ren Python/regex, ingen AI.
+        
+        Bruges når Ollama er offline eller slået fra.
+        Scanner HTML'en lokalt med flere strategier for at finde priser.
+        """
+        from app.scraper.parsers.cpu_price_parser import CpuPriceParser
+
+        if not scrape_result.html_snippet:
+            logger.debug("cpu_fallback_ingen_html", source_id=str(source.id))
+            return scrape_result, parse_result
+
+        try:
+            cpu_result = CpuPriceParser.parse(
+                content=scrape_result.html_snippet,
+                url=fake_watch.url,
+            )
+            if cpu_result and cpu_result.price:
+                logger.info(
+                    "cpu_fallback_pris",
+                    source_id=str(source.id),
+                    price=cpu_result.price,
+                    parser=cpu_result.parser_used,
+                    extractors=cpu_result.extractors_tried,
+                )
+                # Indpak i ParseResult-lignende objekt
+                from types import SimpleNamespace
+                cpu_parse = SimpleNamespace(
+                    success=True,
+                    price=cpu_result.price,
+                    currency=cpu_result.currency or "DKK",
+                    title=cpu_result.title,
+                    stock_status=cpu_result.stock_status,
+                    image_url=cpu_result.image_url,
+                    parser_used=cpu_result.parser_used,
+                    extractors_tried=cpu_result.extractors_tried or [],
+                )
+                return scrape_result, cpu_parse
+            else:
+                logger.debug("cpu_fallback_ingen_pris", source_id=str(source.id))
+        except Exception as exc:
+            logger.warning("cpu_fallback_fejl", source_id=str(source.id), error=str(exc))
+
+        # CPU-fallback fejlede — returner original resultat
         return scrape_result, parse_result
 
     # ── Aggregering ───────────────────────────────────────────────────────────
