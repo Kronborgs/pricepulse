@@ -211,7 +211,7 @@ def _user_to_read(user: User, force_must_change: bool = False) -> dict:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/setup-status", response_model=SetupStatus)
-async def setup_status(db: AsyncSession = Depends(get_db)) -> SetupStatus:
+async def setup_status(db: Annotated[AsyncSession, Depends(get_db)]) -> SetupStatus:
     """Returnerer om systemet mangler første admin. Frontend checker dette ved opstart."""
     svc = AuthService(db)
     return SetupStatus(setup_required=await svc.setup_required())
@@ -221,7 +221,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)) -> SetupStatus:
 async def setup(
     body: SetupRequest,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Opret første admin. Kun tilladt hvis ingen brugere eksisterer."""
     svc = AuthService(db)
@@ -244,7 +244,7 @@ async def setup(
 @router.post("/setup-restore")
 async def setup_restore(
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """
     Gendan backup ved frisk installation.
@@ -287,7 +287,7 @@ async def setup_restore(
 async def login(
     body: LoginRequest,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _rl: None = _LOGIN_RATE_LIMIT,
 ) -> dict:
     """Login med email + password. Sætter httpOnly cookies ved succes. Max 10 forsøg/minut pr. IP."""
@@ -311,7 +311,7 @@ async def change_password(
     body: ChangePasswordRequest,
     response: Response,
     user: CurrentUser,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """
     Skifter password for den indloggede bruger.
@@ -334,7 +334,7 @@ async def change_password(
 async def logout(
     response: Response,
     user: User | None = Depends(get_optional_user),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Logger ud og revoker alle refresh tokens."""
     if user:
@@ -347,7 +347,7 @@ async def logout(
 @router.post("/refresh")
 async def refresh_token(
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     refresh_token: Annotated[str | None, Cookie()] = None,
 ) -> dict:
     """
@@ -379,7 +379,7 @@ async def me(user: CurrentUser) -> dict:
 async def update_me(
     body: UpdateMeRequest,
     user: CurrentUser,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Opdatér den aktuelle brugers egne indstillinger (f.eks. locale)."""
     if body.locale is not None:
@@ -396,7 +396,7 @@ async def update_me(
 @router.post("/forgot-password")
 async def forgot_password(
     body: ForgotPasswordRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _rl: None = _FORGOT_RATE_LIMIT,
 ) -> dict:
     """
@@ -444,7 +444,7 @@ async def forgot_password(
 @router.post("/reset-password")
 async def reset_password(
     body: ResetPasswordRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Nulstiller kodeord med éngangsbrug-token fra mail."""
     if len(body.new_password) < 8:
@@ -462,7 +462,7 @@ async def reset_password(
 async def list_users(
     skip: int = 0,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     from sqlalchemy import func, select
@@ -478,7 +478,7 @@ async def list_users(
 @router.post("/admin/users", response_model=UserRead)
 async def create_user(
     body: CreateUserRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     svc = AuthService(db)
@@ -544,7 +544,7 @@ async def create_user(
 async def update_user(
     user_id: uuid.UUID,
     body: UpdateUserRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     user = await db.get(User, user_id)
@@ -585,7 +585,7 @@ async def update_user(
 )
 async def resend_user_reset_link(
     user_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     user = await db.get(User, user_id)
@@ -658,7 +658,7 @@ async def resend_user_reset_link(
 async def admin_set_user_password(
     user_id: uuid.UUID,
     body: AdminPasswordRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     user = await db.get(User, user_id)
@@ -699,7 +699,7 @@ async def admin_set_user_password(
 )
 async def delete_user(
     user_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     caller: User = Depends(__import__("app.api.deps", fromlist=["require_role"]).require_role("admin", "superuser")),
 ) -> dict:
     """

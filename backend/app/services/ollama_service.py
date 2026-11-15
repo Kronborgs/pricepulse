@@ -35,6 +35,9 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 
+# ── Ollama API endpoints ──────────────────────────────────────────────────────
+OLLAMA_TAGS_ENDPOINT = "/api/tags"
+
 # ── Ollama concurrency guard ──────────────────────────────────────────────────
 # Kun ét Ollama-kald ad gangen — forhindrer timeout-kaskade når mange watches
 # fejler samtidig og alle forsøger Ollama på én gang.
@@ -181,7 +184,7 @@ class OllamaService:
             return False
         try:
             client = self._get_client()
-            resp = await client.get("/api/tags", timeout=5)
+            resp = await client.get(OLLAMA_TAGS_ENDPOINT, timeout=5)
             return resp.status_code == 200
         except Exception:
             return False
@@ -195,9 +198,8 @@ class OllamaService:
         if not settings.ollama_enabled:
             return False
         try:
-            client = httpx.AsyncClient(base_url=settings.ollama_host, timeout=timeout)
-            await client.get("/api/tags")
-            await client.aclose()
+            async with httpx.AsyncClient(base_url=settings.ollama_host, timeout=timeout) as client:
+                await client.get(OLLAMA_TAGS_ENDPOINT)
             return True
         except Exception:
             return False
@@ -206,7 +208,7 @@ class OllamaService:
         """Returner navne på tilgængelige modeller."""
         try:
             client = self._get_client()
-            resp = await client.get("/api/tags", timeout=5)
+            resp = await client.get(OLLAMA_TAGS_ENDPOINT, timeout=5)
             resp.raise_for_status()
             data = resp.json()
             return [m["name"] for m in data.get("models", [])]

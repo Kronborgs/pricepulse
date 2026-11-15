@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 async def get_optional_user(
     access_token: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User | None:
     """
     Returnerer User hvis gyldig access_token cookie, ellers None.
@@ -60,7 +60,7 @@ async def get_optional_user(
 
 async def get_current_user(
     access_token: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     """
     Kræver gyldig access_token cookie. Kaster 401 hvis ikke logget ind.

@@ -1,5 +1,5 @@
 # ─── Build stage ──────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.12.16-slim AS builder
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # ─── Runtime stage (all-in-one: FastAPI + PostgreSQL 16 + Redis 7) ─────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.12.16-slim AS runtime
 
 WORKDIR /app
 

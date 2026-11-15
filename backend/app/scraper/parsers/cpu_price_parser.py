@@ -241,9 +241,11 @@ class CpuPriceParser:
             text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
             text = re.sub(r"<[^>]+>", " ", text)
-        else:
+        elif body.get_text():
             # Fjern script/style tags fra body
             text = body.get_text(" ", strip=True)
+        else:
+            return None
 
         # Find alle matcher
         matches = _PRICE_RE.findall(text)

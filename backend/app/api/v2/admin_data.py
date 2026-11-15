@@ -24,7 +24,7 @@ async def _count(db: AsyncSession, model) -> int:
 
 @router.get("/admin/data/stats")
 async def data_stats(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: SuperOrAdmin = None,
 ) -> dict:
     """Returner antal poster i de vigtigste tabeller. Tilgængelig for admin + superuser."""
@@ -53,7 +53,7 @@ async def data_stats(
 
 @router.delete("/admin/data/watches")
 async def delete_all_watches(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     """Slet alle watches (v1 + v2) inkl. relaterede data."""
@@ -76,7 +76,7 @@ async def delete_all_watches(
 
 @router.delete("/admin/data/products")
 async def delete_all_products(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     """Slet alle produkter inkl. snapshots."""
@@ -92,7 +92,7 @@ async def delete_all_products(
 
 @router.delete("/admin/data/price-history")
 async def delete_all_price_history(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     """Slet al prishistorik (v1 price_history + v2 source_price_events + source_checks)."""
@@ -110,7 +110,7 @@ async def delete_all_price_history(
 
 @router.delete("/admin/data/ai-jobs")
 async def delete_all_ai_jobs(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     """Slet alle AI jobs og LLM-analyseresultater."""
@@ -126,7 +126,7 @@ async def delete_all_ai_jobs(
 
 @router.delete("/admin/data/email-queue")
 async def delete_email_queue(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     """Slet alle ventende emails fra køen."""
@@ -140,7 +140,7 @@ async def delete_email_queue(
 
 @router.post("/admin/data/claim-orphaned")
 async def claim_orphaned_resources(
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     admin: AdminUser = None,
 ) -> dict:
     """

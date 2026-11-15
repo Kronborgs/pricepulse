@@ -286,7 +286,7 @@ class WatchService:
         parse_result,
     ) -> bool:
         """CPU-baseret fallback — ren Python/regex, ingen AI.
-        
+
         Bruges når Ollama er offline eller slået fra.
         Scanner HTML'en lokalt med flere strategier for at finde priser.
         Returnerer True ved succes, False ved fejl.

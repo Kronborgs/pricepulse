@@ -54,7 +54,7 @@ async def list_ai_jobs(
     watch_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     svc = AIJobService(db)
@@ -75,7 +75,7 @@ async def list_ai_jobs(
 @router.get("/jobs/{job_id}", response_model=AIJobDetail)
 async def get_ai_job(
     job_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> AIJobDetail:
     svc = AIJobService(db)
@@ -88,7 +88,7 @@ async def get_ai_job(
 @router.post("/jobs/{job_id}/cancel")
 async def cancel_ai_job(
     job_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
     _user: AdminUser = None,
 ) -> dict:
     svc = AIJobService(db)

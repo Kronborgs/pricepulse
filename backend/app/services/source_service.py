@@ -537,7 +537,7 @@ class SourceService:
 
         if not settings.ollama_enabled:
             # Ollama slået fra — brug CPU-fallback direkte
-            return await self._try_cpu_fallback(source, fake_watch, scrape_result, parse_result)
+            return self._try_cpu_fallback(source, fake_watch, scrape_result)
 
         # Hurtig health-check af Ollama før vi sender jobs til køen
         from app.services.ollama_service import OllamaService
@@ -549,7 +549,7 @@ class SourceService:
                 logger.info("ollama_ikke_tilgængelig", source_id=str(source.id),
                             host=settings.ollama_host)
                 # Ollama offline — brug CPU-fallback uden at vente på timeout
-                return await self._try_cpu_fallback(source, fake_watch, scrape_result, parse_result)
+                return self._try_cpu_fallback(source, fake_watch, scrape_result)
 
             # Ollama er online — prøv AI-assisteret parsing
             try:
@@ -561,8 +561,8 @@ class SourceService:
                 logger.warning("ollama_ai_fejl, fallback til CPU",
                               source_id=str(source.id), error=str(ai_exc))
                 # AI fejlede — prøv CPU-fallback
-                return await self._try_cpu_fallback(
-                    source, fake_watch, scrape_result, parse_result
+                return self._try_cpu_fallback(
+                    source, fake_watch, scrape_result
                 )
 
         finally:
@@ -654,12 +654,11 @@ class SourceService:
             )
             return ok_result, text_result
 
-    async def _try_cpu_fallback(
+    def _try_cpu_fallback(
         self,
         source: WatchSource,
         fake_watch,
         scrape_result,
-        parse_result,
     ):
         """CPU-baseret fallback — ren Python/regex, ingen AI.
         
